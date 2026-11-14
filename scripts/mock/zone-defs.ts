@@ -108,6 +108,23 @@ export const ZONE_DEFS: ZoneDef[] = [
   { id: 'eu-iberia', center: [-7.5, 40.6], sigma: [2.2, 1.5], regime: 'mediterranean', climate: 'europe', annual: 2600, k: 3.1, trend: 0.0, focus: false },
   { id: 'eu-greece-turkey', center: [26.5, 38.6], sigma: [4.0, 1.4], regime: 'mediterranean', climate: 'europe', annual: 2400, k: 3.1, trend: 0.006, focus: false },
   { id: 'za-highveld', center: [28.5, -26.5], sigma: [3.0, 1.6], regime: 'savanna-south', climate: 'africa-south', annual: 7000, k: 3.3, trend: -0.005, focus: false },
+
+  // ---- Added so the globe and "fires in my country" have data on every inhabited continent.
+  //      Appended at the end on purpose: zone streams are keyed by index, so the zones above keep their series. ----
+  { id: 'indochina-uplands', center: [100.0, 19.5], sigma: [3.2, 2.2], regime: 'tropical-dry', climate: 'se-asia', annual: 22000, k: 3.6, trend: -0.005, focus: false },
+  { id: 'in-central', center: [80.0, 21.5], sigma: [3.5, 2.0], regime: 'tropical-dry', climate: 'south-asia', annual: 12000, k: 3.8, trend: 0.0, focus: false },
+  { id: 'cn-northeast-cropland', center: [126.0, 46.0], sigma: [3.0, 1.6], regime: 'cropland', climate: 'mongolia', annual: 9000, k: 4.0, trend: -0.03, focus: false },
+  { id: 'wa-guinea-savanna', center: [-6.0, 10.0], sigma: [5.5, 1.8], regime: 'savanna-north', climate: 'africa-north', annual: 30000, k: 3.5, trend: -0.012, focus: false },
+  { id: 'tz-mz-miombo', center: [36.0, -11.5], sigma: [3.0, 3.0], regime: 'savanna-south', climate: 'africa-south', annual: 32000, k: 3.3, trend: -0.006, focus: false },
+  { id: 'mg-highlands', center: [47.0, -19.0], sigma: [1.2, 2.6], regime: 'savanna-south', climate: 'africa-south', annual: 9000, k: 3.4, trend: 0.0, focus: false },
+  { id: 'us-southeast', center: [-85.0, 32.0], sigma: [4.0, 1.6], regime: 'tropical-dry', climate: 'north-america', annual: 7000, k: 4.2, trend: 0.004, focus: false },
+  { id: 'co-ve-llanos', center: [-69.0, 6.5], sigma: [3.0, 1.5], regime: 'savanna-north', climate: 'south-america', annual: 12000, k: 3.4, trend: 0.0, focus: false },
+  { id: 'ru-volga-cropland', center: [42.0, 52.0], sigma: [3.0, 1.4], regime: 'cropland', climate: 'europe', annual: 6000, k: 4.0, trend: -0.02, focus: false },
+  { id: 'au-southeast', center: [147.0, -35.5], sigma: [2.6, 1.6], regime: 'savanna-north', climate: 'australia', annual: 3500, k: 3.0, trend: 0.015, focus: false },
+  { id: 'iq-sy-cropland', center: [42.0, 35.5], sigma: [2.6, 1.2], regime: 'mediterranean', climate: 'europe', annual: 5000, k: 4.1, trend: 0.004, focus: false },
+  { id: 'eu-balkans-italy', center: [18.0, 42.5], sigma: [3.5, 1.6], regime: 'mediterranean', climate: 'europe', annual: 2600, k: 3.2, trend: 0.004, focus: false },
+  { id: 'eu-central', center: [15.0, 51.0], sigma: [5.0, 1.6], regime: 'cropland', climate: 'europe', annual: 1500, k: 4.2, trend: 0.0, focus: false },
+  { id: 'cl-central', center: [-72.2, -37.0], sigma: [0.8, 2.2], regime: 'savanna-north', climate: 'south-america', annual: 2500, k: 3.1, trend: 0.02, focus: false },
 ];
 
 /** Where the synthetic archive has data (a query outside returns "no data"). */

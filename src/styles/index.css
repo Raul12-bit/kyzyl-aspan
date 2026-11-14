@@ -23,6 +23,7 @@
   --color-amber-soft: var(--el-amber-soft);
   --color-orange: var(--el-orange);
   --color-red: var(--el-red);
+  --color-kyzyl: var(--el-kyzyl);
   --color-teal: var(--el-teal);
   --color-mint: var(--el-mint);
   --color-modis: var(--el-modis);
@@ -39,6 +40,7 @@
 
   --font-sans: var(--el-font-sans);
   --font-mono: var(--el-font-mono);
+  --font-display: var(--el-font-display);
 
   --text-display: var(--el-text-display);
   --text-h1: var(--el-text-h1);
@@ -91,7 +93,7 @@
   }
 
   ::selection {
-    background: rgb(255 181 71 / 0.35);
+    background: rgb(255 82 54 / 0.38);
     color: var(--el-ink);
   }
 
@@ -254,4 +256,166 @@
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ------------------------------------------------------------------ Kyzyl Aspan brand layer */
+@layer components {
+  /* Wordmark: wide capitals with generous tracking, KYZYL in ink and ASPAN in signal red. */
+  .wordmark {
+    font-family: var(--el-font-display);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    line-height: 1;
+  }
+
+  /* Display headlines: the wordmark's voice at size. */
+  .display {
+    font-family: var(--el-font-display);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.04;
+  }
+
+  /* Hairline under a section title that burns from red into ink, like the orbit in the logo. */
+  .orbit-rule {
+    height: 2px;
+    border-radius: 2px;
+    background: var(--el-grad-orbit);
+    opacity: 0.85;
+  }
+
+  /* Page shell for the non-map routes. */
+  .page {
+    min-height: 100%;
+    padding: calc(var(--el-header-h) + 40px) var(--el-gutter) 96px;
+    background:
+      radial-gradient(1200px 520px at 85% -10%, rgb(255 82 54 / 0.12), transparent 60%),
+      radial-gradient(900px 480px at -10% 10%, rgb(61 219 217 / 0.05), transparent 60%),
+      var(--el-bg);
+  }
+
+  .page-inner {
+    max-width: 1120px;
+    margin: 0 auto;
+  }
+
+  .card {
+    background: var(--el-panel-solid);
+    border: 1px solid var(--el-line);
+    border-radius: var(--el-radius-panel);
+    box-shadow: var(--el-shadow-panel);
+  }
+
+  .stat-value {
+    font-family: var(--el-font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--el-ink);
+  }
+
+  .ai-text p {
+    margin: 0 0 10px;
+  }
+  .ai-text h4 {
+    margin: 14px 0 6px;
+    font-size: 12px;
+    font-family: var(--el-font-mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--el-ink-dim);
+    font-weight: 500;
+  }
+  .ai-text ul {
+    margin: 0 0 10px;
+    padding-left: 18px;
+  }
+  .ai-text li {
+    margin: 0 0 4px;
+  }
+}
+
+@keyframes el-flash-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(0.2);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(5);
+    opacity: 0;
+  }
+}
+
+@keyframes el-map-land {
+  from {
+    transform: scale(1.14);
+    filter: blur(6px) saturate(1.6);
+  }
+  to {
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes el-float-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes el-shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+/* Satellite labels that ride the 3D globe (positioned every frame by EarthScene). */
+.sat-label {
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -34px 0 0 14px;
+  padding: 4px 9px 4px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--el-line-strong);
+  background: rgb(5 7 13 / 0.62);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+  transition: opacity 220ms var(--el-ease-standard);
+  will-change: transform;
+}
+.sat-label[data-hidden='true'] {
+  opacity: 0 !important;
+}
+.sat-label__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  box-shadow: 0 0 10px currentColor;
+}
+.sat-label__name {
+  font-family: var(--el-font-mono);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--el-ink);
+}
+.sat-label__desc {
+  font-family: var(--el-font-mono);
+  color: var(--el-ink-dim);
 }

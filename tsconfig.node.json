@@ -21,5 +21,5 @@
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] }
   },
-  "include": ["vite.config.ts", "scripts", "src/data/types.ts", "src/data/mock/engine", "src/lib/date.ts", "src/lib/geo.ts"]
+  "include": ["vite.config.ts", "scripts", "server", "src/data/types.ts", "src/data/mock/engine", "src/lib/date.ts", "src/lib/geo.ts"]
 }

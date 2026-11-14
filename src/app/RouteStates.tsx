@@ -1,4 +1,4 @@
-import { isRouteErrorResponse, useRouteError } from 'react-router-dom';
+import { isRouteErrorResponse, Navigate, useLocation, useRouteError } from 'react-router-dom';
 import { useI18n } from '@/i18n';
 import { ButtonLink, Icon } from '@/ui';
 
@@ -32,4 +32,10 @@ export function RouteError() {
   const detail = isRouteErrorResponse(error) ? `${error.status} ${error.statusText}` : error instanceof Error ? error.message : undefined;
   if (error) console.error(error);
   return <Centered title={m.common.errorTitle} body={detail} />;
+}
+
+/** Old links keep working: /how-it-works → /method, /analysis → the map (the analysis lives in its panel). */
+export function Redirect({ to }: { to: string }) {
+  const { search } = useLocation();
+  return <Navigate to={{ pathname: to, search }} replace />;
 }

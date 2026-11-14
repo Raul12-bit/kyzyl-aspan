@@ -1,15 +1,16 @@
 import { useEffect, useId, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { useLocation } from 'react-router-dom';
 import { useAppParams } from '@/app/useAppParams';
 import { useRegionSearch } from '@/data/queries';
 import type { BBox, Region } from '@/data/types';
+import type { FireArchive } from '@/domain/archive';
 import { useI18n, type Messages } from '@/i18n';
 import { bboxAreaKm2 } from '@/lib/geo';
 import { useDebounced } from '@/lib/useDebounced';
-import { Button, ButtonLink, Chip, cn, Icon, IconButton, Segmented, Spinner } from '@/ui';
+import { Button, Chip, cn, Icon, IconButton, Segmented, Spinner } from '@/ui';
+import { AreaInsights } from './AreaInsights';
 import { flyToArea } from './camera';
 import { useMapStore } from './mapStore';
-import { useAreaName } from './useRegion';
+import { regionName, useAreaName } from './useRegion';
 
 type Tab = 'search' | 'draw' | 'coords';
 
@@ -23,7 +24,7 @@ export function formatLat(v: number) {
 /* ------------------------------------------------------------------ search */
 
 function RegionSearch({ onPick }: { onPick: (r: Region) => void }) {
-  const { m, locale } = useI18n();
+  const { m, locale, fmt } = useI18n();
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -119,8 +120,10 @@ function RegionSearch({ onPick }: { onPick: (r: Region) => void }) {
                 )}
               >
                 <span className="min-w-0">
-                  <span className="block truncate font-medium">{r.name[locale]}</span>
-                  {r.kind === 'province' ? <span className="block text-[12px] text-ink-dim">{locale === 'ru' ? 'Казахстан' : 'Kazakhstan'}</span> : null}
+                  <span className="block truncate font-medium">{regionName(r, locale, fmt.country)}</span>
+                  {r.kind === 'province' && r.parentId ? (
+                    <span className="block text-[12px] text-ink-dim">{fmt.country(r.parentId)}</span>
+                  ) : null}
                 </span>
                 <span className="num flex-none text-[11px] text-ink-dim">{r.iso2 ?? r.id}</span>
               </li>
@@ -132,10 +135,14 @@ function RegionSearch({ onPick }: { onPick: (r: Region) => void }) {
       <div className="flex flex-wrap gap-2">
         {(featured.data ?? []).map((r) => (
           <Chip key={r.id} onClick={() => pick(r)}>
-            {r.name[locale]}
+            {regionName(r, locale, fmt.country)}
           </Chip>
         ))}
       </div>
+      <p className="m-0 mt-4 flex items-start gap-2 text-[12px] leading-snug text-ink-dim">
+        <Icon name="crosshair" size={14} className="mt-px flex-none text-kyzyl" />
+        {m.map.area.clickHint}
+      </p>
     </div>
   );
 }
@@ -263,7 +270,6 @@ function DrawTab() {
 export function SelectionSummary({ compact = false }: { compact?: boolean }) {
   const { m, fmt } = useI18n();
   const { bbox, regionId, setArea } = useAppParams();
-  const { search } = useLocation();
   const name = useAreaName(regionId);
 
   if (!bbox) return <p className="m-0 text-sm leading-relaxed text-ink-dim">{m.map.area.none}</p>;
@@ -305,21 +311,13 @@ export function SelectionSummary({ compact = false }: { compact?: boolean }) {
           <div className="col-span-2 text-ink-dim">{m.map.area.areaKm2(fmt.compact(bboxAreaKm2(bbox)))}</div>
         </dl>
       ) : null}
-      <ButtonLink
-        to={{ pathname: '/analysis', search }}
-        variant="primary"
-        iconRight="arrowRight"
-        className={cn('w-full', compact ? 'mt-3' : 'mt-4')}
-      >
-        {m.map.area.analyze}
-      </ButtonLink>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ panel */
 
-export function AreaPanelBody() {
+export function AreaPanelBody({ archive }: { archive: FireArchive | null }) {
   const { m } = useI18n();
   const [tab, setTab] = useState<Tab>('search');
   const { bbox, setArea } = useAppParams();
@@ -364,6 +362,8 @@ export function AreaPanelBody() {
       </div>
       <div className="my-5 h-px bg-line" />
       <SelectionSummary />
+      <div className="my-5 h-px bg-line" />
+      <AreaInsights archive={archive} />
     </>
   );
 }

@@ -1,22 +1,27 @@
+import type { OnboardModel } from '@/domain/onboard';
 import { bboxToParam } from '@/lib/geo';
 import type { ActivityOverview, DataSource, RequestOptions } from './DataSource';
 import {
   DataSourceError,
+  type AreaQuery,
   type BBox,
   type CalendarSeries,
+  type DetectionArchive,
   type DateRange,
   type FireCollection,
   type Region,
 } from './types';
 
 /**
- * Skeleton for the real Emberline API (not used yet; enable with VITE_DATA_SOURCE=http).
+ * Client for the real Kyzyl Aspan API (enable with VITE_DATA_SOURCE=http + VITE_API_URL).
  *
- * Expected contract (JSON, UTF-8, CORS enabled):
+ * Expected contract (JSON, UTF-8, CORS enabled) — see PROGRESS.md, section "API contract":
  *   GET {base}/fires?bbox=w,s,e,n&start=YYYY-MM-DD&end=YYYY-MM-DD → FireCollection
- *   GET {base}/calendar?bbox=w,s,e,n                              → CalendarSeries
+ *   GET {base}/detections                                          → DetectionArchive (compact rows)
+ *   GET {base}/calendar?bbox=w,s,e,n[&region=KZ]                   → CalendarSeries
  *   GET {base}/regions?q=text                                      → Region[]
  *   GET {base}/overview                                            → ActivityOverview
+ *   GET {base}/onboard-model                                       → OnboardModel
  */
 export class HttpDataSource implements DataSource {
   readonly id = 'http' as const;
@@ -56,8 +61,18 @@ export class HttpDataSource implements DataSource {
     return this.get('fires', { bbox: bboxToParam(bbox), start: range.start, end: range.end }, isFireCollection, options);
   }
 
-  getCalendar(bbox: BBox, options?: RequestOptions): Promise<CalendarSeries> {
-    return this.get('calendar', { bbox: bboxToParam(bbox) }, isCalendarSeries, options);
+  getDetections(options?: RequestOptions): Promise<DetectionArchive> {
+    return this.get('detections', {}, isDetectionArchive, options);
+  }
+
+  getCalendar(area: AreaQuery, options?: RequestOptions): Promise<CalendarSeries> {
+    const params: Record<string, string> = { bbox: bboxToParam(area.bbox) };
+    if (area.regionId) params.region = area.regionId;
+    return this.get('calendar', params, isCalendarSeries, options);
+  }
+
+  getOnboardModel(options?: RequestOptions): Promise<OnboardModel> {
+    return this.get('onboard-model', {}, isOnboardModel, options);
   }
 
   searchRegions(query: string, options?: RequestOptions): Promise<Region[]> {
@@ -79,6 +94,14 @@ function isCalendarSeries(v: unknown): v is CalendarSeries {
   if (!isObj(v) || !Array.isArray(v.points) || !isObj(v.meta)) return false;
   const p = v.points[0];
   return p === undefined || (isObj(p) && typeof p.harmonized === 'number' && typeof p.lo === 'number' && typeof p.hi === 'number');
+}
+
+function isDetectionArchive(v: unknown): v is DetectionArchive {
+  return isObj(v) && Array.isArray(v.rows) && (v.rows.length === 0 || (Array.isArray(v.rows[0]) && v.rows[0].length >= 6));
+}
+
+function isOnboardModel(v: unknown): v is OnboardModel {
+  return isObj(v) && Array.isArray(v.weights) && Array.isArray(v.mean) && Array.isArray(v.scale) && typeof v.bias === 'number';
 }
 
 function isRegionList(v: unknown): v is Region[] {

@@ -16,6 +16,7 @@ const FALLBACK = {
   '--el-amber-soft': '#ffd08a',
   '--el-orange': '#ff7a2f',
   '--el-red': '#e8412c',
+  '--el-kyzyl': '#ff5236',
   '--el-modis': '#3ddbd9',
   '--el-viirs': '#9aa6ff',
   '--el-harmonized': '#ffb547',

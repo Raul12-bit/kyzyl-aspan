@@ -3,11 +3,13 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useDataSource } from '@/data/DataSourceContext';
 import { queryKeys } from '@/data/queries';
+import { loadCountries } from '@/features/geo/countries';
+import { LocationPrompt } from '@/features/geo/LocationPrompt';
 import { IntroOverlay } from '@/features/intro/IntroOverlay';
 import { introSelectors } from '@/features/intro/introMachine';
 import { introDispatch, useIntroStore, useIntroTimeline } from '@/features/intro/introStore';
 import { Starfield } from '@/features/intro/Starfield';
-import { FULL_DATES, WORLD } from '@/features/map/map.config';
+import { TIMELINE } from '@/features/intro/transition.config';
 import { useI18n } from '@/i18n';
 import { TopBar } from './TopBar';
 
@@ -19,6 +21,7 @@ export function AppShell() {
   const onMap = pathname === '/';
   const phase = useIntroStore((s) => s.phase);
   const mode = useIntroStore((s) => s.mode);
+  const instant = useIntroStore((s) => s.instant);
   const uiMounted = useIntroStore(introSelectors.uiMounted);
   // The map is created on the first visit to "/" and then kept alive (hidden) across routes.
   const [mapRequested, setMapRequested] = useState(onMap);
@@ -29,31 +32,26 @@ export function AppShell() {
 
   useEffect(() => {
     if (onMap) setMapRequested(true);
-    // Leaving "/" before pressing Start (e.g. "How it works") cancels the intro for this session.
+    // Leaving "/" before diving in (e.g. "Method") cancels the intro for this session.
     else if (useIntroStore.getState().phase === 'intro') introDispatch({ type: 'BYPASS' });
   }, [onMap]);
 
-  // Warm the caches while the intro plays, so the map lands with data already in hand.
+  // Warm the caches while the globe spins, so the map lands with data already in hand.
   useEffect(() => {
     void qc.prefetchQuery({ queryKey: queryKeys.overview, queryFn: ({ signal }) => ds.getOverview({ signal }), staleTime: Infinity });
-    void qc.prefetchQuery({
-      queryKey: queryKeys.fires(WORLD, FULL_DATES),
-      queryFn: ({ signal }) => ds.getFirePoints(WORLD, FULL_DATES, { signal }),
-      staleTime: Infinity,
-    });
+    void qc.prefetchQuery({ queryKey: queryKeys.detections, queryFn: ({ signal }) => ds.getDetections({ signal }), staleTime: Infinity });
+    void qc.prefetchQuery({ queryKey: ['countries'], queryFn: loadCountries, staleTime: Infinity });
   }, [qc, ds]);
 
   const introRunning = onMap && phase !== 'done';
-  // In fallback mode the static sphere stands in for the globe until the flash hides the swap.
-  const hideMapForFallback = mode === 'fallback' && (phase === 'intro' || phase === 'zoom' || phase === 'flash');
+  // The 3D planet owns the screen until the white flash; the map appears under the white.
+  const mapHidden = phase === 'intro' || phase === 'zoom' || phase === 'flash';
+  // "Landing": the map settles from a zoomed, blurred frame while the white fades out.
+  const landing = onMap && phase === 'reveal' && !instant && mode !== 'reduced';
 
   return (
     <>
-      <a
-        href="#main"
-        className="sr-only-focusable btn btn--primary btn--sm fixed left-4 top-4"
-        style={{ zIndex: 90 }}
-      >
+      <a href="#main" className="sr-only-focusable btn btn--primary btn--sm fixed left-4 top-4" style={{ zIndex: 90 }}>
         {m.app.skipToContent}
       </a>
       {onMap ? <Starfield visible={phase === 'intro' || phase === 'zoom'} /> : null}
@@ -61,8 +59,13 @@ export function AppShell() {
         <div
           className="fixed inset-0"
           style={{
-            visibility: onMap && !hideMapForFallback ? 'visible' : 'hidden',
+            visibility: onMap && !mapHidden ? 'visible' : 'hidden',
+            // MapLibre's controls set their own visibility; opacity hides them too while the globe plays.
+            opacity: onMap && !mapHidden ? 1 : 0,
+            pointerEvents: onMap && !mapHidden ? undefined : 'none',
             zIndex: 'var(--el-z-map)' as unknown as number,
+            animation: landing ? `el-map-land ${TIMELINE[mode].reveal.duration}ms var(--el-ease-emphasized) both` : undefined,
+            transformOrigin: '50% 50%',
           }}
           aria-hidden={!onMap}
         >
@@ -73,7 +76,7 @@ export function AppShell() {
       ) : null}
       {!onMap || uiMounted ? <TopBar overMap={onMap} /> : null}
       <Outlet />
-      {introRunning ? <IntroOverlay /> : null}
+      {introRunning ? <IntroOverlay /> : <LocationPrompt placement="page" />}
     </>
   );
 }

@@ -1,0 +1,60 @@
+{
+  "version": "mock-2026.11-2",
+  "kind": "logistic-regression",
+  "features": [
+    "lowConfidence",
+    "highConfidence",
+    "logFrp",
+    "yearsActive",
+    "monthSpread",
+    "logCellCount"
+  ],
+  "mean": [
+    0.16876,
+    0.225939,
+    2.08392,
+    0.109549,
+    0.184057,
+    1.391765
+  ],
+  "scale": [
+    0.37454,
+    0.418199,
+    0.916923,
+    0.205229,
+    0.275887,
+    0.928371
+  ],
+  "weights": [
+    -0.94091,
+    0.192918,
+    0.504125,
+    -2.263657,
+    -2.762395,
+    1.904621
+  ],
+  "bias": 1.160047,
+  "threshold": 0.5,
+  "metrics": {
+    "test": {
+      "accuracy": 0.9225,
+      "precision": 0.9871,
+      "recall": 0.9182,
+      "f1": 0.9514,
+      "rows": 6151
+    },
+    "baseline": {
+      "accuracy": 0.8764,
+      "precision": 0.9837,
+      "recall": 0.8649,
+      "f1": 0.9205,
+      "rows": 6151
+    },
+    "trainRows": 15128
+  },
+  "trainedOn": {
+    "period": "2000-01…2026-10",
+    "synthetic": true,
+    "note": "Trained and tested on SYNTHETIC labels (spatial hold-out, 15° blocks). Illustrates the approach; not a validated detector."
+  }
+}

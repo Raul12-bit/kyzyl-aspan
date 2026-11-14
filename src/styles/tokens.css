@@ -1,5 +1,7 @@
 /*
- * Emberline design tokens — the single source of truth for colour, type, space, shape and motion.
+ * Kyzyl Aspan design tokens — the single source of truth for colour, type, space, shape and motion.
+ * Brand: “Kyzyl Aspan” is Kazakh for “red sky”. The palette follows the logo: a flame that runs from
+ * amber to signal red, an orbit drawn in ink, a planet in deep night blue.
  * Semantics: warm = fire and the harmonized truth; cool = instruments (sensors) and trust.
  * Contrast ratios below are against --el-bg (#05070D), WCAG 2.1 relative luminance.
  * JS consumers (MapLibre, ECharts) read these at runtime via src/styles/tokens.ts.
@@ -35,8 +37,12 @@
   --el-amber-soft: #ffd08a;
   --el-orange: #ff7a2f; /* 7.7 : 1 */
   --el-red: #e8412c; /* 5.0 : 1 */
-  --el-grad-ember: linear-gradient(100deg, #ffc061 0%, #ff8a3d 55%, #f0532f 100%);
-  --el-grad-ember-text: linear-gradient(100deg, #ffd08a 0%, #ffb547 40%, #ff7a2f 100%);
+  --el-kyzyl: #ff5236; /* brand red (logo “ASPAN”) on dark — 6.1 : 1 */
+  --el-kyzyl-deep: #c8261c;
+  --el-grad-ember: linear-gradient(100deg, #ffb24a 0%, #ff7333 48%, #ec3b29 100%);
+  --el-grad-ember-text: linear-gradient(100deg, #ffd08a 0%, #ff9a3c 38%, #ff5236 100%);
+  /* The logo's orbit: signal red fading into ink. */
+  --el-grad-orbit: linear-gradient(90deg, #ff5236 0%, #ff8a3d 35%, rgb(232 236 244 / 0.85) 100%);
 
   /* ---------- instruments (secondary accent: turquoise) ---------- */
   --el-teal: #3ddbd9; /* secondary accent, also the MODIS identity */
@@ -72,7 +78,11 @@
   --el-focus-ring: 0 0 0 2px var(--el-bg), 0 0 0 4px var(--el-focus);
 
   /* ---------- type: two families ---------- */
-  --el-font-sans: 'Onest Variable', 'Onest', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  --el-font-sans: 'Onest Variable', 'Onest', ui-sans-serif, system-ui, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei',
+    'Noto Sans SC', sans-serif;
+  /* Display: wide geometric capitals, the voice of the wordmark. Headlines only, never body copy. */
+  --el-font-display: 'Unbounded Variable', 'Unbounded', 'Onest Variable', ui-sans-serif, system-ui, 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
   --el-font-mono: 'Geist Mono Variable', 'Geist Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
 
   /* scale (desktop); line-heights paired */
@@ -116,7 +126,7 @@
   /* ---------- elevation & glow ---------- */
   --el-shadow-panel: 0 24px 64px -16px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.04);
   --el-shadow-pop: 0 16px 40px -8px rgb(0 0 0 / 0.6);
-  --el-glow-fire: 0 0 0 1px rgb(255 196 107 / 0.5), 0 10px 36px rgb(255 122 47 / 0.42);
+  --el-glow-fire: 0 0 0 1px rgb(255 150 90 / 0.5), 0 10px 36px rgb(255 82 54 / 0.42);
   --el-glow-soft: 0 0 24px rgb(255 150 60 / 0.35);
 
   /* ---------- motion ---------- */

@@ -15,6 +15,8 @@ export function useMediaQuery(query: string): boolean {
 export const BREAKPOINTS = {
   /** Bottom-sheet layout below this. */
   md: '(min-width: 768px)',
+  /** Intro copy and globe side by side from this width. */
+  lg: '(min-width: 1024px)',
   /** Separate right-hand sensors panel from this width. */
   xl: '(min-width: 1200px)',
 } as const;

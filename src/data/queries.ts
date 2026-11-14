@@ -1,11 +1,13 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { bboxToParam } from '@/lib/geo';
 import { useDataSource } from './DataSourceContext';
-import type { BBox, DateRange } from './types';
+import type { AreaQuery, BBox, DateRange } from './types';
 
 export const queryKeys = {
   fires: (bbox: BBox, range: DateRange) => ['fires', bboxToParam(bbox), range.start, range.end] as const,
-  calendar: (bbox: BBox) => ['calendar', bboxToParam(bbox)] as const,
+  calendar: (area: AreaQuery) => ['calendar', bboxToParam(area.bbox), area.regionId ?? ''] as const,
+  detections: ['detections'] as const,
+  onboardModel: ['onboard-model'] as const,
   regions: (query: string) => ['regions', query.trim().toLowerCase()] as const,
   overview: ['overview'] as const,
 };
@@ -21,12 +23,31 @@ export function useFirePoints(bbox: BBox, range: DateRange, enabled = true) {
   });
 }
 
-export function useCalendar(bbox: BBox | null) {
+export function useCalendar(area: AreaQuery | null) {
   const ds = useDataSource();
   return useQuery({
-    queryKey: bbox ? queryKeys.calendar(bbox) : ['calendar', 'none'],
-    queryFn: ({ signal }) => ds.getCalendar(bbox!, { signal }),
-    enabled: bbox !== null,
+    queryKey: area ? queryKeys.calendar(area) : ['calendar', 'none'],
+    queryFn: ({ signal }) => ds.getCalendar(area!, { signal }),
+    enabled: area !== null,
+    staleTime: Number.POSITIVE_INFINITY,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useDetections() {
+  const ds = useDataSource();
+  return useQuery({
+    queryKey: queryKeys.detections,
+    queryFn: ({ signal }) => ds.getDetections({ signal }),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+}
+
+export function useOnboardModel() {
+  const ds = useDataSource();
+  return useQuery({
+    queryKey: queryKeys.onboardModel,
+    queryFn: ({ signal }) => ds.getOnboardModel({ signal }),
     staleTime: Number.POSITIVE_INFINITY,
   });
 }

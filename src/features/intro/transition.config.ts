@@ -1,12 +1,12 @@
 /**
  * Intro → map transition: every timing and curve lives here.
  *
- *   intro ──Start──▶ A zoom ──▶ B flash ──▶ B swap (under white) ──▶ C reveal ──▶ done
- *     │                 └──────────────── Skip (Esc) ─────────────────────────────▶ done
+ *   intro ──click Earth / CTA──▶ A dive ──▶ B flash ──▶ B swap (under white) ──▶ C reveal ──▶ done
+ *     │                             └──────────────── Skip (Esc) ─────────────────────────────▶ done
  *     └─ deep link with an area: bypass straight to done
  *
- * Modes: `full` (globe), `fallback` (no WebGL/globe: static sphere, same white flash),
- * `reduced` (prefers-reduced-motion: no rotation, zoom or flash — a plain cross-fade).
+ * Modes: `full` (three.js globe), `fallback` (no WebGL: static CSS sphere, same white flash),
+ * `reduced` (prefers-reduced-motion: no rotation, dive or flash — a plain cross-fade).
  */
 
 export type Bezier = readonly [number, number, number, number];
@@ -23,13 +23,13 @@ export const EASE_REVEAL: Bezier = [0.22, 1, 0.36, 1];
 export const EASE_PANELS: Bezier = [0.16, 1, 0.3, 1];
 
 export interface PhaseTimeline {
-  /** A — camera dive; the intro copy disappears instantly at its start. */
+  /** A — camera dive; the intro copy leaves at its start. */
   zoom: { duration: number; easing: Bezier };
   /** B (part 1) — overlay rises to opacity 1. */
   flash: { rise: number; easing: Bezier; color: string };
-  /** B (part 2) — overlay held; projection swap + layers mount. Leaves after `minHold` once the map is idle (or `maxWait`). */
+  /** B (part 2) — overlay held; the map lands on its target. Leaves after `minHold` once the map is idle (or `maxWait`). */
   swap: { minHold: number; maxWait: number };
-  /** C — overlay fades out; panels rise with a stagger. */
+  /** C — overlay fades out while the map settles from a zoomed, blurred "landing"; panels rise with a stagger. */
   reveal: {
     duration: number;
     easing: Bezier;
@@ -42,16 +42,17 @@ export interface PhaseTimeline {
 
 export const TIMELINE: Record<'full' | 'fallback' | 'reduced', PhaseTimeline> = {
   full: {
-    zoom: { duration: 820, easing: EASE_DIVE },
-    flash: { rise: 90, easing: EASE_FLASH, color: '#ffffff' },
-    swap: { minHold: 200, maxWait: 520 },
-    reveal: { duration: 1400, easing: EASE_REVEAL, panelsDelay: 220, panelsStagger: 110, panelsDuration: 760, panelsShift: 14 },
+    // ~0.9 s: the planet turns the target to the camera while the camera plunges, then a hard white cut.
+    zoom: { duration: 900, easing: EASE_DIVE },
+    flash: { rise: 70, easing: EASE_FLASH, color: '#ffffff' },
+    swap: { minHold: 180, maxWait: 650 },
+    reveal: { duration: 1200, easing: EASE_REVEAL, panelsDelay: 260, panelsStagger: 90, panelsDuration: 700, panelsShift: 16 },
   },
   fallback: {
     zoom: { duration: 780, easing: EASE_DIVE },
     flash: { rise: 90, easing: EASE_FLASH, color: '#ffffff' },
-    swap: { minHold: 200, maxWait: 600 },
-    reveal: { duration: 1400, easing: EASE_REVEAL, panelsDelay: 220, panelsStagger: 110, panelsDuration: 760, panelsShift: 14 },
+    swap: { minHold: 200, maxWait: 650 },
+    reveal: { duration: 1200, easing: EASE_REVEAL, panelsDelay: 220, panelsStagger: 110, panelsDuration: 760, panelsShift: 14 },
   },
   reduced: {
     // A = fade the copy out, B = cross-fade to the page colour (no white flash), C = fade the map in.
@@ -62,37 +63,7 @@ export const TIMELINE: Record<'full' | 'fallback' | 'reduced', PhaseTimeline> = 
   },
 };
 
-/** Globe behaviour during the intro. */
-export const GLOBE = {
-  /** Longitude degrees per second; 0 in reduced motion. */
-  rotationSpeed: 3.2,
-  center: [64, 30] as [number, number],
-  /** Globe diameter as a share of the free area next to (desktop) or above (mobile) the copy. */
-  sizeShare: 0.8,
-  /**
-   * The dive overshoots the landing zoom by this much; the swap under white settles it.
-   * Kept small so the dive ends inside the same tile zoom as the landing view: the tiles the
-   * map needs after the swap are already being fetched during the last frames of the dive.
-   */
-  overshoot: 0.3,
-};
-
-/** Keeps the globe clear of the intro copy (copy left on desktop, bottom on mobile). */
-export function introPadding(width: number, height: number) {
-  if (width >= 1024) return { top: 0, bottom: 0, left: Math.min(620, width * 0.44), right: 0 };
-  // Mobile: the copy takes the lower ~58% of the screen; the globe lives above it.
-  return { top: 64, bottom: Math.round(height * 0.58), left: 0, right: 0 };
-}
-
-/** Zoom at which the globe's diameter fills `sizeShare` of the free area (globe radius ≈ 512·2^z / 2π px). */
-export function introZoom(width: number, height: number): number {
-  const p = introPadding(width, height);
-  const free = Math.min(width - p.left - p.right, height - p.top - p.bottom);
-  const diameter = Math.max(220, free * GLOBE.sizeShare);
-  return Math.log2((diameter * Math.PI) / 512);
-}
-
-/** Where the map lands (Kazakhstan & Central Asia). */
+/** Default area for the map's reset button when nothing is selected (Kazakhstan & Central Asia). */
 export const TARGET_BOUNDS: [number, number, number, number] = [46, 37, 88, 56];
 
 export const cssEase = css;

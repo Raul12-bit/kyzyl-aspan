@@ -30,12 +30,47 @@ describe('MockDataSource', () => {
 
   it('builds a calendar for any box and reports no coverage over the ocean', async () => {
     const ds = make();
-    const cal = await ds.getCalendar(KZ);
+    const cal = await ds.getCalendar({ bbox: KZ });
     expect(cal.points).toHaveLength(322);
     expect(cal.meta.coverage).toBe(1);
-    const ocean = await ds.getCalendar([-40, -40, -30, -30]);
+    const ocean = await ds.getCalendar({ bbox: [-40, -40, -30, -30] });
     expect(ocean.points).toHaveLength(0);
     expect(ocean.meta.coverage).toBe(0);
+  });
+
+  it('narrows a box to the country outline when a country id is given', async () => {
+    const ds = make();
+    const box = await ds.getCalendar({ bbox: KZ });
+    const country = await ds.getCalendar({ bbox: KZ, regionId: 'KZ' });
+    expect(country.meta.noise.considered).toBeGreaterThan(0);
+    // The KZ box also covers parts of Russia, Uzbekistan and China: the outline must keep fewer detections.
+    expect(country.meta.noise.considered).toBeLessThan(box.meta.noise.considered);
+  });
+
+  it('removes low-confidence pixels and persistent static sources', async () => {
+    const cal = await make().getCalendar({ bbox: KZ });
+    expect(cal.meta.noise.lowConfidence).toBeGreaterThan(0);
+    expect(cal.meta.noise.staticSources).toBeGreaterThan(0);
+    expect(cal.meta.noise.staticCells).toBeGreaterThan(3);
+    expect(cal.meta.grid.system).toBe('h3');
+  });
+
+  it('counting H3 hexagon-days shrinks the raw VIIRS/MODIS pixel ratio', async () => {
+    const meta = (await make().getCalendar({ bbox: KZ })).meta;
+    expect(meta.rawRatio!).toBeGreaterThan(3);
+    // One fire front lights several 375 m pixels on one overpass but one hexagon: the gap must shrink a lot.
+    expect(meta.ratio.value).toBeLessThan(meta.rawRatio! * 0.6);
+    expect(meta.ratio.value).toBeGreaterThan(1);
+  });
+
+  it('serves compact detection rows and the onboard model', async () => {
+    const ds = make();
+    const det = await ds.getDetections();
+    expect(det.rows.length).toBeGreaterThan(10_000);
+    expect(det.rows[0]).toHaveLength(7);
+    const model = await ds.getOnboardModel();
+    expect(model.weights).toHaveLength(model.features.length);
+    expect(model.trainedOn.synthetic).toBe(true);
   });
 
   it('searches regions in EN and RU, ranked, with featured on empty query', async () => {
@@ -51,8 +86,8 @@ describe('MockDataSource', () => {
   });
 
   it('can simulate failures and empty responses', async () => {
-    await expect(make('error').getCalendar(KZ)).rejects.toBeInstanceOf(DataSourceError);
-    const empty = await make('empty').getCalendar(KZ);
+    await expect(make('error').getCalendar({ bbox: KZ })).rejects.toBeInstanceOf(DataSourceError);
+    const empty = await make('empty').getCalendar({ bbox: KZ });
     expect(empty.points).toHaveLength(0);
   });
 
@@ -67,7 +102,7 @@ describe('MockDataSource', () => {
         return loadJson(path);
       },
     });
-    await expect(flaky.getCalendar(KZ)).rejects.toThrow('offline');
-    await expect(flaky.getCalendar(KZ)).resolves.toMatchObject({ bbox: KZ });
+    await expect(flaky.getCalendar({ bbox: KZ })).rejects.toThrow('offline');
+    await expect(flaky.getCalendar({ bbox: KZ })).resolves.toMatchObject({ bbox: KZ });
   });
 });
