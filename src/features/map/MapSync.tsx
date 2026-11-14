@@ -4,6 +4,7 @@ import type { Sensor } from '@/data/types';
 import { hideMaskOf, type FireArchive } from '@/domain/archive';
 import { resolutionForZoom } from '@/domain/hexgrid';
 import { findCountry, useCountries } from '@/features/geo/countries';
+import { useHeliosAvailable } from '@/features/helios/api';
 import { setFireData, setHexData, setHexVisible, setSelection, setSensorVisible } from './layers';
 import { useMapStore } from './mapStore';
 import { useEffectiveRange } from './timeStore';
@@ -26,10 +27,12 @@ export function MapSync({ index, archive }: { index: FireIndex | null; archive: 
   const { bbox, regionId } = useAppParams();
   const countries = useCountries();
   const frame = useRef(0);
+  // With the HELIOS API live, WorldSync draws hexagons and detections from the full archive.
+  const world = useHeliosAvailable();
 
   // Hexagon size follows the zoom (≈15–40 px per cell).
   useEffect(() => {
-    if (!map || !mapMode) return;
+    if (!map || !mapMode || world) return;
     const update = () => {
       const res = resolutionForZoom(map.getZoom());
       if (res !== useMapStore.getState().hexRes) useMapStore.getState().setHexRes(res);
@@ -39,10 +42,10 @@ export function MapSync({ index, archive }: { index: FireIndex | null; archive: 
     return () => {
       map.off('zoomend', update);
     };
-  }, [map, mapMode]);
+  }, [map, mapMode, world]);
 
   useEffect(() => {
-    if (!map || !mapMode || !index) return;
+    if (!map || !mapMode || !index || world) return;
     cancelAnimationFrame(frame.current);
     frame.current = requestAnimationFrame(() => {
       const points = view === 'points';
@@ -54,13 +57,15 @@ export function MapSync({ index, archive }: { index: FireIndex | null; archive: 
       if (!points && archive) setHexData(map, hexFeatures(archive, hexRes, range, sensors, hideMaskOf(noise)));
     });
     return () => cancelAnimationFrame(frame.current);
-  }, [map, mapMode, index, archive, sensors, range, view, hexRes, noise]);
+  }, [map, mapMode, index, archive, sensors, range, view, hexRes, noise, world]);
 
   useEffect(() => {
     if (!map || !mapMode) return;
     const country = regionId && /^[A-Z]{2}$/.test(regionId) ? findCountry(countries.data, regionId) : null;
+    // A region (admin-1) outline comes from WorldSync once its borders are loaded.
+    if (world && regionId && !country) return;
     setSelection(map, bbox, country?.polys ?? null);
-  }, [map, mapMode, bbox, regionId, countries.data]);
+  }, [map, mapMode, bbox, regionId, countries.data, world]);
 
   return null;
 }

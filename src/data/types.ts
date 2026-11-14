@@ -99,6 +99,11 @@ export interface DetectionArchive {
   version: string;
   rows: DetectionRow[];
   synthetic: boolean;
+  /**
+   * Real archives are served to the browser as a sample (the full archive stays on the server, where the
+   * calendar is computed). For real data `truth` is the class given by the HELIOS server-side noise filter.
+   */
+  meta?: { total_rows: number; sample_rows: number; sample_rate: number; truthMeaning?: string };
 }
 
 /** An area as the API understands it: a box, optionally narrowed to a country outline. */

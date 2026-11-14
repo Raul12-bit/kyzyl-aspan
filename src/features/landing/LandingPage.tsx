@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Wordmark } from '@/app/Logo';
 import { findCountry, useCountries } from '@/features/geo/countries';
 import { useGeoStore } from '@/features/geo/geoStore';
+import { useHeliosAvailable } from '@/features/helios/api';
 import { FallbackGlobe } from '@/features/intro/FallbackGlobe';
 import {
   introDispatch,
@@ -539,6 +540,7 @@ function Final() {
 
 function Footer() {
   const { m } = useI18n();
+  const real = useHeliosAvailable();
   const f = m.landing.footer;
   const nav: { to: string; label: string }[] = [
     { to: '/map', label: m.app.nav.map },
@@ -555,7 +557,7 @@ function Footer() {
           </div>
           <div className="grid content-start gap-4">
             <p>{f.data}</p>
-            <p className="text-ink-dim">{m.app.synthetic}</p>
+            <p className="text-ink-dim">{real ? m.app.realData : m.app.synthetic}</p>
           </div>
           <ul className="lp-footer__nav">
             {nav.map((n) => (

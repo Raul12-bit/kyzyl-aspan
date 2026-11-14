@@ -45,4 +45,7 @@ export const config = {
   rateLimitPerMinute: int(process.env.AI_RATE_LIMIT_PER_MIN, 10),
   /** Serve the production build (dist/) as well, for one-process deployments. */
   serveStatic: process.env.SERVE_STATIC !== '0',
+  /** HELIOS data API (Python, FastAPI): /v1/* is proxied there and AI briefs get its forecast as context. */
+  heliosUrl: (process.env.HELIOS_API_URL || 'http://127.0.0.1:8000/v1').replace(/\/$/, ''),
+  heliosTimeoutMs: int(process.env.HELIOS_TIMEOUT_MS, 4000),
 };

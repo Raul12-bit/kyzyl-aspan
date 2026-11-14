@@ -15,19 +15,25 @@ Last update: 2026-11-14.
 | # | Stage / idea | Frontend | Backend | Notes |
 |---|---|---|---|---|
 | 0 | Scaffold, design tokens, DataSource abstraction | ✅ | — | Stage 1 commit `ec37470` |
-| 1 | **Noise filter** (low confidence + persistent heat sources, “Flare-Chronos” style) | ✅ | 🟡 runs in browser / mock | `src/domain/noise.ts`; toggles + counters in the map's *Sensors* panel |
-| 2 | **H3 hexagon grid** (count burning hexagon-days, not pixels) | ✅ | 🟡 runs in browser / mock | `src/domain/hexgrid.ts`, `hexStats.ts`, `hexCalendar.ts`; map view “H3 hexagons” |
-| 3 | **AI risk analysis** (region click → stats → Gemini, “Kiln-Watch” style) | ✅ | ✅ minimal (`server/`) | Without `GEMINI_API_KEY` the API returns rule-based findings |
-| 4 | **Onboard AI** (tiny model trained on the 26-year archive) | ✅ concept | 🟡 trained offline by script | `src/domain/onboard.ts`, `scripts/mock/train-model.ts`, page `/mission` |
-| 5 | **Link prediction** (orbits + stations + weather → Ka/X/other station) | ✅ concept | ⛔ not started | `src/domain/orbit.ts`, `downlink.ts`; synthetic weather |
-| 6 | **Satellite-to-satellite cueing** | ✅ concept | ⛔ not applicable to MODIS/VIIRS | `src/domain/crosscue.ts`; clearly labelled as a concept |
+| 1 | **Noise filter** (low confidence + persistent heat sources, “Flare-Chronos” style) | ✅ | ✅ HELIOS (world) | `src/domain/noise.ts` for the demo; on real data the server filters every detection with the global registry of persistent heat sources |
+| 2 | **H3 hexagon grid** (count burning hexagon-days, not pixels) | ✅ | ✅ HELIOS (world) | demo: `src/domain/hexgrid.ts`; real data: `/v1/hex` from EVERY detection, H3 res 2–7 chosen by zoom |
+| 3 | **AI risk analysis** (region click → stats → Gemini, “Kiln-Watch” style) | ✅ | ✅ `server/` + HELIOS | Without `GEMINI_API_KEY` the API returns rule-based findings; both get the HELIOS forecast of the area as context |
+| 4 | **Onboard AI** (tiny model trained on the 26-year archive) | ✅ | ✅ HELIOS | AI #1 trained on the world archive; compiled to integer-only C99 for any flight computer (`/mission` §04) |
+| 5 | **Link prediction** (orbits + stations + weather → Ka/X/other station) | ✅ | ✅ HELIOS | `/mission` §05: link-physics calculator; AI #2 on SGP4 orbits, real stations and weather |
+| 6 | **Satellite-to-satellite cueing** | ✅ concept | 🟡 HELIOS replay | `/mission` §06: alert-delivery replay on real orbits, cross-satellite confirmation |
+| 6a | **All countries + regions** (admin-1) and precise map | ✅ | ✅ HELIOS (world) | `src/features/world/`: view “Regions” (countries → regions choropleth), server hexagons, every pixel at its real size from zoom 7 |
+| 6b | **HELIOS AI layers** (forecast 1–4 weeks + Time Machine, alerts, flares, blind spots, spread, satellites) | ✅ | ✅ HELIOS | `src/features/helios/`; forecast covers every country |
 | 7 | 3D Earth intro with MODIS + VIIRS satellites, dive → white flash → map | ✅ | — | three.js, lazy chunk, `src/features/globe/`; real NASA models (Terra, Aqua, Suomi NPP) since the redesign |
 | 7a | **Landing page** (header + centred Earth, story on scroll) and minimal-luxury redesign, light/dark | ✅ | — | `src/features/landing/`; see §5 “Design” |
 | 8 | Geolocation → language + landing country | ✅ | — | offline point-in-polygon, nothing sent to a server |
 | 9 | i18n: en, ru, kk, es, fr, de, pt, zh | ✅ | — | every dictionary type-checked + tested |
-| 10 | Real data (FIRMS MCD14ML / VNP14IMGML / VJ114IMGML) | — | ⛔ **main backend task** | see §4 |
+| 10 | Real data (FIRMS MODIS C6.1 2000–2025 + VIIRS S-NPP 2012–2025, all countries) | ✅ | ✅ HELIOS | world archive + 7-day NRT for the current forecast; see §4 |
 
 ✅ done · 🟡 works on synthetic data / in the browser, needs a real backend · ⛔ not started
+
+**Real vs demo data.** With `VITE_DATA_SOURCE=auto` (default) the app probes `/v1/helios/status` once at start-up.
+If the HELIOS API answers, every number is real (“Real NASA FIRMS data”); otherwise the whole session runs on the
+synthetic demo and the HELIOS / world panels stay hidden. The two are never mixed.
 
 ---
 
@@ -40,7 +46,17 @@ pnpm dev              # http://localhost:5173 (proxies /api → :8787)
 pnpm server           # minimal API on http://127.0.0.1:8787
 ```
 
-Production, one process: `pnpm build && pnpm start` (the API also serves `dist/`).
+Real data: start the HELIOS-SHIELD API first (separate Python project; locally the parent folder of this
+repo); `pnpm dev` and `pnpm server` proxy `/v1/*` to it:
+
+```bash
+# in the HELIOS project folder
+.venv/Scripts/python -m uvicorn api.server:app --host 127.0.0.1 --port 8000
+```
+
+Without it the app falls back to the demo data. Add `?mock` to the URL to force the demo.
+
+Production, one process: `pnpm build && pnpm start` (the API also serves `dist/` and proxies `/v1`).
 
 Checks: `pnpm typecheck` · `pnpm test` (94 tests) · `pnpm lint` · `pnpm build`.
 
@@ -69,14 +85,19 @@ src/
     downlink.ts     weather-aware Ka/X downlink planner
     crosscue.ts     tip-and-cue planner
     countries.ts    offline reverse geocoding
-  data/           DataSource interface, MockDataSource (static JSON), HttpDataSource (real API)
+  data/           DataSource interface, MockDataSource (static JSON), HttpDataSource (real API),
+                  AutoDataSource (real API if it answers, else the demo — decided once)
   features/
+    world/          real data, all countries: server hexagons by zoom, every pixel at real size, regions view
+                    (countries → admin-1 choropleth), region clicks, server area totals (api.ts, WorldSync.tsx)
+    helios/         HELIOS-SHIELD layers (forecast + Time Machine, alerts, flares, blind spots, spread, satellites),
+                    area card, tooltips
     intro/          intro state machine, overlay, timings
     globe/          three.js Earth scene (EarthScene.ts) + React wrapper
     geo/            geolocation consent, country store, country outlines loader
     map/            MapLibre stage, layers, panels, stats, H3 view
     ai/             AI panel + API client (safe markdown-lite renderer)
-    mission/        /mission — ideas 4, 5, 6
+    mission/        /mission — ideas 4, 5, 6 + HELIOS results (real models, onboard C code, link physics, delivery)
     method/         /method — how it works
   i18n/locales/   en (reference) + 7 lazy-loaded dictionaries
 server/           minimal Node API (no dependencies): Gemini proxy, validation, rate limit, static files
@@ -97,18 +118,29 @@ contract: switching from mock data is `VITE_DATA_SOURCE=http` + `VITE_API_URL=�
 All JSON, UTF-8, CORS for the frontend origin. Types live in `src/data/types.ts` and
 `src/domain/*.ts`; runtime shape guards in `src/data/HttpDataSource.ts`.
 
-### 4.1 Data API (to build) — `VITE_API_URL`
+### 4.1 Data API — `VITE_API_URL` (built: HELIOS-SHIELD `api/world.py` + `api/kyzyl.py`, prefix `/v1`)
 
 | Method | Path | Returns | Status |
 |---|---|---|---|
-| GET | `/detections` | `DetectionArchive` — `{ version, synthetic, rows: [lng, lat, sensor 0/1, day since 2000-01-01, frp MW, confidence 0/1/2, truth?][] }` | mocked by `public/data/fires.json` |
-| GET | `/calendar?bbox=w,s,e,n[&region=KZ]` | `CalendarSeries` (harmonized monthly series + meta: grid, ratios, noise totals) | mocked; logic = `src/domain/hexCalendar.ts` |
-| GET | `/fires?bbox=…&start=YYYY-MM-DD&end=…` | `FireCollection` (GeoJSON) | mocked |
-| GET | `/regions?q=text` | `Region[]` | mocked (`regions.json`) |
-| GET | `/overview` | `{ points: [lng, lat, weight][] }` for the globe | mocked (`intro.json`) |
-| GET | `/onboard-model` | `OnboardModel` (weights, standardisation, metrics) | mocked (`model.json`) |
+| GET | `/detections` | `DetectionArchive` — `{ version, synthetic, rows: [lng, lat, sensor 0/1, day since 2000-01-01, frp MW, confidence 0/1/2, truth?][] }` | ✅ uniform 60k sample of the world archive (browser demos only) |
+| GET | `/calendar?bbox=w,s,e,n[&region=WORLD\|ISO2\|adm1]` | `CalendarSeries` | ✅ every detection, H3 res 6, local solar days, per-country calibration of every stream to Aqua MODIS |
+| GET | `/fires?bbox=…&start=YYYY-MM-DD&end=…` | `FireCollection` (GeoJSON) + `satellite`, `time`, `scan`, `track` | ✅ every detection in the box (reservoir sample above 60k) |
+| GET | `/regions?q=text` | `Region[]` | ✅ 240 countries + 4 589 admin-1 regions, names in 7 languages |
+| GET | `/overview` | `{ points: [lng, lat, weight][] }` for the globe | ✅ most active H3 cells of the last archive year |
+| GET | `/onboard-model` | `OnboardModel` (weights, standardisation, metrics) | ✅ trained on real data |
 
-Backend tasks, in order:
+World extensions (`src/features/world/api.ts`):
+
+| Path | What |
+|---|---|
+| `/hex?bbox&res=2..7&start&end&noise&sensors` | burning hexagons from every detection, any zoom |
+| `/regions/geo?country=ISO2`, `/regions/stats?country=ISO2\|WORLD&start&end` | admin-1 borders; activity per region or per country (choropleth) |
+| `/area/stats?bbox[&region]&start&end&lowconf&static&sensors` | the area panel's totals, server-side |
+
+HELIOS extensions — `/v1/helios/*` (`src/features/helios/api.ts`): `status`, `scenarios`, `risk` (world, `?bbox` optional),
+`alerts`, `static` (world registry), `blind`, `spread`, `satellites`, `area`, `context`, `mission`, `link`.
+
+Backend tasks (original list — done in HELIOS for every country):
 1. **Ingest FIRMS archives** (MODIS C6.1 MCD14ML 2000–, VIIRS S-NPP VNP14IMGML 2012–, NOAA-20
    VJ114IMGML 2018–). Map MODIS confidence 0–100 to low/nominal/high (`<30 / 30–79 / ≥80`),
    VIIRS `l/n/h` directly. Keep the FIRMS `type` field — combine it with the persistence rule.
@@ -180,11 +212,14 @@ Backend tasks, in order:
 
 ## 6. Known limitations / next steps
 
-- [ ] Real FIRMS ingestion + tiled data API (§4.1) — the main backend work.
+- [x] Real FIRMS ingestion + data API (§4.1) — HELIOS-SHIELD, every country, MODIS 2000–2025 + VIIRS S-NPP 2012–2025.
+- [x] Province outlines — Natural Earth admin-1 (4 589 regions), shown in the “Regions” view and from zoom 4.5.
+- [ ] The 2026 part of the record: the FIRMS yearly archive ends in 2025; without a FIRMS MAP_KEY only the last
+      7 days (NRT) are available, so the current forecast uses the operational model (last 7 days + climatology).
 - [ ] Gemini path tested only with the rule-based fallback (no API key in this environment).
-- [ ] SGP4 propagation from Celestrak TLEs for the mission page and the globe.
+- [x] SGP4 propagation from CelesTrak TLEs — HELIOS satellites layer and `/mission` §05–06
+      (the older concept sections and the globe still use circular orbits).
 - [ ] Onboard image screening (tiny CNN on thermal chips) — described, not implemented.
-- [ ] Province outlines (only country outlines; provinces are boxes).
 - [ ] E2E tests (Playwright) for the intro → map flow; currently verified manually in a browser.
 - [ ] Old Figma file and `figma-plugin/` still carry the Emberline name.
 - [ ] Redesign verified in a desktop browser pane and at 375 px emulation only — not on a real phone,
@@ -198,6 +233,15 @@ Backend tasks, in order:
 
 ## 7. Change log
 
+- **2026-11-15 · World** — real data for every country through the HELIOS-SHIELD API: NASA FIRMS MODIS 2000–2025 +
+  VIIRS S-NPP 2012–2025 (all countries), global persistent-source registry, burning hexagon-days H3 res 2–7.
+  Map: “Regions” view (countries → admin-1 choropleth with labels, click a region to analyse it), server
+  hexagons by zoom instead of the browser sample, every pixel at its real size from zoom 7, server area totals,
+  region search (240 countries, 4 589 regions, 7 languages). HELIOS forecast and static sources cover the world;
+  `/mission` shows the world AI #1 and the onboard C code (int8, any flight computer). Ported onto the redesign.
+- **2026-11-14 · Stage 5** — real data through the HELIOS-SHIELD API (Kazakhstan): `auto` data source with a
+  once-only probe; HELIOS map layers with tooltips; area card; AI brief with the forecast as context;
+  `/mission` §04–06; `/v1` proxy in Vite and `server/`; all 8 dictionaries extended.
 - **2026-11-14 · Redesign v2** — hexagons everywhere (map H3 view by default with seams, SDF hexagon
   detections, hexagonal fires on the globe, legends, illustrations); orange accent and amber heat ramp
   instead of champagne/cream; soft page-colour veil instead of the white flash; map header and panels in
