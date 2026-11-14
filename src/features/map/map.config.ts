@@ -26,25 +26,20 @@ export const SOURCES = {
 
 export const LAYERS = {
   aoiFill: 'el-aoi-fill',
-  aoiGlow: 'el-aoi-glow',
   aoiLine: 'el-aoi-line',
   hexFill: 'el-hex-fill',
-  hexLine: 'el-hex-line',
   MODIS: {
-    halo: 'el-modis-cluster-halo',
     cluster: 'el-modis-cluster',
-    glow: 'el-modis-glow',
     point: 'el-modis-point',
   },
   VIIRS: {
-    halo: 'el-viirs-cluster-halo',
     cluster: 'el-viirs-cluster',
-    glow: 'el-viirs-glow',
     point: 'el-viirs-point',
   },
 } as const;
 
-export const MODIS_SQUARE_IMAGE = 'el-modis-square';
+/** SDF hexagon used for every detection and cluster mark. */
+export const HEX_IMAGE = 'el-hex';
 
 export interface Padding {
   top: number;
@@ -56,8 +51,8 @@ export interface Padding {
 /** Room taken by the floating UI, so fitBounds centres areas in the visible part of the map. */
 export function uiPadding(width = window.innerWidth, height = window.innerHeight): Padding {
   if (width < 768) return { top: 80, bottom: Math.min(190, height * 0.3), left: 24, right: 24 };
-  if (width < 1200) return { top: 96, bottom: 150, left: 420, right: 40 };
-  return { top: 96, bottom: 150, left: 420, right: 340 };
+  // Desktop: one panel at most, on the left; zoom controls on the right.
+  return { top: 104, bottom: 150, left: 420, right: 88 };
 }
 
 const mercY = (lat: number) => {

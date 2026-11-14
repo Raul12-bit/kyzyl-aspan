@@ -81,7 +81,9 @@ function findingText(f: Finding, m: Messages, fmt: Formatters): string {
     case 'sensors':
       return t.sensors(f.raw === null ? '—' : fmt.dec(f.raw, 1), fmt.dec(f.hex, 1));
     case 'uncertainty':
-      return t.uncertainty(fmt.pct(f.relative / 2, 0));
+      return t.uncertainty(fmt.pct(f.relative / 2, 0), fmt.pct(f.interval ?? 0.9, 0));
+    case 'forecast':
+      return t.forecast(fmt.pct(f.max, f.max < 0.1 ? 1 : 0), fmt.pct(f.mean, 1), fmt.pct(f.typical, 1));
   }
 }
 
@@ -96,7 +98,7 @@ function Findings({ findings }: { findings: Finding[] }) {
         <p className="m-0 mb-3 flex items-start gap-2.5 text-ink">
           <span
             className="mt-0.5 inline-flex flex-none items-center rounded-pill px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em]"
-            style={{ color: LEVEL_COLOR[risk.level], background: 'rgb(255 255 255 / 0.05)', border: '1px solid currentColor' }}
+            style={{ color: LEVEL_COLOR[risk.level], background: 'var(--el-tint-2)', border: '1px solid currentColor' }}
           >
             {m.map.ai.levels[risk.level]}
           </span>
@@ -188,7 +190,7 @@ export function AiPanel({ summary }: { summary: AreaSummary | null }) {
                 className="block h-2.5 rounded"
                 style={{
                   width: `${w}%`,
-                  background: 'linear-gradient(90deg, rgb(255 255 255 / 0.04), rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.04))',
+                  background: 'linear-gradient(90deg, var(--el-tint-1), var(--el-tint-3), var(--el-tint-1))',
                   backgroundSize: '200% 100%',
                   animation: 'el-shimmer 1.4s linear infinite',
                 }}
@@ -236,7 +238,7 @@ export function AiPanel({ summary }: { summary: AreaSummary | null }) {
         ) : null}
       </div>
       {showPayload && summary ? (
-        <pre className={cn('num m-0 mt-2.5 max-h-56 overflow-auto rounded-[10px] border border-line bg-[rgb(0_0_0/0.3)] p-2.5 text-[10.5px] leading-snug text-ink-dim')}>
+        <pre className={cn('num m-0 mt-2.5 max-h-56 overflow-auto rounded-[10px] border border-line bg-[var(--el-inset)] p-2.5 text-[10.5px] leading-snug text-ink-dim')}>
           {JSON.stringify(summary, null, 1)}
         </pre>
       ) : null}

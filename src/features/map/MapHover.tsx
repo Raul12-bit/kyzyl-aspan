@@ -1,8 +1,14 @@
 import type { Point } from 'geojson';
 import type { GeoJSONSource, MapGeoJSONFeature, MapMouseEvent } from 'maplibre-gl';
 import { useEffect, useRef, useState } from 'react';
-import type { Confidence, Sensor } from '@/data/types';
+import type { BBox, Confidence, Sensor } from '@/data/types';
+import { HELIOS_INTERACTIVE } from '@/features/helios/heliosLayers';
+import { HeliosTooltip } from '@/features/helios/hover';
+import { HELIOS_CLICKABLE, isHeliosFeature, toHeliosInfo, type HeliosHoverInfo } from '@/features/helios/hoverInfo';
 import { prefersReducedMotion } from '@/features/intro/introStore';
+import { WorldTooltip } from '@/features/world/hover';
+import { isWorldFeature, isWorldPolygon, toWorldInfo, type WorldHoverInfo } from '@/features/world/hoverInfo';
+import { WORLD_INTERACTIVE } from '@/features/world/worldLayers';
 import { LOCALE_INFO, useI18n } from '@/i18n';
 import { SensorMark } from '@/ui';
 import { interactiveFireLayers } from './layers';
@@ -21,9 +27,19 @@ type HoverInfo =
       confidence?: Confidence;
       flag?: 'low' | 'static';
     }
-  | { kind: 'hex'; x: number; y: number; days: number; modis: number; viirs: number; frpMax: number };
+  | { kind: 'hex'; x: number; y: number; days: number; modis: number; viirs: number; frpMax: number }
+  | { kind: 'helios'; x: number; y: number; h: HeliosHoverInfo }
+  | { kind: 'world'; x: number; y: number; w: WorldHoverInfo };
 
-function toInfo(f: MapGeoJSONFeature, x: number, y: number): HoverInfo {
+function toInfo(f: MapGeoJSONFeature, x: number, y: number): HoverInfo | null {
+  if (isWorldFeature(f)) {
+    const w = toWorldInfo(f);
+    return w ? { kind: 'world', x, y, w } : null;
+  }
+  if (isHeliosFeature(f)) {
+    const h = toHeliosInfo(f);
+    return h ? { kind: 'helios', x, y, h } : null;
+  }
   const p = f.properties as Record<string, unknown>;
   if (f.source === SOURCES.hex) {
     return { kind: 'hex', x, y, days: Number(p.days), modis: Number(p.modis), viirs: Number(p.viirs), frpMax: Number(p.frpMax) };
@@ -47,30 +63,41 @@ function toInfo(f: MapGeoJSONFeature, x: number, y: number): HoverInfo {
  * Hover (and tap) details for detections and hexagons, click-to-zoom for aggregates, and
  * click-anywhere-else to select the country under the pointer.
  */
-export function MapHover({ onPickCountry }: { onPickCountry?: (lng: number, lat: number) => void }) {
+export function MapHover({
+  onPickCountry,
+  onPickRegion,
+}: {
+  onPickCountry?: (lng: number, lat: number) => void;
+  onPickRegion?: (id: string, bbox: BBox) => void;
+}) {
   const { m, fmt, locale } = useI18n();
   const map = useMapStore((s) => s.map);
   const mapMode = useMapStore((s) => s.mapMode);
   const [info, setInfo] = useState<HoverInfo | null>(null);
   const pickRef = useRef(onPickCountry);
   pickRef.current = onPickCountry;
+  const regionRef = useRef(onPickRegion);
+  regionRef.current = onPickRegion;
 
   useEffect(() => {
     if (!map || !mapMode) return;
     const canvas = map.getCanvas();
     const visible = (id: string) => map.getLayer(id) && map.getLayoutProperty(id, 'visibility') !== 'none';
     const pick = (e: MapMouseEvent) => {
-      const layers = [...interactiveFireLayers(), LAYERS.hexFill].filter(visible);
+      const layers = [...interactiveFireLayers(), LAYERS.hexFill, ...HELIOS_INTERACTIVE, ...WORLD_INTERACTIVE].filter(visible);
       if (!layers.length) return undefined;
       return map.queryRenderedFeatures(e.point, { layers })[0];
     };
+    // HELIOS polygons (forecast cells, blind spots) behave like hexagons: hover only, clicks pick the country.
+    const passThrough = (f: MapGeoJSONFeature) =>
+      f.source === SOURCES.hex || isWorldPolygon(f) || (isHeliosFeature(f) && !HELIOS_CLICKABLE.has(f.layer.id));
     const onMove = (e: MapMouseEvent) => {
       if (useMapStore.getState().drawing) {
         setInfo(null);
         return;
       }
       const f = pick(e);
-      canvas.style.cursor = f && f.source !== SOURCES.hex ? 'pointer' : '';
+      canvas.style.cursor = f && !passThrough(f) ? 'pointer' : '';
       setInfo(f ? toInfo(f, e.point.x, e.point.y) : null);
     };
     const onLeave = () => {
@@ -89,8 +116,17 @@ export function MapHover({ onPickCountry }: { onPickCountry?: (lng: number, lat:
         });
         return;
       }
-      if (f && f.source !== SOURCES.hex) {
+      if (f && !passThrough(f)) {
         setInfo(toInfo(f, e.point.x, e.point.y)); // touch devices have no hover
+        return;
+      }
+      // A shaded region (admin-1) under the pointer: select it instead of the whole country.
+      const regionHit = map
+        .queryRenderedFeatures(e.point, { layers: ['el-world-regions-fill', 'el-world-regions-line'].filter(visible) })
+        .find((x) => x.layer.id === 'el-world-regions-fill');
+      const w = regionHit ? toWorldInfo(regionHit) : null;
+      if (w && w.kind === 'region' && regionRef.current) {
+        regionRef.current(w.id, w.bbox);
         return;
       }
       pickRef.current?.(e.lngLat.wrap().lng, e.lngLat.lat);
@@ -108,8 +144,11 @@ export function MapHover({ onPickCountry }: { onPickCountry?: (lng: number, lat:
   }, [map, mapMode]);
 
   if (!info) return null;
-  const left = Math.min(info.x + 14, window.innerWidth - 250);
+  const left = Math.min(info.x + 14, window.innerWidth - 290);
   const style = { left, top: info.y + 14, borderRadius: 12, zIndex: 'var(--el-z-popover)' as unknown as number };
+
+  if (info.kind === 'helios') return <HeliosTooltip info={info.h} style={style} />;
+  if (info.kind === 'world') return <WorldTooltip info={info.w} style={style} />;
 
   if (info.kind === 'hex') {
     return (

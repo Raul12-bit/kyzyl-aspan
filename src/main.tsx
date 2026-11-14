@@ -1,6 +1,6 @@
 import '@fontsource-variable/onest';
 import '@fontsource-variable/geist-mono';
-import '@fontsource-variable/unbounded';
+import './app/theme';
 import './styles/index.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';

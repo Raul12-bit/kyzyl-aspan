@@ -97,7 +97,7 @@ export function LanguageSwitch({ align = 'right' }: { align?: 'left' | 'right' }
                 onClick={() => choose(l)}
                 className={cn(
                   'flex cursor-pointer items-center justify-between rounded-[10px] px-3 py-2 text-[14px]',
-                  i === active ? 'bg-[rgb(255_255_255/0.07)] text-ink' : 'text-ink-muted',
+                  i === active ? 'bg-[var(--el-tint-3)] text-ink' : 'text-ink-muted',
                 )}
               >
                 <span>{LOCALE_INFO[l].native}</span>

@@ -1,0 +1,595 @@
+openapi: 3.1.0
+info:
+  title: Kyzyl Aspan API
+  version: 0.1.0
+  summary: Harmonized MODIS + VIIRS fire detections for the Kyzyl Aspan frontend.
+  description: |
+    The frontend talks to data only through `src/data/DataSource.ts`. Switching from the bundled mock
+    data to this API is configuration only:
+
+        VITE_DATA_SOURCE=http
+        VITE_API_URL=https://api.example.org      # base for the "Data" endpoints below
+
+    The AI endpoint (`/api/ai/analyze`) is called on the frontend's own origin (`/api/...`), so in
+    production it is served by the same host (or proxied to it). It already exists in `server/`.
+
+    **Source of truth for the shapes**: TypeScript types in `src/data/types.ts`, `src/data/DataSource.ts`,
+    `src/domain/summary.ts`, `src/domain/onboard.ts`. Runtime guards the client applies to every response:
+    `src/data/HttpDataSource.ts`. If this file and the types disagree, the types win — please open an issue.
+
+    **Errors the client understands** (HttpDataSource): 404 → "not found"; any other non-2xx → "server";
+    a body that is not JSON or fails the shape guard → "invalid response"; no answer within 15 s → "timeout".
+    Error bodies should be `{ "error": "<human-readable message>" }`.
+
+    **Conventions**: JSON UTF-8; CORS for the frontend origin; dates are UTC; boxes are
+    `west,south,east,north` in WGS84 degrees (`west > east` crosses the antimeridian); every payload derived
+    from demo data carries `synthetic: true` so the UI can label it.
+servers:
+  - url: '{base}'
+    description: Data API (VITE_API_URL)
+    variables:
+      base:
+        default: http://127.0.0.1:8787
+tags:
+  - name: Data
+    description: Fire archive and aggregates. **To be built** (mocked today by `public/data/*.json`).
+  - name: AI
+    description: Gemini proxy with a rule-based fallback. **Built** in `server/`.
+
+paths:
+  /detections:
+    get:
+      tags: [Data]
+      operationId: getDetections
+      summary: Compact detection rows of the (sampled) archive
+      description: |
+        The browser runs the noise filter and the H3 aggregation on these rows, so the map re-filters
+        instantly while the visitor scrubs time. Works for the demo sample (~21k rows). For the real
+        archive (hundreds of millions of rows) this must become tiled — by H3 res-3 parent and month —
+        or be replaced by vector tiles. See PROGRESS.md §4.1.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DetectionArchive' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /calendar:
+    get:
+      tags: [Data]
+      operationId: getCalendar
+      summary: Harmonized monthly burn calendar of an area
+      description: Reference implementation of the pipeline — `src/domain/hexCalendar.ts`.
+      parameters:
+        - $ref: '#/components/parameters/BBox'
+        - name: region
+          in: query
+          required: false
+          description: ISO 3166-1 alpha-2 country (narrows the box to the country outline) or a province id like `KZ-KUS` (box only).
+          schema: { type: string, pattern: '^[A-Z]{2}(-[A-Z0-9]{1,3})?$', examples: [KZ, KZ-KUS] }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CalendarSeries' }
+        '404': { $ref: '#/components/responses/Error' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /fires:
+    get:
+      tags: [Data]
+      operationId: getFirePoints
+      summary: Individual detections inside a box and a date range (GeoJSON)
+      parameters:
+        - $ref: '#/components/parameters/BBox'
+        - { name: start, in: query, required: true, schema: { type: string, format: date } }
+        - {
+            name: end,
+            in: query,
+            required: true,
+            description: 'Inclusive., schema: { type: string, format: date }',
+          }
+      responses:
+        '200':
+          description: OK. Servers may cap the number of features; then `meta.truncated` is true.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FireCollection' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /regions:
+    get:
+      tags: [Data]
+      operationId: searchRegions
+      summary: Search countries and provinces
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Free text in any interface language or transliteration. Empty string returns the featured regions.
+          schema: { type: string, maxLength: 80 }
+      responses:
+        '200':
+          description: OK, best matches first (at most ~12).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Region' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /overview:
+    get:
+      tags: [Data]
+      operationId: getOverview
+      summary: A few hundred weighted points for the landing globe
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActivityOverview' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /onboard-model:
+    get:
+      tags: [Data]
+      operationId: getOnboardModel
+      summary: Weights of the tiny onboard triage classifier (mission page concept)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OnboardModel' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /api/health:
+    get:
+      tags: [AI]
+      operationId: health
+      summary: Liveness and AI configuration
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, gemini]
+                properties:
+                  ok: { type: boolean, const: true }
+                  gemini:
+                    type: object
+                    required: [configured, model]
+                    properties:
+                      configured: { type: boolean }
+                      model: { type: string }
+
+  /api/ai/analyze:
+    post:
+      tags: [AI]
+      operationId: analyzeArea
+      summary: Risk briefing for an area from its statistics (never the map, never the visitor's location)
+      description: |
+        Validation: `server/validate.ts` (strict; unknown shapes are rejected). Limits: 32 kB body,
+        10 requests/min/IP, 20 s model timeout. Without `GEMINI_API_KEY`, or when the model fails, the
+        endpoint still answers 200 with rule-based findings that the client renders in its own language.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [summary, locale]
+              properties:
+                summary: { $ref: '#/components/schemas/AreaSummary' }
+                locale: { type: string, enum: [en, ru, kk, es, fr, de, pt, zh] }
+      responses:
+        '200':
+          description: A model briefing, or rule-based findings.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [source, model, text]
+                    properties:
+                      source: { const: gemini }
+                      model: { type: string }
+                      text:
+                        {
+                          type: string,
+                          description: 'Markdown-lite: paragraphs, "#### " headings, "- " bullets.',
+                        }
+                  - type: object
+                    required: [source, findings]
+                    properties:
+                      source: { const: rules }
+                      findings: { type: array, items: { $ref: '#/components/schemas/Finding' } }
+                      reason: { type: string, enum: [not-configured, model-error] }
+        '400': { $ref: '#/components/responses/Error' }
+        '413': { $ref: '#/components/responses/Error' }
+        '415': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '429':
+          description: Rate limited.
+          headers:
+            Retry-After: { schema: { type: integer }, description: 'Seconds.' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+components:
+  parameters:
+    BBox:
+      name: bbox
+      in: query
+      required: true
+      description: '`west,south,east,north` in degrees. `west > east` crosses the antimeridian.'
+      schema:
+        {
+          type: string,
+          pattern: '^-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?$',
+          examples: ['46.5,40.5,87.4,55.5'],
+        }
+
+  responses:
+    Error:
+      description: Error with a human-readable message.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+
+    BBox:
+      type: array
+      description: '[west, south, east, north] in WGS84 degrees.'
+      prefixItems:
+        - { type: number, minimum: -180, maximum: 180 }
+        - { type: number, minimum: -90, maximum: 90 }
+        - { type: number, minimum: -180, maximum: 180 }
+        - { type: number, minimum: -90, maximum: 90 }
+      minItems: 4
+      maxItems: 4
+
+    DetectionArchive:
+      type: object
+      required: [version, rows, synthetic]
+      properties:
+        version: { type: string }
+        synthetic: { type: boolean }
+        rows:
+          type: array
+          description: |
+            One row per detection, sorted by day:
+            `[lng, lat, sensor (0 MODIS, 1 VIIRS), day since 2000-01-01, FRP MW, confidence (0 low, 1 nominal, 2 high), truth?]`.
+            MODIS confidence 0–100 maps to low < 30, nominal 30–79, high ≥ 80; VIIRS l/n/h maps directly.
+            `truth` (0 fire, 1 static source, 2 false alarm) exists only in synthetic data — omit it for real data.
+          items:
+            type: array
+            minItems: 6
+            maxItems: 7
+            items: { type: number }
+          examples: [[[68.12, 51.03, 1, 9301, 12.4, 1]]]
+
+    FireProperties:
+      type: object
+      required: [id, sensor, date, frp, confidence]
+      properties:
+        id: { type: string }
+        sensor: { type: string, enum: [MODIS, VIIRS] }
+        date: { type: string, format: date, description: 'Acquisition date (UTC).' }
+        frp: { type: number, description: 'Fire radiative power, MW.' }
+        confidence: { type: string, enum: [low, nominal, high] }
+        truth: { type: string, enum: [fire, static, false-alarm], description: 'Synthetic data only.' }
+
+    FireCollection:
+      type: object
+      required: [type, features, meta]
+      properties:
+        type: { const: FeatureCollection }
+        features:
+          type: array
+          items:
+            type: object
+            required: [type, geometry, properties]
+            properties:
+              type: { const: Feature }
+              geometry:
+                type: object
+                required: [type, coordinates]
+                properties:
+                  type: { const: Point }
+                  coordinates: { type: array, items: { type: number }, minItems: 2, maxItems: 2 }
+              properties: { $ref: '#/components/schemas/FireProperties' }
+        meta:
+          type: object
+          required: [total, truncated, synthetic]
+          properties:
+            total: { type: integer, description: 'Features matched before any server-side cap.' }
+            truncated: { type: boolean }
+            synthetic: { type: boolean }
+
+    CalendarPoint:
+      type: object
+      required: [year, month, modis, viirsRaw, modisHex, viirsHex, harmonized, lo, hi, anomalyZ]
+      properties:
+        year: { type: integer }
+        month: { type: integer, minimum: 1, maximum: 12 }
+        modis: { type: integer, description: 'MODIS detections kept by the noise filter.' }
+        viirsRaw: { type: [integer, 'null'], description: 'VIIRS detections kept; null before 2012-01.' }
+        modisHex: { type: number, description: 'Burning hexagon-days on the harmonization grid, MODIS.' }
+        viirsHex: { type: [number, 'null'], description: 'Same for VIIRS; null before 2012-01.' }
+        harmonized: { type: number, description: 'MODIS-equivalent burning hexagon-days.' }
+        lo: { type: number, description: 'Lower bound of the interval (meta.interval).' }
+        hi: { type: number }
+        anomalyZ:
+          {
+            type: [number, 'null'],
+            description: 'Standardised anomaly vs the same calendar month in other years.',
+          }
+
+    CalendarSeries:
+      type: object
+      required: [bbox, points, meta]
+      properties:
+        bbox: { $ref: '#/components/schemas/BBox' }
+        points: { type: array, items: { $ref: '#/components/schemas/CalendarPoint' } }
+        meta:
+          type: object
+          required: [scale, interval, grid, rawRatio, ratio, noise, coverage, synthetic, method]
+          properties:
+            scale: { const: modis-equivalent-hex-days-per-month }
+            interval: { type: number, description: 'Central probability of [lo, hi], e.g. 0.9.' }
+            grid:
+              type: object
+              required: [system, resolution, cellAreaKm2]
+              properties:
+                system: { const: h3 }
+                resolution: { type: integer, description: '5 in the reference pipeline.' }
+                cellAreaKm2: { type: number }
+            rawRatio:
+              {
+                type: [number, 'null'],
+                description: 'VIIRS/MODIS ratio of raw detections over the overlap period.',
+              }
+            ratio:
+              type: object
+              required: [value, lo, hi, overlapStart, overlapEnd, calibrated]
+              properties:
+                value: { type: number }
+                lo: { type: number }
+                hi: { type: number }
+                overlapStart: { type: string, description: 'YYYY-MM' }
+                overlapEnd: { type: string, description: 'YYYY-MM' }
+                calibrated:
+                  {
+                    type: boolean,
+                    description: 'False when the area has too little overlap data and a global ratio was used.',
+                  }
+            noise:
+              type: object
+              required: [considered, lowConfidence, staticSources, staticCells]
+              properties:
+                considered: { type: integer }
+                lowConfidence: { type: integer }
+                staticSources: { type: integer }
+                staticCells: { type: integer }
+            coverage: { type: number, minimum: 0, maximum: 1 }
+            synthetic: { type: boolean }
+            method: { type: string, description: 'Identifier of the harmonization method/version.' }
+
+    Region:
+      type: object
+      required: [id, kind, name, bbox, group]
+      properties:
+        id: { type: string, examples: [KZ, KZ-KUS] }
+        kind: { type: string, enum: [country, province] }
+        name:
+          type: object
+          required: [en, ru]
+          properties:
+            en: { type: string }
+            ru: { type: string }
+        iso2: { type: string, pattern: '^[A-Z]{2}$' }
+        parentId: { type: string }
+        bbox: { $ref: '#/components/schemas/BBox' }
+        aliases: { type: array, items: { type: string } }
+        group: { type: string, enum: [central-asia, world] }
+        featured: { type: boolean }
+
+    ActivityOverview:
+      type: object
+      required: [points, synthetic]
+      properties:
+        points:
+          type: array
+          description: '[lng, lat, weight 0…1], a few hundred points.'
+          items: { type: array, items: { type: number }, minItems: 3, maxItems: 3 }
+        synthetic: { type: boolean }
+
+    ClassifierMetrics:
+      type: object
+      required: [accuracy, precision, recall, f1, rows]
+      properties:
+        accuracy: { type: number }
+        precision: { type: number }
+        recall: { type: number }
+        f1: { type: number }
+        rows: { type: integer }
+
+    OnboardModel:
+      type: object
+      required: [version, kind, features, mean, scale, weights, bias, threshold, metrics, trainedOn]
+      properties:
+        version: { type: string }
+        kind: { const: logistic-regression }
+        features:
+          type: array
+          items:
+            {
+              type: string,
+              enum: [lowConfidence, highConfidence, logFrp, yearsActive, monthSpread, logCellCount],
+            }
+        mean: { type: array, items: { type: number } }
+        scale: { type: array, items: { type: number } }
+        weights: { type: array, items: { type: number } }
+        bias: { type: number }
+        threshold: { type: number }
+        metrics:
+          type: object
+          required: [test, baseline, trainRows]
+          properties:
+            test: { $ref: '#/components/schemas/ClassifierMetrics' }
+            baseline: { $ref: '#/components/schemas/ClassifierMetrics' }
+            trainRows: { type: integer }
+        trainedOn:
+          type: object
+          required: [period, synthetic, note]
+          properties:
+            period: { type: string }
+            synthetic: { type: boolean }
+            note: { type: string }
+
+    AreaSummary:
+      type: object
+      description: Aggregates only (src/domain/summary.ts). Built by the client from a CalendarSeries.
+      required:
+        [
+          area,
+          period,
+          unit,
+          synthetic,
+          totals,
+          sensors,
+          annual,
+          climatology,
+          peakMonths,
+          trendPctPerYear,
+          anomalies,
+          recentVsTypical,
+          relativeUncertainty,
+          seasonAhead,
+        ]
+      properties:
+        area:
+          type: object
+          required: [name, iso2, bbox]
+          properties:
+            name: { type: string, maxLength: 80 }
+            iso2: { type: [string, 'null'], pattern: '^[A-Z]{2}$' }
+            bbox: { $ref: '#/components/schemas/BBox' }
+        period:
+          type: object
+          required: [from, to]
+          properties:
+            from: { type: string, description: 'YYYY-MM' }
+            to: { type: string, description: 'YYYY-MM' }
+        unit: { type: string }
+        synthetic: { type: boolean }
+        totals:
+          type: object
+          required: [detectionsConsidered, removedLowConfidence, removedStaticSources, staticCells]
+          properties:
+            detectionsConsidered: { type: number }
+            removedLowConfidence: { type: number }
+            removedStaticSources: { type: number }
+            staticCells: { type: number }
+        sensors:
+          type: object
+          required: [rawViirsToModis, hexViirsToModis, calibrated]
+          properties:
+            rawViirsToModis: { type: [number, 'null'] }
+            hexViirsToModis: { type: number }
+            calibrated: { type: boolean }
+        annual:
+          type: array
+          maxItems: 40
+          items:
+            type: object
+            required: [year, value, lo, hi]
+            properties:
+              year: { type: integer }
+              value: { type: number }
+              lo: { type: number }
+              hi: { type: number }
+        climatology: { type: array, items: { type: number }, maxItems: 12 }
+        peakMonths: { type: array, items: { type: integer }, maxItems: 12 }
+        trendPctPerYear: { type: number }
+        anomalies:
+          type: array
+          maxItems: 12
+          items:
+            type: object
+            required: [month, z]
+            properties:
+              month: { type: string, description: 'YYYY-MM' }
+              z: { type: number }
+        recentVsTypical: { type: [number, 'null'] }
+        relativeUncertainty: { type: number }
+        seasonAhead:
+          type: object
+          required: [months, share]
+          properties:
+            months: { type: array, items: { type: integer }, maxItems: 3 }
+            share: { type: number }
+
+    Finding:
+      description: Rule-based finding; the client renders it in the interface language.
+      oneOf:
+        - {
+            type: object,
+            required: [kind, level, months, share],
+            properties:
+              {
+                kind: { const: risk },
+                level: { enum: [low, moderate, elevated, high] },
+                months: { type: array, items: { type: integer } },
+                share: { type: number },
+              },
+          }
+        - {
+            type: object,
+            required: [kind, months],
+            properties: { kind: { const: season }, months: { type: array, items: { type: integer } } },
+          }
+        - {
+            type: object,
+            required: [kind, pctPerYear],
+            properties: { kind: { const: trend }, pctPerYear: { type: number } },
+          }
+        - {
+            type: object,
+            required: [kind, ratio],
+            properties: { kind: { const: recent }, ratio: { type: number } },
+          }
+        - {
+            type: object,
+            required: [kind, months],
+            properties: { kind: { const: anomalies }, months: { type: array, items: { type: string } } },
+          }
+        - {
+            type: object,
+            required: [kind, removedShare, staticCells],
+            properties:
+              { kind: { const: noise }, removedShare: { type: number }, staticCells: { type: number } },
+          }
+        - {
+            type: object,
+            required: [kind, raw, hex],
+            properties: { kind: { const: sensors }, raw: { type: [number, 'null'] }, hex: { type: number } },
+          }
+        - {
+            type: object,
+            required: [kind, relative],
+            properties: { kind: { const: uncertainty }, relative: { type: number } },
+          }
