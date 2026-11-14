@@ -102,7 +102,7 @@ export const es: Messages = {
     skip: 'Saltar',
     skipHint: 'Saltar la transición',
     globeLabel:
-      'Tierra 3D giratoria con focos de incendio brillantes y dos satélites, MODIS y VIIRS, en sus órbitas',
+      'Tierra 3D giratoria con marcas hexagonales de actividad de incendios y el satélite Terra (MODIS) en su órbita',
     noGlobe: 'Vista simplificada: este navegador no puede dibujar el globo 3D.',
   },
   geo: {

@@ -106,7 +106,7 @@ export const en = {
     skip: 'Skip',
     skipHint: 'Skip the transition',
     globeLabel:
-      'Rotating 3D Earth with glowing points of fire activity and two satellites, MODIS and VIIRS, on their orbits',
+      'Rotating 3D Earth with hexagonal marks of fire activity and the Terra satellite (MODIS) on its orbit',
     noGlobe: 'Simplified view: this browser cannot render the 3D globe.',
   },
   geo: {

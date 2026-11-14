@@ -106,7 +106,7 @@ export const de: Messages = {
     skip: 'Überspringen',
     skipHint: 'Übergang überspringen',
     globeLabel:
-      'Rotierende 3D-Erde mit leuchtenden Brandherden und zwei Satelliten, MODIS und VIIRS, auf ihren Umlaufbahnen',
+      'Rotierende 3D-Erde mit sechseckigen Markierungen der Feueraktivität und dem Satelliten Terra (MODIS) auf seiner Umlaufbahn',
     noGlobe: 'Vereinfachte Ansicht: Dieser Browser kann den 3D-Globus nicht darstellen.',
   },
   geo: {

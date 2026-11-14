@@ -4,14 +4,12 @@ import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.j
 
 /**
  * Real spacecraft from NASA 3D Resources (public domain), simplified for the web by
- * scripts/build-satellite-models.mjs: ~4–10k triangles and 130–200 kB each, no decoder needed.
+ * scripts/build-satellite-models.mjs: ~9k triangles and 130 kB, no decoder needed.
  */
-export type NasaModel = 'terra' | 'aqua' | 'snpp';
+export type NasaModel = 'terra';
 
 const URLS: Record<NasaModel, string> = {
   terra: '/models/terra.glb',
-  aqua: '/models/aqua.glb',
-  snpp: '/models/snpp.glb',
 };
 
 /** Hard edges stay hard (panels, boxes), curved parts (dishes, booms) stay smooth. */

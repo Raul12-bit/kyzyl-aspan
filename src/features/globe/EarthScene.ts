@@ -18,6 +18,7 @@ import {
   PMREMGenerator,
   Points,
   Raycaster,
+  RepeatWrapping,
   Scene,
   ShaderMaterial,
   SphereGeometry,
@@ -59,14 +60,14 @@ const TEXTURES = {
 } as const;
 
 /**
- * Satellites drawn: two MODIS platforms and one VIIRS platform. High quality loads NASA's real models;
- * the light profile (phones, data saver) keeps the procedural ones, which cost nothing to download.
+ * One satellite on its orbit: Terra (MODIS), the platform the 26-year record starts with in 2000.
+ * High quality loads NASA's real model; the light profile (phones, data saver) keeps the procedural one.
  */
-const SHOWN: { id: string; kind: SatelliteKind; model: NasaModel }[] = [
-  { id: 'terra', kind: 'eos', model: 'terra' },
-  { id: 'aqua', kind: 'eos', model: 'aqua' },
-  { id: 'snpp', kind: 'jpss', model: 'snpp' },
-];
+const SHOWN: { id: string; kind: SatelliteKind; model: NasaModel }[] = [{ id: 'terra', kind: 'eos', model: 'terra' }];
+/** Render at most ~72 fps: 120–165 Hz screens would otherwise redraw the planet 2–3× more than needed. */
+const MIN_FRAME_MS = 12.5;
+/** Satellite trails change slowly: rebuild them every few rendered frames, not every frame. */
+const TRAIL_EVERY = 4;
 /** Orbit altitude is exaggerated so the satellites clear the atmosphere visibly. */
 const ALTITUDE_EXAGGERATION = 2.4;
 /** Simulation speed: one orbit takes ~50 s on screen. */
@@ -153,11 +154,11 @@ const earthFragment = /* glsl */ `
     float diffuse = max(ndl, 0.0);
     vec3 col = albedo * (1.0 - 0.35 * cloudShadow) * (uAmbient + 1.15 * diffuse);
 
-    // Sun glint on water (specular map = ocean mask): a tight hot spot plus a faint wide sheen.
+    // Sun glint on water (specular map = ocean mask): a small, quiet highlight.
     vec3 h = normalize(uSunDir + v);
     float water = uHasSpec * texture2D(uSpec, vUv).r;
     float nh = max(dot(n, h), 0.0);
-    float glint = (pow(nh, 220.0) * 0.35 + pow(nh, 18.0) * 0.02) * water * (1.0 - cloud);
+    float glint = pow(nh, 700.0) * 0.28 * water * (1.0 - cloud);
     col += vec3(1.0, 0.9, 0.74) * glint * day;
 
     // Clouds catch the light (and stay faintly visible at night).
@@ -316,6 +317,10 @@ export class EarthScene {
   private readonly onVisibility = () => (document.hidden ? this.pause() : this.resume());
   private disposed = false;
   private theme: SceneTheme;
+  /** Current render resolution; lowered step by step if the machine cannot keep up. */
+  private pixelRatio = 1;
+  private perf = { sum: 0, n: 0 };
+  private frameCount = 0;
   /** Where the planet sits: centre offset as a share of the viewport, radius as a share of the short side. */
   private frameSpec = { x: 0, y: 0, size: 0.8 };
   private baseDistance = 4.4;
@@ -327,7 +332,8 @@ export class EarthScene {
     this.theme = opts.theme;
     const low = opts.quality === 'low';
     this.renderer = new WebGLRenderer({ antialias: !low, alpha: true, powerPreference: low ? 'low-power' : 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, low ? 1.5 : 1.75));
+    this.pixelRatio = Math.min(window.devicePixelRatio || 1, low ? 1.5 : 1.75);
+    this.renderer.setPixelRatio(this.pixelRatio);
     this.renderer.setClearColor(0x000000, 0);
     // Vertical swipes scroll the page; horizontal drags spin the planet.
     this.renderer.domElement.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;touch-action:pan-y;display:block';
@@ -458,7 +464,8 @@ export class EarthScene {
     }
     // The rest is decoration: load after the first frame, one at a time.
     const extras: [keyof typeof TEXTURES, 'uNight' | 'uSpec' | 'uClouds', 'uHasNight' | 'uHasSpec' | 'uHasClouds', number][] = [
-      ['night', 'uNight', 'uHasNight', low ? 2048 : 4096],
+      // 2048 px is plenty for lights seen only on the night crescent, and halves the GPU upload hitch.
+      ['night', 'uNight', 'uHasNight', 2048],
       ['clouds', 'uClouds', 'uHasClouds', 1024],
       ['specular', 'uSpec', 'uHasSpec', 2048],
     ];
@@ -470,6 +477,9 @@ export class EarthScene {
         const tex = this.toTexture(bmp, width);
         // Clouds are a single channel; keep them linear so the alpha reads as authored.
         if (key !== 'night') tex.colorSpace = NoColorSpace;
+        // The cloud layer drifts in longitude: it must repeat across the date line. With the default
+        // clamp, u > 1 smeared the edge column into a striped band over the Pacific.
+        if (key === 'clouds') tex.wrapS = RepeatWrapping;
         u[uniform]!.value = tex;
         u[flag]!.value = 1;
       } catch {
@@ -806,7 +816,8 @@ export class EarthScene {
     cancelAnimationFrame(this.raf);
     const wasRunning = this.running;
     this.running = true;
-    this.last = performance.now() - ms;
+    // At least one frame-cap interval, so the frame is never skipped by MIN_FRAME_MS.
+    this.last = performance.now() - Math.max(ms, MIN_FRAME_MS);
     this.frame(performance.now());
     if (!wasRunning) {
       this.running = false;
@@ -818,10 +829,34 @@ export class EarthScene {
   private readonly tmp2 = new Vector3();
   private readonly tmp3 = new Vector3();
 
+  /**
+   * Watches the real frame interval and lowers the render resolution (1.75 → 1.4 → 1.05 → 1) when the
+   * machine cannot hold ~40 fps for ~1.5 s. It never goes back up, so it cannot oscillate.
+   */
+  private watchFrameRate(interval: number) {
+    if (this.dive || interval > 250) return; // pauses, tab switches and the dive are not a verdict
+    this.perf.sum += interval;
+    this.perf.n += 1;
+    if (this.perf.n < 90) return;
+    const avg = this.perf.sum / this.perf.n;
+    this.perf = { sum: 0, n: 0 };
+    if (avg <= 25 || this.pixelRatio <= 1) return;
+    this.pixelRatio = Math.max(1, Math.round((this.pixelRatio - 0.35) * 100) / 100);
+    this.renderer.setPixelRatio(this.pixelRatio);
+    this.resize();
+  }
+
   private frame = (now: number) => {
     if (!this.running) return;
-    const dt = Math.min(0.05, (now - this.last) / 1000);
+    if (now - this.last < MIN_FRAME_MS) {
+      this.raf = requestAnimationFrame(this.frame);
+      return;
+    }
+    const interval = now - this.last;
+    const dt = Math.min(0.05, interval / 1000);
     this.last = now;
+    this.frameCount += 1;
+    this.watchFrameRate(interval);
     const reduced = this.opts.reducedMotion;
 
     if (!reduced && !this.dive) this.simTime += dt * TIME_WARP;
@@ -887,10 +922,14 @@ export class EarthScene {
       s.model.up.copy(ahead.transformDirection(this.tilt.matrixWorld));
       s.model.lookAt(this.tmp2.copy(pos).multiplyScalar(2).applyMatrix4(this.tilt.matrixWorld));
 
+      if (this.frameCount % TRAIL_EVERY !== 0 && !this.dive) continue;
       const n = s.trailPositions.length / 3;
+      const out = s.trailPositions;
       for (let i = 0; i < n; i++) {
         const p = this.satPosition(s.sat, this.simTime - i * 18, this.tmp2);
-        s.trailPositions.set([p.x, p.y, p.z], i * 3);
+        out[i * 3] = p.x;
+        out[i * 3 + 1] = p.y;
+        out[i * 3 + 2] = p.z;
       }
       (s.trail.geometry.getAttribute('position') as BufferAttribute).needsUpdate = true;
     }
