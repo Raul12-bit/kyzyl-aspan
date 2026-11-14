@@ -38,12 +38,10 @@ import type { loadNasaSatellite as LoadNasaSatellite, NasaModel } from './nasaSa
 import { buildSatellite, disposeSatelliteKit, type SatelliteKind } from './satelliteModels';
 
 export type Quality = 'high' | 'low';
-export type SceneTheme = 'dark' | 'light';
 
 export interface EarthSceneOptions {
   quality: Quality;
   reducedMotion: boolean;
-  theme: SceneTheme;
   onHoverEarth?: (over: boolean) => void;
   /** Click (not drag) on the planet. */
   onPick?: (lat: number, lng: number, screen: { x: number; y: number }) => void;
@@ -83,25 +81,15 @@ const ATMO_RADIUS = 1.1;
 /** Sunlight comes from the upper left, slightly in front: most of the disc is lit, a crescent of night on the right. */
 const SUN_DIR = new Vector3(-0.62, 0.38, 0.69).normalize();
 
-const THEME = {
-  dark: {
-    atmoInner: new Color('#a8d0ff'),
-    atmoOuter: new Color('#3a6fe0'),
-    atmoIntensity: 0.85,
-    atmoBlending: AdditiveBlending as Blending,
-    ambient: 0.035,
-    trail: new Color('#f3a06a'),
-    fireBlending: NormalBlending as Blending,
-  },
-  light: {
-    atmoInner: new Color('#9fc4f5'),
-    atmoOuter: new Color('#c9dcf5'),
-    atmoIntensity: 0.6,
-    atmoBlending: NormalBlending as Blending,
-    ambient: 0.07,
-    trail: new Color('#b84a12'),
-    fireBlending: NormalBlending as Blending,
-  },
+/** The one look (the site is dark-only): additive air on black space, warm trail, crisp fires. */
+const LOOK = {
+  atmoInner: new Color('#a8d0ff'),
+  atmoOuter: new Color('#3a6fe0'),
+  atmoIntensity: 0.85,
+  atmoBlending: AdditiveBlending as Blending,
+  ambient: 0.035,
+  trail: new Color('#f3a06a'),
+  fireBlending: NormalBlending as Blending,
 } as const;
 
 const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
@@ -316,7 +304,6 @@ export class EarthScene {
   private readonly resizeObserver: ResizeObserver;
   private readonly onVisibility = () => (document.hidden ? this.pause() : this.resume());
   private disposed = false;
-  private theme: SceneTheme;
   /** Current render resolution; lowered step by step if the machine cannot keep up. */
   private pixelRatio = 1;
   private perf = { sum: 0, n: 0 };
@@ -329,7 +316,6 @@ export class EarthScene {
   constructor(host: HTMLElement, opts: EarthSceneOptions) {
     this.host = host;
     this.opts = opts;
-    this.theme = opts.theme;
     const low = opts.quality === 'low';
     this.renderer = new WebGLRenderer({ antialias: !low, alpha: true, powerPreference: low ? 'low-power' : 'high-performance' });
     this.pixelRatio = Math.min(window.devicePixelRatio || 1, low ? 1.5 : 1.75);
@@ -359,7 +345,7 @@ export class EarthScene {
       pmrem.dispose();
     }
 
-    const t = THEME[this.theme];
+    const t = LOOK;
     const segments = low ? [64, 48] : [128, 96];
     const empty = new Texture();
     this.earth = new Mesh(
@@ -566,7 +552,7 @@ export class EarthScene {
       },
       transparent: true,
       depthWrite: false,
-      blending: THEME[this.theme].fireBlending,
+      blending: LOOK.fireBlending,
     });
     if (this.fires) {
       this.spin.remove(this.fires);
@@ -579,40 +565,21 @@ export class EarthScene {
     this.resize();
   }
 
-  setTheme(theme: SceneTheme) {
-    if (this.disposed || theme === this.theme) return;
-    this.theme = theme;
-    const t = THEME[theme];
-    const a = this.atmosphere.material;
-    a.uniforms.uInner!.value.copy(t.atmoInner);
-    a.uniforms.uOuter!.value.copy(t.atmoOuter);
-    a.uniforms.uIntensity!.value = t.atmoIntensity;
-    a.blending = t.atmoBlending;
-    a.needsUpdate = true;
-    const e = this.earth.material.uniforms;
-    e.uAtmo!.value.copy(t.atmoInner);
-    e.uAmbient!.value = t.ambient;
-    if (this.fires) {
-      this.fires.material.blending = t.fireBlending;
-      this.fires.material.needsUpdate = true;
-    }
-    for (const s of this.sats) this.paintTrail(s);
-  }
 
   private paintTrail(s: SatVisual) {
-    const t = THEME[this.theme];
+    const t = LOOK.trail;
     const n = s.trailColors.length / 3;
     for (let i = 0; i < n; i++) {
-      // Additive (dark) fades to black; normal blending (light) fades through vertex alpha.
+      // Additive blending fades the trail to black towards its tail.
       const f = (1 - i / (n - 1)) ** 1.8;
-      const k = this.theme === 'dark' ? f : 1;
-      s.trailColors.set([t.trail.r * k, t.trail.g * k, t.trail.b * k], i * 3);
+      s.trailColors.set([t.r * f, t.g * f, t.b * f], i * 3);
     }
-    s.trail.material.blending = this.theme === 'dark' ? AdditiveBlending : NormalBlending;
-    s.trail.material.opacity = this.theme === 'dark' ? 0.55 : 0.28;
+    s.trail.material.blending = AdditiveBlending;
+    s.trail.material.opacity = 0.55;
     s.trail.material.needsUpdate = true;
     (s.trail.geometry.getAttribute('color') as BufferAttribute).needsUpdate = true;
   }
+
 
   private buildSatellites() {
     for (const { id, kind, model: modelName } of SHOWN) {
@@ -875,7 +842,7 @@ export class EarthScene {
         s.model.visible = fade > 0.02;
         s.trail.visible = fade > 0.02;
       }
-      this.atmosphere.material.uniforms.uIntensity!.value = THEME[this.theme].atmoIntensity * (1 - t * 0.6);
+      this.atmosphere.material.uniforms.uIntensity!.value = LOOK.atmoIntensity * (1 - t * 0.6);
       if (this.fires) this.fires.material.uniforms.uFade!.value = Math.max(0.15, 1 - easeInCubic(t) * 0.9) * (this.cameraDistance / 3.4);
       if (t >= 1) {
         this.dive = null;

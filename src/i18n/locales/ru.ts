@@ -12,7 +12,6 @@ export const ru: Messages = {
     nav: { map: 'Карта пожаров', mission: 'Миссия', method: 'Метод', label: 'Главное меню' },
     language: 'Язык',
     useLocation: 'По моему местоположению',
-    theme: { toLight: 'Светлая тема', toDark: 'Тёмная тема' },
   },
   landing: {
     title: 'Kyzyl Aspan — пожары из космоса на одной честной шкале',

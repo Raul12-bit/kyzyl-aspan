@@ -57,7 +57,7 @@ const clusterSize = (k: number): ExpressionSpecification => [
   1.9 * k,
 ];
 
-/** Paint for one sensor's layers with the current theme tokens (used on creation and on theme change). */
+/** Paint for one sensor's layers from the tokens. */
 function firePaint(sensor: Sensor) {
   const color = token(sensor === 'MODIS' ? '--el-modis' : '--el-viirs');
   const filled = sensor === 'VIIRS';
@@ -209,22 +209,6 @@ export function addSelectionLayers(map: MLMap) {
   map.addLayer({ id: LAYERS.aoiLine, type: 'line', source: SOURCES.aoi, paint: paint.line });
 }
 
-/** Theme switch: repaint our own layers from the fresh tokens. */
-export function retintDataLayers(map: MLMap) {
-  const set = (id: string, paint: Record<string, unknown>) => {
-    if (!map.getLayer(id)) return;
-    for (const [prop, value] of Object.entries(paint)) map.setPaintProperty(id, prop, value);
-  };
-  for (const sensor of ['MODIS', 'VIIRS'] as const) {
-    const paint = firePaint(sensor);
-    set(LAYERS[sensor].cluster, paint.cluster);
-    set(LAYERS[sensor].point, paint.point);
-  }
-  set(LAYERS.hexFill, hexPaint());
-  const sel = selectionPaint();
-  set(LAYERS.aoiFill, sel.fill);
-  set(LAYERS.aoiLine, sel.line);
-}
 
 /** Draws the selected area: the country outline when one is known, else the box. */
 export function setSelection(map: MLMap, bbox: BBox | null, outline?: FlatPolygons | null) {

@@ -16,7 +16,6 @@ export const en = {
     nav: { map: 'Fire map', mission: 'Mission', method: 'Method', label: 'Main' },
     language: 'Language',
     useLocation: 'Use my location',
-    theme: { toLight: 'Switch to light theme', toDark: 'Switch to dark theme' },
   },
   landing: {
     title: 'Kyzyl Aspan — fire from space, on one honest scale',

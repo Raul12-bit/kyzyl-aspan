@@ -143,7 +143,7 @@ function Accent({ text, accent }: { text: string; accent: string }) {
   );
 }
 
-/** Deterministic star dust behind the planet (dark theme only; hidden by a token in light). */
+/** Deterministic star dust behind the planet, drawn once per resize. */
 function HeroStars() {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -253,7 +253,6 @@ function Hero() {
       <div className="lp-hero__stage">
         <HeroStars />
         <div className="lp-hero__halo" aria-hidden />
-        <div className="lp-hero__shadow" aria-hidden />
         {showGlobe ? (
           fallback ? (
             <button

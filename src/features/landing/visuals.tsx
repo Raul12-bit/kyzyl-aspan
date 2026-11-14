@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 /**
- * Section illustrations for the landing page. Plain SVG drawn from tokens, so they follow the theme,
+ * Section illustrations for the landing page. Plain SVG drawn from tokens, so they match the site,
  * weigh nothing over the network and stay sharp at any size. One visual language with the map: a
  * pointy-top hexagon grid and the heat ramp. They illustrate the method — they do not pretend to be data.
  */

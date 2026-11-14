@@ -1,18 +1,14 @@
 /*
  * Kyzyl Aspan design tokens — the single source of truth for colour, type, space, shape and motion.
  *
- * Two themes, one system:
- *   Obsidian (dark, default) — warm black, ivory ink, one fire-orange accent.
- *   Porcelain (light)        — warm white, near-black ink, a deeper burnt orange.
+ * One theme: Obsidian — warm black, ivory ink, one fire-orange accent. (The light theme was removed.)
  * Orange is the only accent; the heat ramp (ember → orange → amber) is reserved for fire data.
  * Instruments: MODIS = steel (cool, outline hexagons), VIIRS = amber (warm, filled hexagons),
  * harmonized series = ink. The token names --el-gold* are kept for compatibility: they hold the accent.
- * The theme is set on <html data-theme="dark|light"> before first paint (see index.html).
  * Contrast ratios are against the theme's --el-bg, WCAG 2.1 relative luminance.
  * JS consumers (MapLibre) read these at runtime via src/styles/tokens.ts — keep data colours as #rrggbb.
  */
-:root,
-:root[data-theme='dark'] {
+:root {
   color-scheme: dark;
 
   /* ---------- surfaces ---------- */
@@ -105,97 +101,11 @@
 
   /* ---------- hero / globe ---------- */
   --el-hero-glow: radial-gradient(50% 50% at 50% 50%, rgb(110 150 220 / 0.13), rgb(110 150 220 / 0.04) 45%, transparent 70%);
-  --el-globe-shadow: transparent;
-  --el-stars: 1;
-  /* The mission band stays night-coloured in both themes. */
+  /* Night palette for the mission band (kept separate so the band can differ from the page). */
   --el-night: #0a0a0b;
   --el-night-ink: #eee9e0;
   --el-night-muted: #aaa398;
   --el-night-line: rgb(255 245 230 / 0.12);
-}
-
-:root[data-theme='light'] {
-  color-scheme: light;
-
-  --el-bg: #f6f4ef; /* porcelain */
-  --el-bg-2: #eeebe4;
-  --el-bg-3: #e5e1d8;
-  --el-surface: #fdfcfa;
-  --el-surface-2: #f9f7f3;
-  --el-land: #ebe5da;
-  --el-water: #f7f4ee;
-  --el-panel: rgb(252 250 246 / 0.82);
-  --el-panel-solid: #fbf9f5;
-  --el-panel-raised: rgb(255 254 251 / 0.96);
-  --el-scrim: rgb(245 241 234 / 0.72);
-  --el-hover: rgb(23 21 15 / 0.045);
-  --el-press: rgb(23 21 15 / 0.08);
-  --el-tint-1: rgb(23 21 15 / 0.025);
-  --el-tint-2: rgb(23 21 15 / 0.045);
-  --el-tint-3: rgb(23 21 15 / 0.075);
-  --el-inset: rgb(23 21 15 / 0.04);
-
-  --el-line: rgb(23 21 15 / 0.1);
-  --el-line-strong: rgb(23 21 15 / 0.18);
-  --el-line-hover: rgb(23 21 15 / 0.34);
-
-  --el-ink: #131210; /* 17.1 : 1 */
-  --el-ink-muted: #57524a; /* 7.1 : 1 */
-  --el-ink-dim: #6b655b; /* 5.2 : 1 */
-  --el-ink-inverse: #f6f4ef;
-  --el-ink-on-fire: #1b0b03;
-
-  --el-gold: #b84a12; /* burnt orange, 4.8 : 1 */
-  --el-gold-soft: #9a3d0e;
-  --el-gold-bg: rgb(184 74 18 / 0.08);
-  --el-gold-line: rgb(184 74 18 / 0.4);
-
-  --el-amber: #a5560b;
-  --el-amber-soft: #9a3d0e;
-  --el-orange: #c2501a;
-  --el-red: #a8321a;
-  --el-kyzyl: #b23a1a; /* 5.6 : 1 */
-  --el-kyzyl-deep: #8a2a12;
-  --el-grad-ember: linear-gradient(100deg, #e08a2c 0%, #c2501a 52%, #a8321a 100%);
-  --el-grad-ember-text: linear-gradient(100deg, #b8620e 0%, #c2501a 55%, #a8321a 100%);
-  --el-grad-orbit: linear-gradient(90deg, rgb(184 74 18 / 0) 0%, #b84a12 50%, rgb(184 74 18 / 0) 100%);
-
-  --el-teal: #46607a;
-  --el-mint: #3f6b4c;
-
-  --el-modis: #46607a; /* steel, 6.1 : 1 */
-  --el-viirs: #a5560b; /* amber, 4.9 : 1 */
-  --el-harmonized: #131210;
-  --el-band: rgb(19 18 16 / 0.1);
-  --el-anomaly: #b84a12;
-
-  /* porcelain → deep ember */
-  --el-ramp-0: #ece6dc;
-  --el-ramp-1: #f6cfb0;
-  --el-ramp-2: #f3a36c;
-  --el-ramp-3: #ea7638;
-  --el-ramp-4: #d0501a;
-  --el-ramp-5: #a33610;
-  --el-ramp-6: #6a1f08;
-
-  --el-trust-high: #3f6b4c;
-  --el-trust-medium: #95600f;
-  --el-trust-low: #a53a26;
-  --el-danger: #a53a26;
-  --el-danger-bg: rgb(180 54 31 / 0.08);
-  --el-warning-bg: rgb(181 116 28 / 0.09);
-  --el-info-bg: rgb(70 96 122 / 0.07);
-
-  --el-focus: #b84a12;
-
-  --el-shadow-panel: 0 24px 60px -24px rgb(60 45 20 / 0.22), 0 1px 0 rgb(255 255 255 / 0.7) inset;
-  --el-shadow-pop: 0 18px 44px -12px rgb(60 45 20 / 0.28);
-  --el-glow-fire: 0 0 0 1px rgb(184 74 18 / 0.35), 0 10px 30px rgb(184 74 18 / 0.16);
-  --el-glow-soft: 0 0 24px rgb(184 74 18 / 0.18);
-
-  --el-hero-glow: radial-gradient(50% 50% at 50% 50%, rgb(255 255 255 / 0.95), rgb(255 255 255 / 0.4) 45%, transparent 70%);
-  --el-globe-shadow: rgb(70 55 30 / 0.22);
-  --el-stars: 0;
 }
 
 :root {
