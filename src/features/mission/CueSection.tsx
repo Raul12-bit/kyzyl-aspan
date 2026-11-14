@@ -102,7 +102,7 @@ export function CueSection() {
           ))}
         </ol>
 
-        <div className="grid gap-3 rounded-[14px] border border-line bg-[rgb(255_255_255/0.02)] px-4 py-3 sm:grid-cols-3" aria-live="polite">
+        <div className="grid gap-3 rounded-[14px] border border-line bg-[var(--el-tint-1)] px-4 py-3 sm:grid-cols-3" aria-live="polite">
           <div className="sm:col-span-3">
             <p className="m-0 text-[13.5px] font-semibold text-ink">
               {plan.chosen && plan.chosen.delaySec !== null ? m.mission.cue.next(plan.chosen.satellite.name, fmt.duration(plan.chosen.delaySec)) : m.mission.cue.none}

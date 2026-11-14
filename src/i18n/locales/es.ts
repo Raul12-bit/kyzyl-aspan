@@ -12,6 +12,78 @@ export const es: Messages = {
     nav: { map: 'Mapa de incendios', mission: 'Misión', method: 'Método', label: 'Principal' },
     language: 'Idioma',
     useLocation: 'Usar mi ubicación',
+    theme: { toLight: 'Cambiar a tema claro', toDark: 'Cambiar a tema oscuro' },
+  },
+  landing: {
+    title: 'Kyzyl Aspan — el fuego visto desde el espacio, en una escala honesta',
+    heroHint: 'Haz clic en la Tierra para abrir el mapa de incendios',
+    scroll: 'Desliza',
+    navCta: 'Abrir mapa',
+    statement: {
+      eyebrow: 'NASA Space Apps Challenge 2026',
+      title: 'Veintiséis años de fuego visto desde el espacio, en una escala honesta.',
+      accent: 'una escala honesta',
+    },
+    what: {
+      eyebrow: 'Qué hacemos',
+      title: 'Una pregunta: ¿dónde arde de verdad?',
+      accent: 'de verdad',
+      items: [
+        {
+          kicker: 'Mapa de incendios',
+          title: 'Dos sensores, un registro comparable',
+          body: 'Las detecciones de MODIS y VIIRS se cuentan como días-hexágono en llamas sobre una sola malla H3, así que una temporada de 2005 por fin se puede comparar con una de 2025.',
+        },
+        {
+          kicker: 'Filtro de ruido',
+          title: 'Solo cuentan los incendios reales',
+          body: 'Antorchas de gas, acerías, volcanes y píxeles de baja confianza se eliminan antes de contar, y el mapa muestra cuánto se descartó.',
+        },
+        {
+          kicker: 'Resumen con IA',
+          title: 'Una región explicada en un minuto',
+          body: 'Elige un país o dibuja un recuadro. Calculamos las estadísticas y un modelo de IA las convierte en un resumen breve. Sin clave del modelo, lo redactan reglas transparentes.',
+        },
+      ],
+      cta: 'Abrir el mapa',
+    },
+    numbers: {
+      eyebrow: 'En cifras',
+      items: [
+        { value: '26', unit: 'años', label: 'de detecciones de incendios MODIS, desde 2000' },
+        {
+          value: '375',
+          unit: 'm',
+          label: 'píxel VIIRS: unas 7 veces menos área que el píxel de 1 km de MODIS',
+        },
+        { value: '3–4×', label: 'más píxeles calientes de VIIRS sobre el mismo incendio' },
+        { value: '8', label: 'idiomas de interfaz, incluido el kazajo' },
+      ],
+    },
+    how: { eyebrow: 'Cómo funciona', title: 'De píxeles en bruto a una cifra fiable', cta: 'Leer el método' },
+    mission: {
+      eyebrow: 'Concepto · segmento espacial',
+      title: 'Lo que el próximo satélite de incendios podría hacer a bordo',
+      body: 'Un modelo diminuto que clasifica los focos en órbita, un planificador de descarga que elige la estación terrena según el tiempo y el aviso entre satélites: simulado en el navegador y señalado claramente como concepto.',
+      cta: 'Ver la misión',
+    },
+    about: {
+      eyebrow: 'Quiénes somos',
+      title: 'Un equipo de Kazajistán',
+      body: 'Kyzyl Aspan significa «cielo rojo» en kazajo: el color de la estepa en temporada de incendios. Creamos herramientas abiertas con datos abiertos de la NASA y decimos con claridad qué pueden y qué no pueden decir las cifras.',
+      facts: [
+        { label: 'Reto', value: 'NASA Space Apps 2026' },
+        { label: 'Tema', value: 'Armonización de focos MODIS y VIIRS' },
+        { label: 'Datos', value: 'NASA FIRMS · MODIS C6.1 · VIIRS 375 m' },
+        { label: 'Estado', value: 'MVP · datos de demostración sintéticos' },
+      ],
+    },
+    final: { title: 'Mira dónde arde el planeta.', accent: 'arde', cta: 'Abrir el mapa de incendios' },
+    footer: {
+      disclaimer: 'Creado para NASA Space Apps Challenge 2026. No es un producto oficial de la NASA.',
+      data: 'Datos de incendios: NASA FIRMS. Imágenes de la Tierra: NASA Blue Marble y Black Marble.',
+      rights: '© 2026 Kyzyl Aspan',
+    },
   },
   intro: {
     eyebrow: 'NASA Space Apps 2026 · puntos calientes MODIS × VIIRS',
@@ -29,7 +101,8 @@ export const es: Messages = {
     satViirsDesc: 'Suomi NPP y NOAA-20 · píxeles de 375 m · desde 2012',
     skip: 'Saltar',
     skipHint: 'Saltar la transición',
-    globeLabel: 'Tierra 3D giratoria con focos de incendio brillantes y dos satélites, MODIS y VIIRS, en sus órbitas',
+    globeLabel:
+      'Tierra 3D giratoria con focos de incendio brillantes y dos satélites, MODIS y VIIRS, en sus órbitas',
     noGlobe: 'Vista simplificada: este navegador no puede dibujar el globo 3D.',
   },
   geo: {
@@ -91,24 +164,26 @@ export const es: Messages = {
       count: (n: string) => `${n} en el periodo`,
       notAvailable: 'aún no estaba en órbita',
       notSummed: 'Se muestran juntos, nunca se suman.',
-      detectionNotFire: 'Una detección es un píxel caliente, no un incendio: un incendio puede encender muchos píxeles y las nubes pueden ocultarlo.',
+      detectionNotFire:
+        'Una detección es un píxel caliente, no un incendio: un incendio puede encender muchos píxeles y las nubes pueden ocultarlo.',
     },
     noise: {
       title: 'Filtro de ruido',
       lowConf: 'Píxeles de baja confianza',
       lowConfDesc: 'Reflejos del sol, suelo desnudo caliente, bordes de nubes',
       static: 'Fuentes de calor persistentes',
-      staticDesc: 'Antorchas de gas, acerías, volcanes: calientes en la misma celda cada estación, año tras año',
+      staticDesc:
+        'Antorchas de gas, acerías, volcanes: calientes en la misma celda cada estación, año tras año',
       removed: (n: string) => `${n} eliminados`,
       staticCells: (n: string) => `${n} celdas persistentes en 26 años.`,
-      score: (precision: string, kept: string) => `Con la verdad sintética: el ${precision} de lo eliminado era ruido; se conservó el ${kept} de los incendios reales.`,
+      score: (precision: string, kept: string) =>
+        `Con la verdad sintética: el ${precision} de lo eliminado era ruido; se conservó el ${kept} de los incendios reales.`,
     },
     legend: {
       title: 'Leyenda',
       square: 'Detección MODIS',
       dot: 'Detección VIIRS',
-      size: 'Tamaño = potencia radiativa (FRP)',
-      cluster: 'Anillo = detecciones cercanas agrupadas',
+      cluster: 'Hexágono grande = detecciones cercanas agrupadas',
       hex: 'Días de quema por hexágono',
       less: 'menos',
       more: 'más',
@@ -152,9 +227,11 @@ export const es: Messages = {
       removed: 'Ruido eliminado',
       ratioRaw: 'VIIRS / MODIS, píxeles',
       ratioHex: 'VIIRS / MODIS, hexágonos',
-      ratioHint: 'Contar hexágonos en lugar de píxeles reduce la brecha de resolución de 3–4×; el resto se calibra.',
+      ratioHint:
+        'Contar hexágonos en lugar de píxeles reduce la brecha de resolución de 3–4×; el resto se calibra.',
       calendar: 'Actividad armonizada, 2000–2026',
-      calendarHint: 'Hexágonos-día de quema equivalentes a MODIS por año; los bigotes muestran el intervalo del 90 %.',
+      calendarHint:
+        'Hexágonos-día de quema equivalentes a MODIS por año; los bigotes muestran el intervalo del 90 %.',
       peak: 'Meses pico',
       trend: 'Tendencia',
       anomalies: 'Meses inusuales',
@@ -173,23 +250,28 @@ export const es: Messages = {
       sourceGemini: (model: string) => `${model} · texto escrito por un modelo, puede contener errores`,
       sourceRules: 'Resumen basado en reglas · la clave de Gemini no está configurada en el servidor',
       error: 'El análisis falló.',
-      offline: 'El servidor de análisis no responde: se muestra el resumen basado en reglas. Inícialo con «pnpm server».',
+      offline:
+        'El servidor de análisis no responde: se muestra el resumen basado en reglas. Inícialo con «pnpm server».',
       disclaimer: 'No es un aviso oficial de incendios. Sigue a tus autoridades locales.',
       showPayload: 'Qué se envía',
       hidePayload: 'Ocultar',
       levels: { low: 'Bajo', moderate: 'Moderado', elevated: 'Elevado', high: 'Alto' },
       findings: {
-        risk: (level: string, months: string) => `Nivel ${level.toLowerCase()} de actividad esperado en ${months}, según la estación y los últimos meses.`,
+        risk: (level: string, months: string) =>
+          `Nivel ${level.toLowerCase()} de actividad esperado en ${months}, según la estación y los últimos meses.`,
         season: (months: string) => `La mayor parte de la actividad ocurre en ${months}.`,
         trendUp: (pct: string) => `La actividad crece alrededor de un ${pct} al año desde 2000.`,
         trendDown: (pct: string) => `La actividad baja alrededor de un ${pct} al año desde 2000.`,
         trendFlat: 'No hay una tendencia clara a largo plazo.',
         recentHigh: (x: string) => `Los últimos 12 meses estuvieron en ${x} el nivel típico.`,
-        recentLow: (x: string) => `Los últimos 12 meses fueron más tranquilos de lo habitual (${x} el nivel típico).`,
+        recentLow: (x: string) =>
+          `Los últimos 12 meses fueron más tranquilos de lo habitual (${x} el nivel típico).`,
         recentTypical: 'Los últimos 12 meses estuvieron cerca del nivel típico.',
         anomalies: (months: string) => `Meses inusualmente activos: ${months}.`,
-        noise: (share: string, cells: string) => `El filtro eliminó como ruido el ${share} de los píxeles calientes, incluidas ${cells} celdas de fuentes de calor persistentes.`,
-        sensors: (raw: string, hex: string) => `Aquí VIIRS ve ${raw}× más píxeles calientes que MODIS, pero solo ${hex}× más hexágonos quemados; la escala lo corrige.`,
+        noise: (share: string, cells: string) =>
+          `El filtro eliminó como ruido el ${share} de los píxeles calientes, incluidas ${cells} celdas de fuentes de calor persistentes.`,
+        sensors: (raw: string, hex: string) =>
+          `Aquí VIIRS ve ${raw}× más píxeles calientes que MODIS, pero solo ${hex}× más hexágonos quemados; la escala lo corrige.`,
         uncertainty: (pct: string) => `Incertidumbre típica desde 2012: ±${pct} (intervalo del 90 %).`,
       },
     },
@@ -225,7 +307,8 @@ export const es: Messages = {
       verdictNoise: 'Puede esperar',
       replay: (held: string, total: string, share: string) =>
         `Aplicado a todo el archivo: ${held} de ${total} píxeles calientes quedarían en espera (${share}), liberando ventanas de bajada para incendios reales.`,
-      imageNote: 'Siguiente paso, no implementado: una CNN diminuta que revise recortes térmicos de imagen a bordo.',
+      imageNote:
+        'Siguiente paso, no implementado: una CNN diminuta que revise recortes térmicos de imagen a bordo.',
       features: {
         lowConfidence: 'confianza baja',
         highConfidence: 'confianza alta',
@@ -248,11 +331,18 @@ export const es: Messages = {
       rain: 'Lluvia',
       ka: 'Ka aguanta',
       decision: 'Decisión',
-      decisions: { ka: 'Banda Ka', 'x-fallback': 'Riesgo de lluvia → X', 'x-only': 'Banda X (sin Ka)', skip: 'Omitir: tormenta' },
+      decisions: {
+        ka: 'Banda Ka',
+        'x-fallback': 'Riesgo de lluvia → X',
+        'x-only': 'Banda X (sin Ka)',
+        skip: 'Omitir: tormenta',
+      },
       done: (when: string) => `Datos descargados en ${when}`,
       notDone: 'Los datos no se descargan del todo en 12 h',
-      failures: (plan: string, naive: string) => `Pases perdidos esperados por lluvia: ${plan} con el planificador frente a ${naive} si siempre se intentara Ka.`,
-      assumptions: 'Órbitas circulares, bandas y márgenes de enlace supuestos, tiempo sintético. La estructura es real; las cifras, ilustrativas.',
+      failures: (plan: string, naive: string) =>
+        `Pases perdidos esperados por lluvia: ${plan} con el planificador frente a ${naive} si siempre se intentara Ka.`,
+      assumptions:
+        'Órbitas circulares, bandas y márgenes de enlace supuestos, tiempo sintético. La estructura es real; las cifras, ilustrativas.',
     },
     cue: {
       kicker: '03 · De satélite a satélite',
@@ -262,7 +352,12 @@ export const es: Messages = {
       confidence: 'Confianza de la detección',
       clear: 'Probabilidad de cielo despejado',
       site: 'Lugar',
-      steps: { detect: 'Detectado', relay: 'Alerta enviada', follow: 'Segunda mirada', confirm: 'Confirmado' },
+      steps: {
+        detect: 'Detectado',
+        relay: 'Alerta enviada',
+        follow: 'Segunda mirada',
+        confirm: 'Confirmado',
+      },
       next: (sat: string, wait: string) => `${sat} verá el lugar en ${wait}`,
       none: 'Ningún satélite cubre el lugar en 36 h.',
       confirmChance: 'Probabilidad de confirmar',
@@ -298,7 +393,10 @@ export const es: Messages = {
     principles: {
       title: 'Reglas que nunca rompemos',
       items: [
-        { title: 'Detección ≠ incendio', body: 'Contamos píxeles calientes y lo decimos. Un incendio puede ser muchas detecciones.' },
+        {
+          title: 'Detección ≠ incendio',
+          body: 'Contamos píxeles calientes y lo decimos. Un incendio puede ser muchas detecciones.',
+        },
         { title: 'Reescalar, nunca sumar', body: 'MODIS y VIIRS se llevan a una escala, no se suman.' },
         { title: 'Cada número tiene un rango', body: 'Ningún valor armonizado se muestra sin su intervalo.' },
       ],
@@ -315,8 +413,14 @@ export const es: Messages = {
     sources: {
       title: 'Datos para los que está pensado',
       items: [
-        { name: 'MODIS Collection 6.1 Active Fire (MCD14ML)', note: 'Terra desde 2000, Aqua desde mediados de 2002 · 1 km' },
-        { name: 'VIIRS 375 m Active Fire (VNP14IMGML, VJ114IMGML)', note: 'Suomi NPP desde 2012, NOAA-20 desde 2018 · 375 m' },
+        {
+          name: 'MODIS Collection 6.1 Active Fire (MCD14ML)',
+          note: 'Terra desde 2000, Aqua desde mediados de 2002 · 1 km',
+        },
+        {
+          name: 'VIIRS 375 m Active Fire (VNP14IMGML, VJ114IMGML)',
+          note: 'Suomi NPP desde 2012, NOAA-20 desde 2018 · 375 m',
+        },
         { name: 'NASA FIRMS', note: 'Fire Information for Resource Management System: distribuye ambos' },
         { name: 'H3 de Uber', note: 'Malla hexagonal jerárquica, código abierto' },
       ],
@@ -331,9 +435,18 @@ export const es: Messages = {
     done: 'Entendido',
     skip: 'Saltar recorrido',
     steps: [
-      { title: 'Elige una zona', body: 'Haz clic en un país del mapa, búscalo o dibuja un recuadro. Aquí aparecen sus estadísticas y un informe de IA.' },
-      { title: 'Filtra el ruido', body: 'Antorchas, fábricas y reflejos se eliminan por defecto. Desactiva los filtros para ver qué ocultan, o cambia a hexágonos H3.' },
-      { title: 'Recorre 26 años', body: 'Arrastra los tiradores para filtrar por fecha o pulsa reproducir para ver pasar las estaciones.' },
+      {
+        title: 'Elige una zona',
+        body: 'Haz clic en un país del mapa, búscalo o dibuja un recuadro. Aquí aparecen sus estadísticas y un informe de IA.',
+      },
+      {
+        title: 'Filtra el ruido',
+        body: 'Antorchas, fábricas y reflejos se eliminan por defecto. Desactiva los filtros para ver qué ocultan, o cambia a hexágonos H3.',
+      },
+      {
+        title: 'Recorre 26 años',
+        body: 'Arrastra los tiradores para filtrar por fecha o pulsa reproducir para ver pasar las estaciones.',
+      },
     ],
   },
   common: {

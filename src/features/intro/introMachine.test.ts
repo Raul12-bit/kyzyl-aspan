@@ -57,19 +57,35 @@ describe('intro machine', () => {
     expect(run([{ type: 'START' }, { type: 'BYPASS' }]).phase).toBe('zoom');
   });
 
+  it('RESET re-arms the dive only after it finished', () => {
+    const done = run([{ type: 'START' }, { type: 'SKIP' }]);
+    expect(done.phase).toBe('done');
+    const again = introReducer(done, { type: 'RESET' });
+    expect(again).toMatchObject({ phase: 'intro', instant: false, swapped: false, held: false });
+    expect(run([{ type: 'START' }, { type: 'RESET' }]).phase).toBe('zoom');
+  });
+
   it('locks the mode once the transition started', () => {
     const s = run([{ type: 'START' }, { type: 'SET_MODE', mode: 'reduced' }]);
     expect(s.mode).toBe('full');
   });
 
-  it('keeps the timings inside the brief', () => {
+  it('keeps the timings inside the brief (soft dive, no white flash)', () => {
     const t = TIMELINE.full;
-    expect(t.zoom.duration).toBeGreaterThanOrEqual(700);
-    expect(t.zoom.duration).toBeLessThanOrEqual(900);
-    expect(t.flash.rise + t.swap.minHold).toBeGreaterThanOrEqual(250);
-    expect(t.flash.rise + t.swap.minHold).toBeLessThanOrEqual(350);
-    expect(t.reveal.duration).toBeGreaterThanOrEqual(1200);
-    expect(t.reveal.duration).toBeLessThanOrEqual(1600);
+    expect(t.zoom.duration).toBeGreaterThanOrEqual(1000);
+    expect(t.zoom.duration).toBeLessThanOrEqual(1400);
+    // The veil overlaps the end of the dive and never pops: at least 0.6 s from first tint to opaque.
+    expect(t.flash.lead).toBeLessThan(t.zoom.duration);
+    expect(t.flash.lead + t.flash.rise).toBeGreaterThanOrEqual(600);
+    expect(t.swap.minHold).toBeLessThanOrEqual(200);
+    expect(t.reveal.duration).toBeGreaterThanOrEqual(900);
+    expect(t.reveal.duration).toBeLessThanOrEqual(1400);
     expect(nominalDuration('reduced')).toBeLessThan(nominalDuration('full'));
+  });
+
+  it('never flashes white: every mode veils with the page colour', () => {
+    for (const mode of ['full', 'fallback', 'reduced'] as const) {
+      expect(TIMELINE[mode].flash.color).toBe('var(--el-bg)');
+    }
   });
 });

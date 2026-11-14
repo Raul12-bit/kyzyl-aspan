@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { useThemeStore } from '@/app/theme';
 import { useOverview } from '@/data/queries';
 import { useCountries } from '@/features/geo/countries';
 import { prefersReducedMotion, useIntroStore } from '@/features/intro/introStore';
 import { TIMELINE } from '@/features/intro/transition.config';
 import { useI18n } from '@/i18n';
-import { BREAKPOINTS, useMediaQuery } from '@/lib/useMediaQuery';
 import { EarthScene, type Quality } from './EarthScene';
 
 /** Phones, low-memory devices and data-saver mode get the light profile. */
@@ -23,24 +23,25 @@ export interface GlobeCanvasProps {
   facingRef?: React.MutableRefObject<(() => { lat: number; lng: number }) | null>;
   onReady?: () => void;
   onError?: () => void;
+  /** Planet radius as a share of half the viewport's short side. */
+  size: number;
 }
 
 /**
- * React shell around the imperative three.js scene: creates it once, feeds it data, runs the dive
- * when the intro machine enters `zoom`, and tears everything down (GPU memory included) on unmount.
+ * React shell around the imperative three.js scene: creates it once, feeds it data and the theme,
+ * runs the dive when the intro machine enters `zoom`, stops rendering when scrolled out of view, and
+ * tears everything down (GPU memory included) on unmount.
  */
-export default function GlobeCanvas({ onPick, onHover, facingRef, onReady, onError }: GlobeCanvasProps) {
+export default function GlobeCanvas({ onPick, onHover, facingRef, onReady, onError, size }: GlobeCanvasProps) {
   const { m } = useI18n();
   const hostRef = useRef<HTMLDivElement>(null);
-  const modisRef = useRef<HTMLDivElement>(null);
-  const viirsRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<EarthScene | null>(null);
-  const handlers = useRef({ onPick, onHover });
-  handlers.current = { onPick, onHover };
+  const handlers = useRef({ onPick, onHover, onReady });
+  handlers.current = { onPick, onHover, onReady };
   const [ready, setReady] = useState(false);
   const countries = useCountries();
   const overview = useOverview();
-  const desktop = useMediaQuery(BREAKPOINTS.lg);
+  const theme = useThemeStore((s) => s.theme);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -50,9 +51,13 @@ export default function GlobeCanvas({ onPick, onHover, facingRef, onReady, onErr
       scene = new EarthScene(host, {
         quality: pickQuality(),
         reducedMotion: prefersReducedMotion(),
-        labels: { MODIS: modisRef.current ?? undefined, VIIRS: viirsRef.current ?? undefined },
+        theme: useThemeStore.getState().theme,
         onPick: (lat, lng, screen) => handlers.current.onPick(lat, lng, screen),
         onHoverEarth: (over) => handlers.current.onHover?.(over),
+        onReady: () => {
+          setReady(true);
+          handlers.current.onReady?.();
+        },
       });
     } catch (err) {
       console.warn('[kyzyl-aspan] 3D globe unavailable', err);
@@ -60,30 +65,36 @@ export default function GlobeCanvas({ onPick, onHover, facingRef, onReady, onErr
       return;
     }
     sceneRef.current = scene;
+    // Dev only: lets the console (and automated checks in a background tab) step the scene by hand.
+    const devHandle = window as unknown as { __earth?: EarthScene };
+    if (import.meta.env.DEV) devHandle.__earth = scene;
     if (facingRef) facingRef.current = () => scene.facing();
     scene.start();
-    // Two frames later the first image is on screen: fade the canvas in.
-    const id = requestAnimationFrame(() => requestAnimationFrame(() => {
-      setReady(true);
-      onReady?.();
-    }));
 
-    // The dive is driven by the intro machine.
+    // Only render while the planet is on screen.
+    const io = new IntersectionObserver(([entry]) => scene.setVisible(entry?.isIntersecting ?? true), { threshold: 0 });
+    io.observe(host);
+
     const unsubscribe = useIntroStore.subscribe((s, prev) => {
       if (s.phase === 'zoom' && prev.phase !== 'zoom' && s.target) {
         void scene.diveTo(s.target.focus, TIMELINE[s.mode].zoom.duration);
       }
     });
     return () => {
-      cancelAnimationFrame(id);
+      io.disconnect();
       unsubscribe();
       if (facingRef) facingRef.current = null;
+      if (devHandle.__earth === scene) delete devHandle.__earth;
       sceneRef.current = null;
       scene.dispose();
     };
     // The scene is created once; callbacks go through refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    sceneRef.current?.setTheme(theme);
+  }, [theme]);
 
   useEffect(() => {
     if (countries.data) sceneRef.current?.setCountries(countries.data.countries);
@@ -93,34 +104,9 @@ export default function GlobeCanvas({ onPick, onHover, facingRef, onReady, onErr
     if (overview.data) sceneRef.current?.setFires(overview.data.points);
   }, [overview.data]);
 
-  // Frame the planet beside the copy (desktop) or above it (phones and tablets).
   useEffect(() => {
-    const apply = () => {
-      const scene = sceneRef.current;
-      if (!scene) return;
-      if (desktop) scene.setFrame({ x: 0.23, y: 0.03, size: 0.64 });
-      else {
-        const tall = window.innerHeight / Math.max(1, window.innerWidth);
-        scene.setFrame({ x: 0, y: tall > 1.5 ? -0.24 : -0.17, size: tall > 1.5 ? 0.82 : 0.5 });
-      }
-    };
-    apply();
-    window.addEventListener('resize', apply);
-    return () => window.removeEventListener('resize', apply);
-  }, [desktop]);
-
-  const label = (ref: React.RefObject<HTMLDivElement>, sensor: 'MODIS' | 'VIIRS') => (
-    <div
-      ref={ref}
-      aria-hidden
-      className="sat-label pointer-events-none absolute left-0 top-0"
-      data-hidden="true"
-    >
-      <span className="sat-label__dot" style={{ background: sensor === 'MODIS' ? 'var(--el-modis)' : 'var(--el-viirs)' }} />
-      <span className="sat-label__name">{sensor === 'MODIS' ? m.intro.satModis : m.intro.satViirs}</span>
-      <span className="sat-label__desc">{sensor === 'MODIS' ? '1 km' : '375 m'}</span>
-    </div>
-  );
+    sceneRef.current?.setFrame({ x: 0, y: 0, size });
+  }, [size]);
 
   return (
     <div
@@ -128,10 +114,11 @@ export default function GlobeCanvas({ onPick, onHover, facingRef, onReady, onErr
       role="img"
       aria-label={m.intro.globeLabel}
       className="absolute inset-0"
-      style={{ opacity: ready ? 1 : 0, transition: 'opacity 900ms var(--el-ease-standard)' }}
-    >
-      {label(modisRef, 'MODIS')}
-      {label(viirsRef, 'VIIRS')}
-    </div>
+      style={{
+        opacity: ready ? 1 : 0,
+        transform: ready ? 'none' : 'scale(0.96)',
+        transition: 'opacity 1100ms var(--el-ease-standard), transform 1400ms var(--el-ease-emphasized)',
+      }}
+    />
   );
 }

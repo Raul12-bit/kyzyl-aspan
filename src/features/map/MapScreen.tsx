@@ -10,7 +10,7 @@ import { useReveal } from '@/features/intro/useReveal';
 import { Tour } from '@/features/onboarding/Tour';
 import { useI18n } from '@/i18n';
 import { BREAKPOINTS, useMediaQuery } from '@/lib/useMediaQuery';
-import { Banner, cn, IconButton, Panel, Segmented, Sheet, Spinner, type SheetSnap } from '@/ui';
+import { Banner, cn, Icon, IconButton, Panel, Segmented, Sheet, Spinner, type SheetSnap } from '@/ui';
 import { AreaPanelBody, SelectionSummary } from './AreaPanel';
 import { flyToArea, zoomBy } from './camera';
 import { LayersPanelBody } from './LayersPanel';
@@ -51,7 +51,7 @@ function StatusStack({ loading, error, onRetry }: { loading: boolean; error: boo
   return (
     <div className="pointer-events-none absolute inset-x-0 top-[calc(var(--el-header-h)+12px)] flex flex-col items-center gap-2 px-[var(--el-gutter)]">
       {loading ? (
-        <div className="chip pointer-events-auto !bg-[rgb(8_12_22/0.85)] backdrop-blur-md">
+        <div className="chip pointer-events-auto !bg-[var(--el-panel)] backdrop-blur-md">
           <Spinner size={14} label={m.map.status.loading} />
           {m.map.status.loading}
         </div>
@@ -128,6 +128,94 @@ function MobileLayout({ index, archive }: { index: ReturnType<typeof useFireInde
   );
 }
 
+type DesktopPanel = 'area' | 'layers' | null;
+
+/**
+ * Desktop: the map owns the screen. One small toolbar opens one panel at a time (area or layers);
+ * the time bar sits low and centred; zoom controls in the corner. Selecting an area opens its panel.
+ */
+function DesktopLayout({ index, archive }: { index: ReturnType<typeof useFireIndex>['index']; archive: FireArchive | null }) {
+  const { m } = useI18n();
+  const { bbox } = useAppParams();
+  const [panel, setPanel] = useState<DesktopPanel>(() => (bbox ? 'area' : null));
+  const hasArea = bbox !== null;
+  const prevArea = useRef(hasArea);
+
+  // A new selection (map click, search, dive landing) brings its panel forward.
+  useEffect(() => {
+    if (hasArea && !prevArea.current) setPanel('area');
+    prevArea.current = hasArea;
+  }, [hasArea]);
+
+  // Escape closes the open panel (when focus is not inside a field that handles it itself).
+  useEffect(() => {
+    if (!panel) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+      setPanel(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [panel]);
+
+  const toggle = (p: Exclude<DesktopPanel, null>) => setPanel((cur) => (cur === p ? null : p));
+  const tabs: { id: Exclude<DesktopPanel, null>; label: string; icon: 'search' | 'layers' }[] = [
+    { id: 'area', label: m.map.area.title, icon: 'search' },
+    { id: 'layers', label: m.map.layers.title, icon: 'layers' },
+  ];
+
+  return (
+    <>
+      <div className="pointer-events-none absolute bottom-6 left-6 top-[calc(var(--el-header-h)+12px)] flex w-[var(--el-panel-w)] flex-col gap-3">
+        <Reveal index={1} className="flex-none">
+          <div role="toolbar" aria-label={m.app.nav.map} className="map-dock">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                id={`tour-${t.id}`}
+                className="map-dock__btn"
+                aria-pressed={panel === t.id}
+                aria-controls={`map-panel-${t.id}`}
+                onClick={() => toggle(t.id)}
+              >
+                <Icon name={t.icon} size={16} />
+                {t.label}
+                {t.id === 'area' && hasArea ? <span className="map-dock__dot" aria-hidden /> : null}
+              </button>
+            ))}
+          </div>
+        </Reveal>
+        {panel ? (
+          <div key={panel} className="map-panel min-h-0 flex-shrink overflow-y-auto rounded-panel">
+            <Panel
+              as="section"
+              id={`map-panel-${panel}`}
+              title={panel === 'area' ? m.map.area.title : m.map.layers.title}
+              aria-label={panel === 'area' ? m.map.area.title : m.map.layers.title}
+              actions={<IconButton icon="close" size="sm" ghost label={m.common.close} onClick={() => setPanel(null)} />}
+            >
+              {panel === 'area' ? <AreaPanelBody archive={archive} /> : <LayersPanelBody index={index} archive={archive} />}
+            </Panel>
+          </div>
+        ) : null}
+      </div>
+
+      <Reveal index={3} id="tour-time" className="absolute bottom-6 left-1/2 w-[min(820px,calc(100vw-2*var(--el-panel-w)-96px))] min-w-[520px] -translate-x-1/2">
+        <section className="glass px-5 pb-3 pt-4" aria-label={m.map.time.label}>
+          <TimeBar index={index} />
+        </section>
+      </Reveal>
+
+      <Reveal index={4} className="absolute bottom-6 right-6">
+        <MapControls />
+      </Reveal>
+    </>
+  );
+}
+
 /** Map screen UI. Mounted under the white flash, revealed with a stagger in phase C. */
 export function MapScreen() {
   const { m } = useI18n();
@@ -136,7 +224,6 @@ export function MapScreen() {
   const fires = useFireIndex();
   const { bbox, setArea } = useAppParams();
   const desktop = useMediaQuery(BREAKPOINTS.md);
-  const wide = useMediaQuery(BREAKPOINTS.xl);
 
   const onDrawn = useCallback((b: BBox) => setArea(b, null), [setArea]);
   useBoxDraw(onDrawn, bbox);
@@ -177,53 +264,7 @@ export function MapScreen() {
         <StatusStack loading={fires.isPending} error={fires.isError} onRetry={() => void fires.refetch()} />
 
         {desktop ? (
-          <>
-            <div
-              className="pointer-events-none absolute bottom-6 left-6 top-[calc(var(--el-header-h)+24px)] flex w-[var(--el-panel-w)] flex-col gap-4"
-            >
-              <Reveal index={1} id="tour-area" className="min-h-0 flex-shrink overflow-y-auto rounded-panel">
-                <Panel as="section" title={m.map.area.title} aria-label={m.map.area.title}>
-                  <AreaPanelBody archive={fires.archive} />
-                </Panel>
-              </Reveal>
-              {!wide ? (
-                <Reveal index={2} id="tour-layers" className="flex-none">
-                  <Panel as="section" title={m.map.layers.title} aria-label={m.map.layers.title}>
-                    <LayersPanelBody index={fires.index} archive={fires.archive} />
-                  </Panel>
-                </Reveal>
-              ) : null}
-            </div>
-
-            {wide ? (
-              <Reveal
-                index={2}
-                id="tour-layers"
-                className="absolute right-6 top-[calc(var(--el-header-h)+24px)] max-h-[calc(100vh-var(--el-header-h)-200px)] w-[var(--el-side-w)] overflow-y-auto rounded-panel"
-              >
-                <Panel as="aside" title={m.map.layers.title} aria-label={m.map.layers.title}>
-                  <LayersPanelBody index={fires.index} archive={fires.archive} />
-                </Panel>
-              </Reveal>
-            ) : null}
-
-            <Reveal
-              index={3}
-              id="tour-time"
-              className={cn(
-                'absolute bottom-6 left-[calc(var(--el-panel-w)+48px)] right-6',
-                wide ? 'right-[calc(var(--el-side-w)+48px)]' : 'right-[88px]',
-              )}
-            >
-              <section className="glass px-5 pb-3 pt-4" aria-label={m.map.time.label}>
-                <TimeBar index={fires.index} />
-              </section>
-            </Reveal>
-
-            <Reveal index={4} className="absolute bottom-6 right-6">
-              <MapControls />
-            </Reveal>
-          </>
+          <DesktopLayout index={fires.index} archive={fires.archive} />
         ) : (
           <MobileLayout index={fires.index} archive={fires.archive} />
         )}

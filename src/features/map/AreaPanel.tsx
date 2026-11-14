@@ -116,7 +116,7 @@ function RegionSearch({ onPick }: { onPick: (r: Region) => void }) {
                 onMouseEnter={() => setActive(i)}
                 className={cn(
                   'flex cursor-pointer items-center justify-between gap-3 rounded-[10px] px-3 py-2.5 text-sm',
-                  i === active ? 'bg-[rgb(255_255_255/0.07)] text-ink' : 'text-ink-muted',
+                  i === active ? 'bg-[var(--el-tint-3)] text-ink' : 'text-ink-muted',
                 )}
               >
                 <span className="min-w-0">

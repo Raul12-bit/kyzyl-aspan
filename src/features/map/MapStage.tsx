@@ -4,8 +4,9 @@ import { parseAppParams } from '@/app/urlState';
 import { introDispatch, useIntroStore, WORLD_BOUNDS } from '@/features/intro/introStore';
 import { TIMELINE } from '@/features/intro/transition.config';
 import { useI18n } from '@/i18n';
-import { loadBasemapStyle } from './basemap';
-import { addFireLayers, addHexLayers, addSelectionLayers } from './layers';
+import { useThemeStore } from '@/app/theme';
+import { loadBasemapStyle, retintBasemap } from './basemap';
+import { addFireLayers, addHexLayers, addSelectionLayers, retintDataLayers } from './layers';
 import { BASEMAP_ERROR_BUDGET, BASEMAP_STYLE_URL, uiPadding } from './map.config';
 import { hasWebGL, useMapStore } from './mapStore';
 
@@ -69,7 +70,19 @@ export default function MapStage() {
         return;
       }
       if (useMapStore.getState().mapMode) {
-        if (wait) introDispatch({ type: 'SWAP_DONE' });
+        // A second dive from the landing page: the map is already live, just move it to the new target.
+        if (wait) {
+          const b = landingBounds();
+          const cam = map.cameraForBounds(
+            [
+              [b[0], b[1]],
+              [b[2], b[3]],
+            ],
+            { padding: uiPadding(), maxZoom: 8 },
+          );
+          if (cam) map.jumpTo(cam);
+          introDispatch({ type: 'SWAP_DONE' });
+        }
         return;
       }
       map.stop();
@@ -123,6 +136,10 @@ export default function MapStage() {
         canvasContextAttributes: { antialias: true },
       });
       map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+      // Never zoom out past one world width: no repeated continents on wide screens.
+      const clampWorld = () => map?.setMinZoom(Math.max(0, Math.log2(container.clientWidth / 512)));
+      clampWorld();
+      map.on('resize', clampWorld);
       map.getCanvas().setAttribute('aria-label', label);
       setInteractive(map, false);
       useMapStore.setState({ map, basemapOk: basemap.ok });
@@ -183,6 +200,15 @@ export default function MapStage() {
     // The map is created exactly once; label updates are handled below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Theme switch: repaint the live map from the new tokens (basemap and our own layers).
+  const theme = useThemeStore((s) => s.theme);
+  useEffect(() => {
+    const map = useMapStore.getState().map;
+    if (!map || !map.isStyleLoaded()) return;
+    retintBasemap(map);
+    retintDataLayers(map);
+  }, [theme]);
 
   useEffect(() => {
     useMapStore.getState().map?.getCanvas().setAttribute('aria-label', label);
