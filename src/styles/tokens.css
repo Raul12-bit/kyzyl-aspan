@@ -1,0 +1,181 @@
+/*
+ * Emberline design tokens — the single source of truth for colour, type, space, shape and motion.
+ * Semantics: warm = fire and the harmonized truth; cool = instruments (sensors) and trust.
+ * Contrast ratios below are against --el-bg (#05070D), WCAG 2.1 relative luminance.
+ * JS consumers (MapLibre, ECharts) read these at runtime via src/styles/tokens.ts.
+ */
+:root {
+  color-scheme: dark;
+
+  /* ---------- surfaces ---------- */
+  --el-bg: #05070d; /* deep space, page background */
+  --el-bg-2: #080c16;
+  --el-land: #0c1220; /* basemap land */
+  --el-water: #04060b;
+  --el-panel: rgb(11 16 29 / 0.76); /* glass */
+  --el-panel-solid: #0b101d;
+  --el-panel-raised: rgb(18 25 43 / 0.9);
+  --el-scrim: rgb(5 7 13 / 0.72);
+  --el-hover: rgb(255 255 255 / 0.05);
+  --el-press: rgb(255 255 255 / 0.08);
+
+  /* ---------- lines ---------- */
+  --el-line: rgb(148 170 210 / 0.14); /* 1px hairlines */
+  --el-line-strong: rgb(160 180 220 / 0.28);
+  --el-line-hover: rgb(160 180 220 / 0.45);
+
+  /* ---------- text ---------- */
+  --el-ink: #e8ecf4; /* 17.0 : 1 */
+  --el-ink-muted: #a9b3c6; /* 9.5 : 1 */
+  --el-ink-dim: #7d889c; /* 5.6 : 1 — minimum for text */
+  --el-ink-on-fire: #1b0b03; /* on the ember gradient ≥ 5.5 : 1 */
+
+  /* ---------- fire (primary accent) ---------- */
+  --el-amber: #ffb547; /* 11.5 : 1 */
+  --el-amber-soft: #ffd08a;
+  --el-orange: #ff7a2f; /* 7.7 : 1 */
+  --el-red: #e8412c; /* 5.0 : 1 */
+  --el-grad-ember: linear-gradient(100deg, #ffc061 0%, #ff8a3d 55%, #f0532f 100%);
+  --el-grad-ember-text: linear-gradient(100deg, #ffd08a 0%, #ffb547 40%, #ff7a2f 100%);
+
+  /* ---------- instruments (secondary accent: turquoise) ---------- */
+  --el-teal: #3ddbd9; /* secondary accent, also the MODIS identity */
+  --el-mint: #7ee6c4;
+
+  /* ---------- data identities: never reused for anything else ---------- */
+  --el-modis: #3ddbd9; /* 11.8 : 1 — drawn as squares */
+  --el-viirs: #9aa6ff; /* 8.9 : 1 — drawn as dots */
+  --el-harmonized: #ffb547; /* the common scale */
+  --el-band: rgb(255 181 71 / 0.18); /* uncertainty band fill */
+  --el-anomaly: #fff0c8;
+
+  /* ---------- activity ramp (sequential, used with a √ scale) ---------- */
+  --el-ramp-0: #111829;
+  --el-ramp-1: #3a1410;
+  --el-ramp-2: #8e2318;
+  --el-ramp-3: #e8412c;
+  --el-ramp-4: #ff8a3d;
+  --el-ramp-5: #ffc061;
+  --el-ramp-6: #fff0c8;
+
+  /* ---------- status & trust ---------- */
+  --el-trust-high: #7ee6c4;
+  --el-trust-medium: #ffc46b;
+  --el-trust-low: #ffa593;
+  --el-danger: #ff8f7a;
+  --el-danger-bg: rgb(232 65 44 / 0.12);
+  --el-warning-bg: rgb(255 196 107 / 0.1);
+  --el-info-bg: rgb(61 219 217 / 0.08);
+
+  /* ---------- focus ---------- */
+  --el-focus: #ffd08a;
+  --el-focus-ring: 0 0 0 2px var(--el-bg), 0 0 0 4px var(--el-focus);
+
+  /* ---------- type: two families ---------- */
+  --el-font-sans: 'Onest Variable', 'Onest', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  --el-font-mono: 'Geist Mono Variable', 'Geist Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
+
+  /* scale (desktop); line-heights paired */
+  --el-text-display: 4rem; /* 64 */
+  --el-text-h1: 2.75rem; /* 44 */
+  --el-text-h2: 1.75rem; /* 28 */
+  --el-text-h3: 1.25rem; /* 20 */
+  --el-text-lg: 1.0625rem; /* 17 */
+  --el-text-base: 0.9375rem; /* 15 */
+  --el-text-sm: 0.8125rem; /* 13 */
+  --el-text-xs: 0.6875rem; /* 11 — mono eyebrows only */
+  --el-text-data-xl: 2.5rem; /* 40 */
+  --el-text-data-lg: 1.75rem; /* 28 */
+
+  --el-leading-tight: 1.05;
+  --el-leading-snug: 1.25;
+  --el-leading-body: 1.55;
+  --el-tracking-display: -0.035em;
+  --el-tracking-heading: -0.02em;
+  --el-tracking-eyebrow: 0.14em;
+
+  /* ---------- space: 8px grid (4px half-steps for optical fixes) ---------- */
+  --el-space-1: 4px;
+  --el-space-2: 8px;
+  --el-space-3: 12px;
+  --el-space-4: 16px;
+  --el-space-5: 24px;
+  --el-space-6: 32px;
+  --el-space-7: 48px;
+  --el-space-8: 64px;
+  --el-space-9: 96px;
+  --el-gutter: 16px; /* page gutter, grows at md */
+
+  /* ---------- shape ---------- */
+  --el-radius-cell: 4px;
+  --el-radius-control: 12px;
+  --el-radius-panel: 20px;
+  --el-radius-pill: 999px;
+  --el-blur-glass: 18px;
+
+  /* ---------- elevation & glow ---------- */
+  --el-shadow-panel: 0 24px 64px -16px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.04);
+  --el-shadow-pop: 0 16px 40px -8px rgb(0 0 0 / 0.6);
+  --el-glow-fire: 0 0 0 1px rgb(255 196 107 / 0.5), 0 10px 36px rgb(255 122 47 / 0.42);
+  --el-glow-soft: 0 0 24px rgb(255 150 60 / 0.35);
+
+  /* ---------- motion ---------- */
+  --el-dur-instant: 80ms;
+  --el-dur-fast: 120ms; /* press, colour */
+  --el-dur-base: 200ms; /* hover, toggles */
+  --el-dur-panel: 450ms; /* panels, sheets */
+  --el-dur-page: 700ms; /* page-level reveals */
+  --el-ease-standard: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --el-ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --el-ease-in: cubic-bezier(0.55, 0, 0.9, 0.35);
+  --el-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --el-stagger: 90ms;
+
+  /* ---------- layers ---------- */
+  --el-z-map: 0;
+  --el-z-ui: 10;
+  --el-z-header: 20;
+  --el-z-sheet: 30;
+  --el-z-popover: 40;
+  --el-z-tour: 50;
+  --el-z-intro: 60;
+  --el-z-flash: 70;
+  --el-z-skip: 80;
+
+  /* ---------- layout ---------- */
+  --el-header-h: 64px;
+  --el-panel-w: 360px;
+  --el-side-w: 288px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --el-gutter: 24px;
+  }
+}
+
+@media (max-width: 767px) {
+  :root {
+    --el-text-display: 2.75rem;
+    --el-text-h1: 2rem;
+    --el-text-h2: 1.375rem;
+    --el-text-data-xl: 2rem;
+    --el-header-h: 56px;
+  }
+}
+
+/* Reduced motion: keep short opacity fades (they do not move anything), drop travel, scale and stagger. */
+:root {
+  --el-reveal-shift: 12px;
+  --el-press-shift: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --el-reveal-shift: 0px;
+    --el-press-shift: 0px;
+    --el-stagger: 0ms;
+    --el-dur-panel: 160ms;
+    --el-dur-page: 200ms;
+  }
+}
