@@ -1,0 +1,88 @@
+{
+  "replay_day": "2025-03-20",
+  "detections": 2127,
+  "alerts": 1177,
+  "alerts_by_priority": {
+    "ROUTINE": 631,
+    "HIGH": 344,
+    "CRITICAL": 202
+  },
+  "strategies": {
+    "A_today_nrt": {
+      "all": {
+        "median_min": 138.9,
+        "p90_min": 150.0,
+        "share_within_15min": 0.0,
+        "share_within_60min": 0.0
+      },
+      "critical": {
+        "median_min": 138.9,
+        "p90_min": 150.0,
+        "share_within_15min": 0.0,
+        "share_within_60min": 0.0
+      }
+    },
+    "B_onboard_ai_store_forward": {
+      "all": {
+        "median_min": 29.02,
+        "p90_min": 29.35,
+        "share_within_15min": 0.038,
+        "share_within_60min": 1.0
+      },
+      "critical": {
+        "median_min": 29.02,
+        "p90_min": 29.35,
+        "share_within_15min": 0.025,
+        "share_within_60min": 1.0
+      }
+    },
+    "C_plus_kz_direct_stations": {
+      "all": {
+        "median_min": 0.02,
+        "p90_min": 0.02,
+        "share_within_15min": 1.0,
+        "share_within_60min": 1.0
+      },
+      "critical": {
+        "median_min": 0.02,
+        "p90_min": 0.02,
+        "share_within_15min": 1.0,
+        "share_within_60min": 1.0
+      }
+    },
+    "D1_plus_real_geo_relays": {
+      "all": {
+        "median_min": 0.01,
+        "p90_min": 0.01,
+        "share_within_15min": 1.0,
+        "share_within_60min": 1.0
+      },
+      "critical": {
+        "median_min": 0.01,
+        "p90_min": 0.01,
+        "share_within_15min": 1.0,
+        "share_within_60min": 1.0
+      }
+    },
+    "D2_plus_geo_relay_76E": {
+      "all": {
+        "median_min": 0.01,
+        "p90_min": 0.01,
+        "share_within_15min": 1.0,
+        "share_within_60min": 1.0
+      },
+      "critical": {
+        "median_min": 0.01,
+        "p90_min": 0.01,
+        "share_within_15min": 1.0,
+        "share_within_60min": 1.0
+      }
+    }
+  },
+  "collaborative_network": {
+    "critical_alerts": 202,
+    "confirmed_by_other_satellite_12h": 0.738,
+    "median_minutes_to_next_look": 43.0,
+    "median_minutes_to_confirmation": 31.0
+  }
+}

@@ -1,0 +1,180 @@
+{
+ "generated": "2026-11-15 03:20",
+ "quantization": "int8 weights (per-row scale), int32 accumulators, Q24 requantization, Q15 outputs",
+ "ai1": {
+  "weights_int8": 1424,
+  "bias_int32": 58,
+  "rom_bytes": 2402,
+  "max_width": 32,
+  "macs": 1424,
+  "rows": 19744,
+  "max_abs_err": 0.0939,
+  "mean_abs_err": 0.00356,
+  "priority_agreement": 0.9955,
+  "thresholds": {
+   "critical": 0.8361116051673889,
+   "high": 0.6679092049598694,
+   "real": 0.5
+  }
+ },
+ "ai2": {
+  "weights_int8": 1200,
+  "bias_int32": 49,
+  "rom_bytes": 2106,
+  "max_width": 32,
+  "macs": 1200,
+  "rows": 19744,
+  "max_abs_err": 0.362,
+  "mean_abs_err": 0.00316,
+  "decision_agreement_at_0.5": 0.9973
+ },
+ "features": {
+  "ai1": [
+   "is_viirs",
+   "is_night",
+   "bright_mir",
+   "bright_tir",
+   "dt45",
+   "log_frp",
+   "log_pixel_km2",
+   "scan_deg",
+   "p_conf",
+   "glint_n",
+   "ctx_log_n",
+   "ctx_log_frp",
+   "hist_clim_month",
+   "hist_static",
+   "hist_static_score",
+   "hist_years_r7",
+   "month_sin",
+   "month_cos",
+   "lat_n"
+  ],
+  "ai2": [
+   "el",
+   "el_rate",
+   "range_km",
+   "t_since_aos",
+   "t_to_los",
+   "max_el_pass",
+   "sun_sep",
+   "geomag_abs",
+   "alt_km",
+   "fc_precip",
+   "fc_cloud",
+   "rh",
+   "kp",
+   "log_xray",
+   "f107",
+   "margin_now",
+   "margin_trend",
+   "ch_S",
+   "ch_X",
+   "ch_Ka",
+   "ch_OPT"
+  ]
+ },
+ "python_reference_vs_float_on_test": {
+  "ai1_max_abs_err": 0.04812768944364757,
+  "ai2_max_abs_err": 0.17624439222388377
+ },
+ "selftest": {
+  "ok": true,
+  "vectors": 256,
+  "bit_exact_mismatches": 0,
+  "ai1_max_abs_err": 0.0481,
+  "ai1_mean_abs_err": 0.00346,
+  "ai1_priority_agreement": 1.0,
+  "ai2_max_abs_err": 0.1762,
+  "ai2_mean_abs_err": 0.00358,
+  "ai2_decision_agreement": 1.0,
+  "packet_ok": true
+ },
+ "cross": [
+  {
+   "target": "ARM Cortex-M0 (CubeSat OBC, no FPU)",
+   "ok": true,
+   "no_float": true,
+   "bytes": {
+    "text": 888,
+    "rodata": 4600,
+    "data": 0,
+    "bss": 0
+   },
+   "rom_bytes": 5488
+  },
+  {
+   "target": "ARM Cortex-M7 (SAMRH71/SAMV71 rad-tolerant)",
+   "ok": true,
+   "no_float": false,
+   "bytes": {
+    "text": 1222,
+    "rodata": 5080,
+    "data": 0,
+    "bss": 0
+   },
+   "rom_bytes": 6302
+  },
+  {
+   "target": "ARM Cortex-R5 (TI Hercules / Zynq RPU)",
+   "ok": true,
+   "no_float": false,
+   "bytes": {
+    "text": 1544,
+    "rodata": 5080,
+    "data": 0,
+    "bss": 0
+   },
+   "rom_bytes": 6624
+  },
+  {
+   "target": "SPARC LEON3 (ESA GR712RC)",
+   "ok": true,
+   "no_float": false,
+   "bytes": {
+    "text": 1952,
+    "rodata": 5120,
+    "data": 0,
+    "bss": 0
+   },
+   "rom_bytes": 7072
+  },
+  {
+   "target": "PowerPC 750 (RAD750)",
+   "ok": true,
+   "no_float": false,
+   "bytes": {
+    "text": 1948,
+    "rodata": 0,
+    "data": 5074,
+    "bss": 0
+   },
+   "rom_bytes": 7022
+  },
+  {
+   "target": "RISC-V RV32IMC (NOEL-V class)",
+   "ok": true,
+   "no_float": true,
+   "bytes": {
+    "text": 1286,
+    "rodata": 4600,
+    "data": 0,
+    "bss": 0
+   },
+   "rom_bytes": 5886
+  },
+  {
+   "target": "x86-64 Linux (onboard Linux / ground)",
+   "ok": true,
+   "no_float": false,
+   "bytes": {
+    "text": 1246,
+    "rodata": 5264,
+    "data": 0,
+    "bss": 0
+   },
+   "rom_bytes": 6510
+  }
+ ],
+ "seconds": 17.7
+}

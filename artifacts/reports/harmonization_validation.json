@@ -1,0 +1,48 @@
+{
+  "denial_test": {
+    "available": true,
+    "train": [
+      "2012-03",
+      "2016-12"
+    ],
+    "test": [
+      "2017-01",
+      "2020-12"
+    ],
+    "months": 34,
+    "total_error_pct": -7.4,
+    "median_abs_pct_error_monthly": 7.6,
+    "spearman_rho": 0.992,
+    "interval_coverage_95": 0.956
+  },
+  "step_tests": {
+    "SNPP_2012": {
+      "raw_detections": 3.263,
+      "raw_union_celldays": 1.91,
+      "harmonized": 0.725,
+      "aqua_only": 0.663
+    },
+    "NOAA20_2018": {
+      "raw_detections": 1.583,
+      "raw_union_celldays": 1.238,
+      "harmonized": 0.916,
+      "aqua_only": 0.907
+    }
+  },
+  "aqua_to_snpp_ratio_by_year": {
+    "2012": 0.322,
+    "2013": 0.301,
+    "2014": 0.296,
+    "2015": 0.319,
+    "2016": 0.302,
+    "2017": 0.337,
+    "2018": 0.32,
+    "2019": 0.334,
+    "2020": 0.331,
+    "2021": 0.313,
+    "2022": 0.221,
+    "2023": 0.298,
+    "2024": 0.298,
+    "2025": 0.321
+  }
+}

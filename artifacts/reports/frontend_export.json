@@ -1,0 +1,25 @@
+{
+  "sample": {
+    "total_rows": 3744999,
+    "sample_rows": 60000,
+    "sample_rate": 0.01602
+  },
+  "hexdays_rows": 766177,
+  "onboard": {
+    "test": {
+      "accuracy": 0.9679,
+      "precision": 0.9712,
+      "recall": 0.9943,
+      "f1": 0.9826,
+      "rows": 12180
+    },
+    "baseline": {
+      "accuracy": 0.9109,
+      "precision": 0.9687,
+      "recall": 0.9325,
+      "f1": 0.9502,
+      "rows": 12180
+    },
+    "trainRows": 47820
+  }
+}

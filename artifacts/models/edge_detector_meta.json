@@ -1,0 +1,53 @@
+{
+  "features": [
+    "is_viirs",
+    "is_night",
+    "bright_mir",
+    "bright_tir",
+    "dt45",
+    "log_frp",
+    "log_pixel_km2",
+    "scan_deg",
+    "p_conf",
+    "glint_n",
+    "ctx_log_n",
+    "ctx_log_frp",
+    "hist_clim_month",
+    "hist_static",
+    "hist_static_score",
+    "hist_years_r7",
+    "month_sin",
+    "month_cos",
+    "lat_n"
+  ],
+  "test_year": 2025,
+  "n_test": 142803,
+  "p_real": {
+    "roc_auc": 0.9936,
+    "pr_auc": 0.9971,
+    "baseline_confidence_only_auc": 0.4567
+  },
+  "p_escalation": {
+    "positives_share": 0.1825,
+    "roc_auc": 0.8457,
+    "pr_auc": 0.5542,
+    "baseline_frp_only_auc": 0.6418,
+    "baseline_frp_only_pr_auc": 0.268
+  },
+  "thresholds": {
+    "critical": 0.8361,
+    "high": 0.6679,
+    "real": 0.5
+  },
+  "critical_precision": 0.7562,
+  "critical_recall": 0.1509,
+  "high_or_critical_recall": 0.4322,
+  "model": {
+    "onnx_fp32_kb": 6.9,
+    "onnx_int8_kb": 6.0,
+    "latency_us_per_detection_cpu": 0.185,
+    "parameters": 1482
+  },
+  "onboard_table_kb": 443.5,
+  "train_seconds": 59.0
+}

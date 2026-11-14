@@ -11,3 +11,16 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .idea
+
+# HELIOS-SHIELD (Python backend & data)
+.venv/
+__pycache__/
+*.pyc
+data/
+*.log
+helios_artifacts.zip
+.pytest_cache/
+*.pdb
+*.exe
+*.obj
+*.ilk

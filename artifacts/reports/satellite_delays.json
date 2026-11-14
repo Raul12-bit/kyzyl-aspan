@@ -1,0 +1,42 @@
+[
+  {
+    "stream": "MODIS_A",
+    "granules": 258,
+    "median_latency_min": 99.1,
+    "p90_latency_min": 142.0,
+    "recent_latency_min": 76.1,
+    "robust_z": -0.68,
+    "status": "OK",
+    "last_granule": "2026-11-14T20:30:00.000Z"
+  },
+  {
+    "stream": "MODIS_T",
+    "granules": 273,
+    "median_latency_min": 69.3,
+    "p90_latency_min": 100.9,
+    "recent_latency_min": 52.8,
+    "robust_z": -0.69,
+    "status": "OK",
+    "last_granule": "2026-11-14T21:45:00.000Z"
+  },
+  {
+    "stream": "VIIRS_NOAA20",
+    "granules": 213,
+    "median_latency_min": 144.7,
+    "p90_latency_min": 178.4,
+    "recent_latency_min": 158.9,
+    "robust_z": 0.59,
+    "status": "OK",
+    "last_granule": "2026-11-14T20:24:00.000Z"
+  },
+  {
+    "stream": "VIIRS_NOAA21",
+    "granules": 221,
+    "median_latency_min": 130.1,
+    "p90_latency_min": 148.1,
+    "recent_latency_min": 117.4,
+    "robust_z": -0.67,
+    "status": "OK",
+    "last_granule": "2026-11-14T21:06:00.000Z"
+  }
+]

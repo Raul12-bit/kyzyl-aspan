@@ -1,0 +1,7 @@
+{
+  "year": 2026,
+  "weather_days": 315,
+  "fires_source": "FIRMS open NRT 7d (без MAP_KEY)",
+  "history_gap": "2026-01-01..2026-11-06: добавьте FIRMS_MAP_KEY для полной истории",
+  "fires_kept": 759
+}

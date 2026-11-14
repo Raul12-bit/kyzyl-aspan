@@ -1,0 +1,20 @@
+# HELIOS-SHIELD — зависимости (Python 3.10+)
+numpy>=1.26
+pandas>=2.1
+pyarrow>=14
+scipy>=1.11
+scikit-learn>=1.3
+torch>=2.1
+onnx>=1.15
+onnxruntime>=1.17
+onnxscript>=0.1
+h3>=4.0
+sgp4>=2.22
+requests>=2.31
+python-dotenv>=1.0
+PyYAML>=6.0
+google-genai>=1.0
+fastapi>=0.110
+uvicorn>=0.27
+matplotlib>=3.8
+pytest>=8

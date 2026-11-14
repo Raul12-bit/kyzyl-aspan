@@ -1,0 +1,67 @@
+{
+  "started_at": "2026-11-14T23:07:11.879464+00:00",
+  "nrt": {
+    "detections": 43,
+    "kept_veg": 22,
+    "static": 21,
+    "by_stream": {
+      "VIIRS_NOAA20": 22,
+      "VIIRS_NOAA21": 19,
+      "MODIS_A": 1,
+      "MODIS_T": 1
+    },
+    "alerts": {
+      "ROUTINE": 15
+    },
+    "latest_acq": "2026-11-14 16:07:00+00:00",
+    "spread": 10,
+    "satellite_delays": [
+      {
+        "stream": "MODIS_A",
+        "median_latency_min": 99.1,
+        "status": "OK"
+      },
+      {
+        "stream": "MODIS_T",
+        "median_latency_min": 69.3,
+        "status": "OK"
+      },
+      {
+        "stream": "VIIRS_NOAA20",
+        "median_latency_min": 144.7,
+        "status": "OK"
+      },
+      {
+        "stream": "VIIRS_NOAA21",
+        "median_latency_min": 130.1,
+        "status": "OK"
+      }
+    ],
+    "space_weather": {
+      "time": "2026-11-14T23:07:57.897639+00:00",
+      "kp": 1.0,
+      "xray_flux": 8.068466286204057e-07,
+      "flare_class": "B8.1",
+      "f107": 119.3,
+      "solar_activity_index": 47.7
+    },
+    "computed_at": "2026-11-14T23:08:02.289011+00:00"
+  },
+  "extras": [
+    "satellite_delays",
+    "space_weather",
+    "spread"
+  ],
+  "sync": {
+    "fire_detections_nrt": 43,
+    "alerts_nrt": 15,
+    "comm_passes": 454,
+    "comm_blackouts": 5,
+    "satellite_delays": 4,
+    "spread_forecasts": 10,
+    "space_weather": 1,
+    "blind_spots_nrt": 188,
+    "reports": 15
+  },
+  "seconds": 56.5
+}

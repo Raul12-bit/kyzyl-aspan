@@ -1,0 +1,284 @@
+<title>Бэкенд HELIOS-SHIELD</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: article column with a sticky contents rail on wide screens; numbers in a mono face, accents in fire tones. */
+:root {
+  --bg: #f5f6fa; --surface: #ffffff; --ink: #151a26; --muted: #596173; --line: #dde2ec;
+  --accent: #c94a17; --amber: #b7791f; --blue: #2b62c4; --ok: #1d7f55; --warn: #a3412a; --code-bg: #eef1f7;
+  --f-display: "Unbounded", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Onest", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0b0e16; --surface: #121726; --ink: #e8ebf3; --muted: #9ba3b7; --line: #242b3e;
+  --accent: #ff7b41; --amber: #f0b45c; --blue: #79a9ff; --ok: #4cc490; --warn: #ff8a6b; --code-bg: #182036; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0b0e16; --surface: #121726; --ink: #e8ebf3; --muted: #9ba3b7; --line: #242b3e;
+  --accent: #ff7b41; --amber: #f0b45c; --blue: #79a9ff; --ok: #4cc490; --warn: #ff8a6b; --code-bg: #182036; color-scheme: dark }
+
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 40px 72px; }
+header.top { display: grid; gap: 18px; padding-bottom: 32px; border-bottom: 1px solid var(--line); }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0; }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(30px, 4.6vw, 52px); line-height: 1.08; margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+.lead { font-size: clamp(17px, 1.6vw, 20px); color: var(--muted); max-width: 68ch; margin: 0; }
+.figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-top: 8px; }
+.fig { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.fig b { display: block; font-family: var(--f-mono); font-size: 24px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.fig span { font-size: 13px; color: var(--muted); }
+.layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px; margin-top: 36px; }
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; font-size: 14px; }
+nav.toc p { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+nav.toc a { color: var(--muted); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { color: var(--accent); outline: none; }
+article { min-width: 0; display: grid; gap: 52px; }
+section { display: grid; gap: 14px; scroll-margin-top: 24px; }
+h2 { font-family: var(--f-display); font-weight: 500; font-size: clamp(21px, 2.2vw, 27px); line-height: 1.2; margin: 0; text-wrap: balance; }
+h3 { font-size: 17px; margin: 8px 0 0; }
+p, li { max-width: 72ch; }
+p { margin: 0; }
+ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+a { color: var(--blue); }
+code, .mono { font-family: var(--f-mono); font-size: .9em; }
+code { background: var(--code-bg); padding: 1px 6px; border-radius: 5px; }
+.table { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; background: color-mix(in srgb, var(--code-bg) 60%, transparent); }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+td.win { color: var(--ok); font-weight: 600; }
+.note { border-left: 3px solid var(--amber); padding: 10px 14px; background: color-mix(in srgb, var(--amber) 8%, transparent); border-radius: 0 10px 10px 0; color: var(--ink); }
+.steps { counter-reset: s; list-style: none; padding: 0; display: grid; gap: 12px; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; }
+.steps li::before { content: counter(s); font-family: var(--f-mono); font-weight: 600; color: var(--accent); border: 1px solid var(--line); border-radius: 50%; width: 30px; height: 30px; display: grid; place-items: center; font-size: 13px; background: var(--surface); }
+pre.code { margin: 0; overflow-x: auto; background: var(--code-bg); border-radius: 12px; padding: 14px 16px; font-family: var(--f-mono); font-size: 13px; line-height: 1.55; }
+pre.mermaid { margin: 0; overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+@media (max-width: 880px) { .layout { grid-template-columns: minmax(0, 1fr); gap: 24px; } nav.toc { position: static; } nav.toc ol { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+html { scroll-behavior: smooth; }
+</style>
+
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">NASA Space Apps 2026 · Harmonization of MODIS and VIIRS Hot Spots</p>
+  <h1>Бэкенд HELIOS-SHIELD</h1>
+  <p class="lead">Мы сводим все пожары, которые NASA видит из космоса с 2000 года, в одну честную шкалу для каждой страны и каждого региона мира, учим на этих данных три ИИ (два работают прямо на спутнике, один на Земле) и доставляем тревогу о новом пожаре за секунды вместо двух часов.</p>
+  <div class="figures">
+    <div class="fig"><b>{{DET_TOTAL}}</b><span>обнаружений MODIS и VIIRS в архиве</span></div>
+    <div class="fig"><b>{{COUNTRIES}} / {{REGIONS}}</b><span>стран и регионов на карте</span></div>
+    <div class="fig"><b>{{AI3_FULL_H1_ROC}}</b><span>ROC-AUC прогноза пожара на неделю, весь мир</span></div>
+    <div class="fig"><b>{{ONBOARD_ROM}}</b><span>ПЗУ бортового ИИ на любом процессоре</span></div>
+  </div>
+</header>
+
+<div class="layout">
+<nav class="toc" aria-label="Содержание">
+  <p>Содержание</p>
+  <ol>
+    <li><a href="#idea">Идея</a></li>
+    <li><a href="#arch">Как всё устроено</a></li>
+    <li><a href="#data">Данные</a></li>
+    <li><a href="#noise">Фильтр шума</a></li>
+    <li><a href="#harm">Гармонизация</a></li>
+    <li><a href="#world">Все страны и регионы</a></li>
+    <li><a href="#ai3">ИИ №3 на Земле</a></li>
+    <li><a href="#ai1">ИИ №1 на борту</a></li>
+    <li><a href="#ai2">ИИ №2 и физика связи</a></li>
+    <li><a href="#onboard">Код для любого спутника</a></li>
+    <li><a href="#delivery">Доставка тревог</a></li>
+    <li><a href="#api">API</a></li>
+    <li><a href="#db">База и автообновление</a></li>
+    <li><a href="#limits">Ограничения</a></li>
+  </ol>
+</nav>
+
+<article>
+<section id="idea">
+  <h2>Идея</h2>
+  <p>У NASA два поколения спутниковых «глаз» для пожаров. MODIS (Terra и Aqua) снимает с 2000 года пикселями по 1 км. VIIRS (Suomi NPP, NOAA-20, NOAA-21) снимает с 2012 года пикселями по 375 м и замечает в 3–5 раз больше горячих точек. Если просто сложить обе записи, в 2012 году появится «скачок пожаров», которого в природе не было. Мы переводим обе записи на одну шкалу, честно показываем неопределённость и строим на этом прогнозы.</p>
+  <p>Вторая часть идеи — по совету ментора: спутник должен думать сам. Сегодня данные о пожаре доходят до людей в среднем через {{DELAY_A}} минут: снимок ждёт пролёта над станцией, обрабатывается, публикуется. Если крошечная нейросеть на борту сразу оценит пиксель («настоящий ли это пожар, разрастётся ли он») и отправит 24-байтную тревогу по лучшему живому каналу, задержка падает до {{DELAY_B}} минут с нынешней сетью станций и до секунд с ретранслятором.</p>
+  <ul>
+    <li><b>ИИ №1 (борт):</b> оценка каждого горячего пикселя и приоритет тревоги.</li>
+    <li><b>ИИ №2 (борт):</b> предсказание обрыва радио- или лазерного канала за 5 минут и выбор канала.</li>
+    <li><b>ИИ №3 (Земля):</b> вероятность пожара в каждой ячейке H3 мира на 1–4 недели вперёд.</li>
+  </ul>
+</section>
+
+<section id="arch">
+  <h2>Как всё устроено</h2>
+  <pre class="mermaid">
+flowchart LR
+  subgraph NASA["Открытые данные NASA"]
+    A["FIRMS архив<br/>MODIS 2000–2025<br/>VIIRS 2012–2025"]
+    N["FIRMS NRT<br/>последние 7 дней"]
+    P["POWER, CMR, EONET,<br/>GIBS, TLE, космопогода"]
+  end
+  A --> I["Parquet<br/>{{DET_TOTAL}} точек"]
+  I --> F["Фильтр шума<br/>реестр факелов мира"]
+  F --> G["Гексагоны H3 res 2–7<br/>по спутникам и день/ночь"]
+  G --> H["Гармонизация<br/>к шкале Aqua MODIS"]
+  G --> R["{{COUNTRIES}} стран<br/>{{REGIONS}} регионов"]
+  G --> M3["ИИ №3<br/>прогноз 1–4 недели"]
+  N --> M3
+  H --> API["FastAPI /v1"]
+  R --> API
+  M3 --> API
+  API --> WEB["Сайт Kyzyl Aspan"]
+  API --> DB[("Supabase")]
+  subgraph SAT["Спутник"]
+    M1["ИИ №1<br/>пиксель → приоритет"] --> PK["пакет 24 байта"]
+    M2["ИИ №2<br/>какой канал жив"] --> PK
+  end
+  PK --> GS["станции / ретранслятор"] --> API
+  </pre>
+  <p>Весь конвейер работает на ноутбуке: архив хранится в Parquet ({{PARQUET_GB}} ГБ), тяжёлые группировки считает DuckDB вне оперативной памяти, а модели обучаются на CPU. Тот же код собран в Kaggle-ноутбук, где его видит жюри.</p>
+</section>
+
+<section id="data">
+  <h2>Данные</h2>
+  <div class="table"><table>
+    <thead><tr><th>Источник</th><th>Что берём</th><th>Период</th></tr></thead>
+    <tbody>
+      <tr><td>NASA FIRMS, годовые архивы «все страны»</td><td>Каждое обнаружение MODIS C6.1 (Terra, Aqua) и VIIRS S-NPP с полем <code>type</code> (растительность / вулкан / постоянный источник / офшор)</td><td>2000–2025</td></tr>
+      <tr><td>NASA FIRMS NRT</td><td>Свежие пожары всего мира: MODIS, VIIRS NOAA-20 и NOAA-21 (лента S-NPP остановлена 2 ноября 2026 г.)</td><td>последние 7 дней</td></tr>
+      <tr><td>NASA POWER</td><td>Погода по сетке H3 для Казахстана: осадки, облачность, влажность почвы</td><td>2000–сейчас</td></tr>
+      <tr><td>NASA CMR</td><td>Реальная задержка гранул MODIS и VIIRS</td><td>сейчас</td></tr>
+      <tr><td>CelesTrak, NOAA SWPC, GFZ</td><td>Орбиты (SGP4), индекс Kp, F10.7, рентген Солнца</td><td>сейчас и архив бурь</td></tr>
+      <tr><td>Natural Earth 1:10m</td><td>Границы {{COUNTRIES}} стран и {{REGIONS}} регионов (admin-1), названия на 7 языках</td><td>—</td></tr>
+    </tbody>
+  </table></div>
+  <p>Скачивание: сервер FIRMS отдаёт около 80 КБ/с на соединение, поэтому архивы качаются кусками по 4 МБ в 16 потоков с докачкой после обрывов. Каждый год сразу превращается в Parquet (≈18 байт на точку) с ячейкой H3 res 8 и отсортирован по ней.</p>
+  <p>Почему VIIRS только S-NPP: один и тот же прибор на всём периоде 2012–2025 даёт ровный ряд без двойного счёта; NOAA-20 и NOAA-21 работают в свежих данных (NRT), прибор у них такой же.</p>
+</section>
+
+<section id="noise">
+  <h2>Фильтр шума</h2>
+  <p>Горячий пиксель — это не всегда пожар: газовые факелы, металлургические заводы, вулканы, блики Солнца. Фильтр взят из открытых проектов flare-chronos и MODIS-VIIRS-fires и доработан:</p>
+  <ul>
+    <li>низкая уверенность продукта (MODIS &lt; 30%, VIIRS «low»);</li>
+    <li>поле FIRMS <code>type</code> ≠ 0;</li>
+    <li>мировой реестр постоянных источников: ячейка H3 res 8 (≈0,74 км²), где половина точек помечена как постоянный источник, или тепло держится ≥ 10 месяцев в году, или ≥ 6 месяцев три года и больше. Найдено <b>{{STATIC_CELLS}}</b> таких ячеек; с буфером в одно кольцо (пиксель MODIS «гуляет» на ~1 км) это {{STATIC_BUFFER}} ячеек.</li>
+  </ul>
+  <p>Для Казахстана работает расширенный фильтр из четырёх улик: поле <code>type</code>, временная устойчивость, повторяемость кластеров HDBSCAN и ночная доля, плюс блики, изолированные точки и подтверждение вторым спутником.</p>
+</section>
+
+<section id="harm">
+  <h2>Гармонизация MODIS и VIIRS</h2>
+  <ol class="steps">
+    <li><div>Каждое обнаружение кладётся в ячейку H3 и в <b>местные солнечные сутки</b> (UTC + долгота/15 ч): ночной пролёт в 01:30 и дневной в 13:30 относятся к одним суткам.</div></li>
+    <li><div>Считаются <b>«горящие гексагоно-сутки»</b>: сколько ячеек горело хотя бы раз за сутки, отдельно для каждого потока (Terra, Aqua, S-NPP) и для дня и ночи. Мелкий пиксель VIIRS больше не множит один пожар на десяток точек.</div></li>
+    <li><div>Каждый поток калибруется к шкале Aqua MODIS по годам совместной работы. Отношение по каждому месяцу года сжимается к общему эмпирическим Байесом; неопределённость берётся бутстрепом по годам плюс сверхпуассоновский разброс.</div></li>
+    <li><div>Калибровка своя для каждой страны (где данных мало — мировая): отношение VIIRS/MODIS зависит от типа пожаров, от степи до тропического леса.</div></li>
+    <li><div>Потоки объединяются взвешенным средним с 95% интервалом. Проверки: ступенька 2012 года исчезает, а тест «MODIS выключили» восстанавливает 2017–2020 годы только по VIIRS с ошибкой −7,4% (Казахстан).</div></li>
+  </ol>
+</section>
+
+<section id="world">
+  <h2>Все страны и регионы</h2>
+  <p>Из тех же «гексагоно-суток» строятся таблицы для карты любого масштаба: H3 от res 2 (весь мир) до res 7 (≈5 км²), а при сильном приближении сайт показывает каждый пиксель в его реальном размере (VIIRS ≈ 375 м, MODIS ≈ 1 км, у края полосы обзора больше). Каждая ячейка res 6 привязана к региону admin-1 по центру, поэтому для любой страны и любого региона мгновенно готовы помесячные ряды, гармонизированный календарь, доля территории с огнём и итоги для панели района.</p>
+  <div class="table"><table>
+    <thead><tr><th>Таблица</th><th class="num">Строк</th><th>Зачем</th></tr></thead>
+    <tbody>{{AGG_ROWS}}</tbody>
+  </table></div>
+</section>
+
+<section id="ai3">
+  <h2>ИИ №3 на Земле: прогноз пожара на 1–4 недели</h2>
+  <p>Для каждой из {{AI3_CELLS}} ячеек H3 res 5 (≈252 км²), где хоть раз горело, модель LightGBM даёт вероятность пожара на неделю вперёд. Обучение 2013–2022, выбор параметров 2023, тест 2024–2025 на <b>всех</b> ячейках мира с настоящей долей пожаров ({{AI3_BASE_RATE}} ячейко-недель). Соперник — сезонный алгоритм: доля прошлых лет, когда в эти ±2 недели в ячейке был огонь.</p>
+  <div class="table"><table>
+    <thead><tr><th>Модель, горизонт</th><th class="num">ROC-AUC ИИ</th><th class="num">ROC-AUC сезон</th><th class="num">PR-AUC ИИ</th><th class="num">PR-AUC сезон</th><th class="num">Топ-10% ячеек ловят</th></tr></thead>
+    <tbody>{{AI3_ROWS}}</tbody>
+  </table></div>
+  <p><b>Полная</b> модель знает всю историю ячейки: последние 4 недели, 13 и 52 недели, давность последнего огня, соседей и регион H3 res 3, климатологию. <b>Оперативная</b> видит только то, что есть в любой момент: последние 7 дней из ленты NRT и прошлые годы из архива. Ею считается прогноз «сейчас».</p>
+  <h3>По странам (полная модель, неделя вперёд, PR-AUC)</h3>
+  <div class="table"><table>
+    <thead><tr><th>Страна</th><th class="num">ИИ</th><th class="num">Сезонный алгоритм</th><th class="num">ROC-AUC ИИ</th></tr></thead>
+    <tbody>{{AI3_COUNTRY_ROWS}}</tbody>
+  </table></div>
+  <p>«Машина времени»: прогноз на прошлую дату полной моделью и то, что сгорело на самом деле. {{TM_LINE}}</p>
+</section>
+
+<section id="ai1">
+  <h2>ИИ №1 на борту: настоящий ли пожар и разрастётся ли он</h2>
+  <p>Нейросеть 18 → 32 → 24 → 2 ({{AI1_PARAMS}} параметров) получает только то, что спутник считает сам в момент съёмки: яркостные температуры MIR и TIR и их разность, FRP, площадь пикселя, уверенность, местное солнечное время, месяц, широту, число горячих пикселей рядом. Ещё она смотрит в компактную бортовую таблицу истории, собранную по данным до {{AI1_HIST}} года. Метки берутся из будущего: «разрастётся» — ≥ 3 чистых обнаружения в той же ячейке за следующие 3 суток. Обучение {{AI1_TRAIN}}, тест {{AI1_TEST}} по всему миру ({{AI1_NTEST}} пикселей).</p>
+  <div class="table"><table>
+    <thead><tr><th>Вопрос</th><th class="num">ИИ, ROC-AUC</th><th class="num">ИИ, PR-AUC</th><th class="num">простое правило</th></tr></thead>
+    <tbody>
+      <tr><td>Настоящий растительный пожар</td><td class="num win">{{AI1_REAL_ROC}}</td><td class="num">{{AI1_REAL_PR}}</td><td class="num">{{AI1_REAL_BASE}} (только уверенность)</td></tr>
+      <tr><td>Разрастётся за 72 ч</td><td class="num win">{{AI1_ESC_ROC}}</td><td class="num">{{AI1_ESC_PR}}</td><td class="num">{{AI1_ESC_BASE}} (только FRP)</td></tr>
+    </tbody>
+  </table></div>
+  <p>Приоритет тревоги: P(настоящий) &lt; 0,5 — подавить; P(разрастётся) ≥ {{AI1_TH_CRIT}} — «критично»; ≥ {{AI1_TH_HIGH}} — «высокий»; иначе «обычный». Пороги подобраны на 2023 годе.</p>
+</section>
+
+<section id="ai2">
+  <h2>ИИ №2 и физика связи</h2>
+  <p>Открытой телеметрии каналов спутников нет, поэтому ИИ №2 учится на физической симуляции: реальные орбиты (TLE), реальная погода у 12 станций, реальная космическая погода, включая суперсторм мая 2024 года (Kp = 9), и бюджеты линий S, X, Ka и лазера 1550 нм. Модель за 5 минут предупреждает о <b>{{AI2_RECALL}}</b> обрывов при 5% ложных тревог, простое правило «мало запаса» — о {{AI2_RULE_RECALL}}. ROC-AUC {{AI2_ROC}} против {{AI2_RULE_ROC}}.</p>
+  <p>Что мы уточнили в формулах ментора: вспышка на Солнце глушит коротковолновую связь, а X-диапазону стоит ~10⁻⁵ дБ; лазеру мешают облака (60–120 дБ) и ливень (ITU-R P.1814: при 50 мм/ч −37 дБ, и данные уходят в X-диапазон); для данных лазеру хватает ~2 Вт, а не 100.</p>
+</section>
+
+<section id="onboard">
+  <h2>Код для любого спутника</h2>
+  <p>ИИ №1 и ИИ №2 переводятся в целочисленный C99: веса int8, сумматоры int32, вероятности Q15. Без float, без malloc, без рекурсии и без стандартной библиотеки; стек меньше 200 байт. Округление сделано сдвигами неотрицательных чисел, поэтому результат одинаков на любом компиляторе и процессоре. Самопроверка сверяет C с эталоном на Python на {{ONB_VECTORS}} реальных векторах: <b>{{ONB_MISMATCH}} расхождений</b>. 24-байтный пакет тревоги совпадает с питоновским побайтно.</p>
+  <div class="table"><table>
+    <thead><tr><th>Процессор</th><th>Где летает</th><th class="num">ПЗУ, байт</th></tr></thead>
+    <tbody>{{ONB_ROWS}}</tbody>
+  </table></div>
+  <p>Точность int8 против исходной модели: средняя ошибка вероятности {{ONB_AI1_ERR}} (ИИ №1) и {{ONB_AI2_ERR}} (ИИ №2), решения совпадают в {{ONB_AI1_AGREE}} и {{ONB_AI2_AGREE}} случаев. Модель обучается в Kaggle-ноутбуке, и последняя ячейка выдаёт архив с готовым кодом; обновление «по воздуху» — только массивы весов, ≈3 КБ.</p>
+</section>
+
+<section id="delivery">
+  <h2>Доставка тревог</h2>
+  <p>Реальный пожарный день в Казахстане ({{DELIVERY_DAY}}, {{DELIVERY_ALERTS}} тревог), проигранный на реальных орбитах:</p>
+  <div class="table"><table>
+    <thead><tr><th>Схема</th><th class="num">Медиана задержки</th></tr></thead>
+    <tbody>{{DELIVERY_ROWS}}</tbody>
+  </table></div>
+  <p>{{DELIVERY_CONFIRM}} Станции в Казахстане и ретранслятор над Индийским океаном (76° в.д.) — сценарии «что если»; остальные станции и ретрансляторы реальные.</p>
+</section>
+
+<section id="api">
+  <h2>API</h2>
+  <p>FastAPI, префикс <code>/v1</code>. Сайт ходит через прокси Vite или своего сервера, поэтому CORS не нужен. Документация Swagger — <code>/docs</code>.</p>
+  <div class="table"><table>
+    <thead><tr><th>Путь</th><th>Что отдаёт</th></tr></thead>
+    <tbody>
+      <tr><td><code>/v1/hex</code></td><td>горящие гексагоны res 2–7 для видимой области и периода, по всем точкам архива</td></tr>
+      <tr><td><code>/v1/fires</code></td><td>каждое обнаружение с размером пикселя (scan × track), спутником, временем, меткой фильтра</td></tr>
+      <tr><td><code>/v1/calendar</code></td><td>гармонизированный ряд для мира, страны, региона или любой рамки</td></tr>
+      <tr><td><code>/v1/regions</code>, <code>/regions/geo</code>, <code>/regions/stats</code></td><td>поиск по странам и регионам на 7 языках, их границы и активность</td></tr>
+      <tr><td><code>/v1/area/stats</code></td><td>итоги района: точки до и после фильтра, гексагоны, отношения VIIRS/MODIS</td></tr>
+      <tr><td><code>/v1/helios/risk</code>, <code>/scenarios</code>, <code>/area</code></td><td>прогноз ИИ №3 «сейчас» и на даты «Машины времени», карточка района</td></tr>
+      <tr><td><code>/v1/helios/alerts</code>, <code>/static</code>, <code>/blind</code>, <code>/spread</code>, <code>/satellites</code></td><td>тревоги ИИ №1, постоянные источники мира, слепые зоны, распространение, спутники сейчас</td></tr>
+      <tr><td><code>/v1/helios/mission</code>, <code>/link</code></td><td>результаты бортовых ИИ, доставка тревог, калькулятор бюджета линии</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="db">
+  <h2>База и автообновление</h2>
+  <p>Supabase (Postgres) хранит то, что удобно читать напрямую: календари, реестр факелов, Fire DNA, прогнозы, тревоги, окна связи, а теперь и мировые таблицы — страны по месяцам, регионы по годам, текущий прогноз мира. Чтение открыто всем (RLS), запись — только сервером через функцию <code>helios_ingest</code> по 256-битному токену; база занимает {{DB_SIZE}} из 500 МБ бесплатного тарифа.</p>
+  <p>Каждый час Планировщик заданий Windows запускает обновление: свежие пожары NRT → фильтр → ИИ №1 → тревоги → распространение по ветру → задержки спутников → космическая погода → Supabase. Раз в сутки пересчитывается прогноз.</p>
+</section>
+
+<section id="limits">
+  <h2>Ограничения</h2>
+  <ul>
+    <li>Годовой архив FIRMS заканчивается 2025 годом. За 2026 год без ключа FIRMS доступны только последние 7 дней, поэтому прогноз «сейчас» считает оперативная модель, которой больше и не нужно; с бесплатным ключом можно добавить весь текущий год.</li>
+    <li>ИИ №2 обучен на физической симуляции каналов: настоящей телеметрии в открытом доступе нет.</li>
+    <li>Погода для ИИ №3 подключена только в казахстанском контуре; мировая модель опирается на историю огня, соседей и сезон.</li>
+    <li>Станции в Казахстане и ретранслятор на 76° в.д. — сценарии «что если».</li>
+    <li>Регионы — по Natural Earth: в некоторых странах границы устарели (в Казахстане нет областей 2022 года).</li>
+  </ul>
+</section>
+</article>
+</div>
+
+<footer>Данные: NASA FIRMS, NASA POWER, NASA CMR, CelesTrak, NOAA SWPC, GFZ, Natural Earth. Код: HELIOS-SHIELD (Python, DuckDB, LightGBM, PyTorch, C99) и сайт Kyzyl Aspan. Цифры взяты из отчётов конвейера {{GENERATED}}.</footer>
+</div>

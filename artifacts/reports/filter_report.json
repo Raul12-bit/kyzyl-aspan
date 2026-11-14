@@ -1,0 +1,26 @@
+{
+  "total": {
+    "MODIS": 1240671,
+    "VIIRS": 2504328
+  },
+  "by_reason": {
+    "MODIS": {
+      "isolated": 18957,
+      "kept": 1100846,
+      "low_probability": 16055,
+      "static_source": 104806,
+      "sun_glint": 7
+    },
+    "VIIRS": {
+      "isolated": 7762,
+      "kept": 2041073,
+      "low_probability": 4762,
+      "static_source": 450731,
+      "sun_glint": 0
+    }
+  },
+  "kept_share": {
+    "MODIS": 0.8873,
+    "VIIRS": 0.815
+  }
+}

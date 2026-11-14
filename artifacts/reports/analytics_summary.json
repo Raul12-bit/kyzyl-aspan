@@ -1,0 +1,574 @@
+{
+  "fire_dna_counts": {
+    "wildfire": 113682,
+    "agricultural": 104929,
+    "sporadic": 24648,
+    "industrial": 1150
+  },
+  "season_shift_verdict": {
+    "start_doy": "реальный сдвиг (значим и в Aqua-only)",
+    "peak_doy": "реальный сдвиг (значим и в Aqua-only)",
+    "end_doy": "значимого сдвига нет"
+  },
+  "season_shift_cells_significant": 97,
+  "blind_spot_rows": 87495,
+  "blind_spot_validation": {
+    "flagged_cell_weeks": 87495,
+    "stratified": [
+      {
+        "expected_p_bin": "0.05-0.10",
+        "cloudy_n": 143722,
+        "fire_next_after_cloudy": 0.0184,
+        "clear_n": 207306,
+        "fire_next_after_clear": 0.0241,
+        "lift": 0.762
+      },
+      {
+        "expected_p_bin": "0.10-0.20",
+        "cloudy_n": 107356,
+        "fire_next_after_cloudy": 0.038,
+        "clear_n": 145573,
+        "fire_next_after_clear": 0.0407,
+        "lift": 0.932
+      },
+      {
+        "expected_p_bin": "0.20-0.35",
+        "cloudy_n": 71221,
+        "fire_next_after_cloudy": 0.0772,
+        "clear_n": 71862,
+        "fire_next_after_clear": 0.0753,
+        "lift": 1.025
+      },
+      {
+        "expected_p_bin": "0.35-0.50",
+        "cloudy_n": 28897,
+        "fire_next_after_cloudy": 0.139,
+        "clear_n": 19624,
+        "fire_next_after_clear": 0.1366,
+        "lift": 1.018
+      },
+      {
+        "expected_p_bin": "0.50-1.00",
+        "cloudy_n": 26236,
+        "fire_next_after_cloudy": 0.2569,
+        "clear_n": 12364,
+        "fire_next_after_clear": 0.2262,
+        "lift": 1.136
+      }
+    ],
+    "weighted_lift": 0.906,
+    "interpretation": "lift>1: после облачных «пустых» недель пожары находят чаще, чем после ясных при том же ожидаемом риске — часть очагов была скрыта облаками"
+  },
+  "time_machine": [
+    {
+      "as_of": "2024-04-01",
+      "horizons": {
+        "h1": {
+          "target_week": "2024-04-08",
+          "ai": {
+            "n": 7951,
+            "positives": 209,
+            "roc_auc": 0.9159,
+            "pr_auc": 0.5065,
+            "brier": 0.04949,
+            "recall_top10pct": 0.7033
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 209,
+            "roc_auc": 0.879,
+            "pr_auc": 0.3338,
+            "brier": 0.07492,
+            "recall_top10pct": 0.6316
+          },
+          "cells_burned": 209
+        },
+        "h2": {
+          "target_week": "2024-04-15",
+          "ai": {
+            "n": 7951,
+            "positives": 425,
+            "roc_auc": 0.897,
+            "pr_auc": 0.3823,
+            "brier": 0.05219,
+            "recall_top10pct": 0.6
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 425,
+            "roc_auc": 0.8836,
+            "pr_auc": 0.3516,
+            "brier": 0.08346,
+            "recall_top10pct": 0.5765
+          },
+          "cells_burned": 425
+        },
+        "h3": {
+          "target_week": "2024-04-22",
+          "ai": {
+            "n": 7951,
+            "positives": 358,
+            "roc_auc": 0.8651,
+            "pr_auc": 0.2911,
+            "brier": 0.04799,
+            "recall_top10pct": 0.5168
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 358,
+            "roc_auc": 0.8549,
+            "pr_auc": 0.2359,
+            "brier": 0.08869,
+            "recall_top10pct": 0.5
+          },
+          "cells_burned": 358
+        },
+        "h4": {
+          "target_week": "2024-04-29",
+          "ai": {
+            "n": 7951,
+            "positives": 198,
+            "roc_auc": 0.8475,
+            "pr_auc": 0.1509,
+            "brier": 0.03775,
+            "recall_top10pct": 0.5051
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 198,
+            "roc_auc": 0.8112,
+            "pr_auc": 0.0818,
+            "brier": 0.08794,
+            "recall_top10pct": 0.3434
+          },
+          "cells_burned": 198
+        }
+      }
+    },
+    {
+      "as_of": "2024-06-03",
+      "horizons": {
+        "h1": {
+          "target_week": "2024-06-10",
+          "ai": {
+            "n": 7951,
+            "positives": 122,
+            "roc_auc": 0.8586,
+            "pr_auc": 0.2206,
+            "brier": 0.01346,
+            "recall_top10pct": 0.623
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 122,
+            "roc_auc": 0.7678,
+            "pr_auc": 0.0966,
+            "brier": 0.01976,
+            "recall_top10pct": 0.4672
+          },
+          "cells_burned": 122
+        },
+        "h2": {
+          "target_week": "2024-06-17",
+          "ai": {
+            "n": 7951,
+            "positives": 131,
+            "roc_auc": 0.8077,
+            "pr_auc": 0.1949,
+            "brier": 0.01466,
+            "recall_top10pct": 0.5344
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 131,
+            "roc_auc": 0.7157,
+            "pr_auc": 0.0832,
+            "brier": 0.02076,
+            "recall_top10pct": 0.3969
+          },
+          "cells_burned": 131
+        },
+        "h3": {
+          "target_week": "2024-06-24",
+          "ai": {
+            "n": 7951,
+            "positives": 99,
+            "roc_auc": 0.8687,
+            "pr_auc": 0.2288,
+            "brier": 0.01083,
+            "recall_top10pct": 0.6263
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 99,
+            "roc_auc": 0.7795,
+            "pr_auc": 0.138,
+            "brier": 0.01715,
+            "recall_top10pct": 0.4545
+          },
+          "cells_burned": 99
+        },
+        "h4": {
+          "target_week": "2024-07-01",
+          "ai": {
+            "n": 7951,
+            "positives": 85,
+            "roc_auc": 0.825,
+            "pr_auc": 0.1782,
+            "brier": 0.00982,
+            "recall_top10pct": 0.6235
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 85,
+            "roc_auc": 0.746,
+            "pr_auc": 0.1443,
+            "brier": 0.01634,
+            "recall_top10pct": 0.4706
+          },
+          "cells_burned": 85
+        }
+      }
+    },
+    {
+      "as_of": "2024-08-26",
+      "horizons": {
+        "h1": {
+          "target_week": "2024-09-02",
+          "ai": {
+            "n": 7951,
+            "positives": 94,
+            "roc_auc": 0.908,
+            "pr_auc": 0.3225,
+            "brier": 0.00975,
+            "recall_top10pct": 0.7872
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 94,
+            "roc_auc": 0.8558,
+            "pr_auc": 0.196,
+            "brier": 0.02445,
+            "recall_top10pct": 0.6277
+          },
+          "cells_burned": 94
+        },
+        "h2": {
+          "target_week": "2024-09-09",
+          "ai": {
+            "n": 7951,
+            "positives": 126,
+            "roc_auc": 0.8865,
+            "pr_auc": 0.3282,
+            "brier": 0.01285,
+            "recall_top10pct": 0.7063
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 126,
+            "roc_auc": 0.8602,
+            "pr_auc": 0.1784,
+            "brier": 0.02837,
+            "recall_top10pct": 0.6746
+          },
+          "cells_burned": 126
+        },
+        "h3": {
+          "target_week": "2024-09-16",
+          "ai": {
+            "n": 7951,
+            "positives": 193,
+            "roc_auc": 0.8417,
+            "pr_auc": 0.2413,
+            "brier": 0.02081,
+            "recall_top10pct": 0.5285
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 193,
+            "roc_auc": 0.8226,
+            "pr_auc": 0.1611,
+            "brier": 0.03461,
+            "recall_top10pct": 0.5026
+          },
+          "cells_burned": 193
+        },
+        "h4": {
+          "target_week": "2024-09-23",
+          "ai": {
+            "n": 7951,
+            "positives": 208,
+            "roc_auc": 0.8792,
+            "pr_auc": 0.2601,
+            "brier": 0.02203,
+            "recall_top10pct": 0.5721
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 208,
+            "roc_auc": 0.8643,
+            "pr_auc": 0.197,
+            "brier": 0.03921,
+            "recall_top10pct": 0.5481
+          },
+          "cells_burned": 208
+        }
+      }
+    },
+    {
+      "as_of": "2025-04-07",
+      "horizons": {
+        "h1": {
+          "target_week": "2025-04-14",
+          "ai": {
+            "n": 7951,
+            "positives": 696,
+            "roc_auc": 0.9107,
+            "pr_auc": 0.5111,
+            "brier": 0.05741,
+            "recall_top10pct": 0.5474
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 696,
+            "roc_auc": 0.8939,
+            "pr_auc": 0.413,
+            "brier": 0.08092,
+            "recall_top10pct": 0.5057
+          },
+          "cells_burned": 696
+        },
+        "h2": {
+          "target_week": "2025-04-21",
+          "ai": {
+            "n": 7951,
+            "positives": 880,
+            "roc_auc": 0.9162,
+            "pr_auc": 0.5318,
+            "brier": 0.06765,
+            "recall_top10pct": 0.5068
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 880,
+            "roc_auc": 0.9086,
+            "pr_auc": 0.4923,
+            "brier": 0.07734,
+            "recall_top10pct": 0.4898
+          },
+          "cells_burned": 880
+        },
+        "h3": {
+          "target_week": "2025-04-28",
+          "ai": {
+            "n": 7951,
+            "positives": 568,
+            "roc_auc": 0.8966,
+            "pr_auc": 0.3628,
+            "brier": 0.05834,
+            "recall_top10pct": 0.4982
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 568,
+            "roc_auc": 0.8954,
+            "pr_auc": 0.35,
+            "brier": 0.07502,
+            "recall_top10pct": 0.5141
+          },
+          "cells_burned": 568
+        },
+        "h4": {
+          "target_week": "2025-05-05",
+          "ai": {
+            "n": 7951,
+            "positives": 425,
+            "roc_auc": 0.8642,
+            "pr_auc": 0.2467,
+            "brier": 0.05002,
+            "recall_top10pct": 0.4588
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 425,
+            "roc_auc": 0.8494,
+            "pr_auc": 0.24,
+            "brier": 0.06971,
+            "recall_top10pct": 0.4753
+          },
+          "cells_burned": 425
+        }
+      }
+    },
+    {
+      "as_of": "2025-07-07",
+      "horizons": {
+        "h1": {
+          "target_week": "2025-07-14",
+          "ai": {
+            "n": 7951,
+            "positives": 167,
+            "roc_auc": 0.8201,
+            "pr_auc": 0.2205,
+            "brier": 0.01842,
+            "recall_top10pct": 0.5449
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 167,
+            "roc_auc": 0.74,
+            "pr_auc": 0.1127,
+            "brier": 0.02482,
+            "recall_top10pct": 0.3772
+          },
+          "cells_burned": 167
+        },
+        "h2": {
+          "target_week": "2025-07-21",
+          "ai": {
+            "n": 7951,
+            "positives": 182,
+            "roc_auc": 0.7698,
+            "pr_auc": 0.148,
+            "brier": 0.02105,
+            "recall_top10pct": 0.3956
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 182,
+            "roc_auc": 0.7122,
+            "pr_auc": 0.088,
+            "brier": 0.02789,
+            "recall_top10pct": 0.3187
+          },
+          "cells_burned": 182
+        },
+        "h3": {
+          "target_week": "2025-07-28",
+          "ai": {
+            "n": 7951,
+            "positives": 109,
+            "roc_auc": 0.7853,
+            "pr_auc": 0.1432,
+            "brier": 0.01325,
+            "recall_top10pct": 0.4771
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 109,
+            "roc_auc": 0.7572,
+            "pr_auc": 0.0765,
+            "brier": 0.02213,
+            "recall_top10pct": 0.4404
+          },
+          "cells_burned": 109
+        },
+        "h4": {
+          "target_week": "2025-08-04",
+          "ai": {
+            "n": 7951,
+            "positives": 133,
+            "roc_auc": 0.838,
+            "pr_auc": 0.1876,
+            "brier": 0.01536,
+            "recall_top10pct": 0.5188
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 133,
+            "roc_auc": 0.7896,
+            "pr_auc": 0.1315,
+            "brier": 0.02434,
+            "recall_top10pct": 0.4662
+          },
+          "cells_burned": 133
+        }
+      }
+    },
+    {
+      "as_of": "2025-09-01",
+      "horizons": {
+        "h1": {
+          "target_week": "2025-09-08",
+          "ai": {
+            "n": 7951,
+            "positives": 102,
+            "roc_auc": 0.9083,
+            "pr_auc": 0.2486,
+            "brier": 0.01159,
+            "recall_top10pct": 0.7157
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 102,
+            "roc_auc": 0.8456,
+            "pr_auc": 0.1567,
+            "brier": 0.02682,
+            "recall_top10pct": 0.6078
+          },
+          "cells_burned": 102
+        },
+        "h2": {
+          "target_week": "2025-09-15",
+          "ai": {
+            "n": 7951,
+            "positives": 117,
+            "roc_auc": 0.8581,
+            "pr_auc": 0.1356,
+            "brier": 0.01484,
+            "recall_top10pct": 0.5726
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 117,
+            "roc_auc": 0.8152,
+            "pr_auc": 0.0819,
+            "brier": 0.03062,
+            "recall_top10pct": 0.453
+          },
+          "cells_burned": 117
+        },
+        "h3": {
+          "target_week": "2025-09-22",
+          "ai": {
+            "n": 7951,
+            "positives": 183,
+            "roc_auc": 0.8316,
+            "pr_auc": 0.1782,
+            "brier": 0.02158,
+            "recall_top10pct": 0.4754
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 183,
+            "roc_auc": 0.7987,
+            "pr_auc": 0.1261,
+            "brier": 0.04047,
+            "recall_top10pct": 0.4536
+          },
+          "cells_burned": 183
+        },
+        "h4": {
+          "target_week": "2025-09-29",
+          "ai": {
+            "n": 7951,
+            "positives": 180,
+            "roc_auc": 0.8712,
+            "pr_auc": 0.2842,
+            "brier": 0.0203,
+            "recall_top10pct": 0.5389
+          },
+          "seasonal_baseline": {
+            "n": 7951,
+            "positives": 180,
+            "roc_auc": 0.8517,
+            "pr_auc": 0.2304,
+            "brier": 0.04326,
+            "recall_top10pct": 0.55
+          },
+          "cells_burned": 180
+        }
+      }
+    }
+  ]
+}

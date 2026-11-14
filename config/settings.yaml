@@ -1,0 +1,92 @@
+# HELIOS-SHIELD — глобальные настройки пайплайна.
+# Регион по умолчанию: Казахстан. Чтобы сменить регион, поменяйте блок `region`
+# (имя страны в архиве FIRMS + bbox) и перезапустите `python -m helios.cli all`.
+
+project:
+  name: HELIOS-SHIELD
+  version: 0.1.0
+
+region:
+  id: kz
+  name: Казахстан
+  firms_country: Kazakhstan        # имя страны в годовом архиве FIRMS (data/country/...)
+  firms_open_region: Russia_Asia   # региональная NRT-лента FIRMS без ключа
+  iso3: KAZ                        # для контура страны (geoBoundaries)
+  bbox: [46.4, 40.5, 87.4, 55.5]   # [запад, юг, восток, север]
+  utc_offset_h: 5
+
+history:
+  start_year: 2000
+  end_year: 2025                   # последний полный год научного архива FIRMS
+  streams:                         # поток -> (папка архива FIRMS, первый год)
+    modis: {archive: modis, first_year: 2000}
+    viirs_snpp: {archive: viirs-snpp, first_year: 2012}
+    viirs_noaa20: {archive: viirs-jpss1, first_year: 2018}
+    viirs_noaa21: {archive: viirs-jpss2, first_year: 2024}
+
+h3:
+  res_fine: 8        # реестр постоянных источников (~0.74 км²)
+  res_cell: 7        # «сгоревшие гексагоны» (cell-days, ~5.2 км²)
+  res_model: 5       # прогноз ИИ №3 и бортовая таблица истории (~252 км²)
+  res_weather: 3     # сетка погоды NASA POWER (~12 400 км²)
+
+filters:
+  modis_min_conf: 30            # ниже — low confidence (рекомендация FIRMS, как в kiln-watch)
+  viirs_drop_low: true
+  p_fire_keep: 0.45             # порог унифицированной вероятности пожара P(fire)
+  static_min_months: 10         # >=10 разных месяцев в году -> постоянный источник (flare-chronos)
+  static_min_years: 3           # ...и так минимум 3 года подряд/суммарно
+  static_type_share: 0.5        # доля type∈{1,2,3} в ячейке (маска статичных источников)
+  hdbscan_min_cluster: 5        # годовая кластеризация факелов (MODIS-VIIRS-fires)
+  hdbscan_recurrence_years: 4   # кластер на том же месте >=4 лет -> постоянный источник
+  isolation_radius_km: 3.0      # одиночная точка без соседей в радиусе/окне -> шум
+  isolation_window_days: 2
+  glint_angle_deg: 12.0         # угол солнечного блика, ниже — риск ложной точки днём
+  saa_bbox: [-110.0, -55.0, 11.0, 7.0]   # Южно-Атлантическая аномалия [W, S, E, N]
+
+harmonization:
+  reference: MODIS_A            # общая шкала — Aqua MODIS (летает с 2002 г. всё время)
+  bridges:                      # поток -> (опорный поток, окно перекрытия)
+    MODIS_T: {ref: MODIS_A, start: "2003-01", end: "2019-12"}
+    VIIRS_SNPP: {ref: MODIS_A, start: "2012-03", end: "2020-12"}
+    VIIRS_NOAA20: {ref: VIIRS_SNPP, start: "2018-06", end: "2025-12"}
+    VIIRS_NOAA21: {ref: VIIRS_NOAA20, start: "2024-02", end: "2026-12"}
+  denial_train: ["2012-03", "2016-12"]   # тест «MODIS выключили»: учимся до 2016...
+  denial_test: ["2017-01", "2020-12"]    # ...и восстанавливаем 2017-2020 только по VIIRS
+
+models:
+  edge:                         # ИИ №1 (на борту): критичность обнаружения
+    history_until_year: 2018    # бортовая таблица истории строится только по 2000-2018
+    train_years: [2019, 2023]
+    val_year: 2024
+    test_year: 2025
+    escalation_window_h: 72
+    escalation_radius_km: 10
+    escalation_min_celldays: 6
+  link:                         # ИИ №2 (на борту): прогноз потери связи
+    sim_days: 10
+    step_s: 30
+    min_elevation_deg: 5
+  ground:                       # ИИ №3 (Земля): прогноз пожарного риска
+    train_years: [2013, 2022]
+    val_year: 2023
+    test_years: [2024, 2025]
+    horizon_days: 7
+    negative_sample_rate: 0.15
+
+apis:
+  firms: https://firms.modaps.eosdis.nasa.gov
+  power: https://power.larc.nasa.gov/api/temporal/daily/point
+  open_meteo_forecast: https://api.open-meteo.com/v1/forecast
+  open_meteo_archive: https://archive-api.open-meteo.com/v1/archive
+  celestrak: https://celestrak.org/NORAD/elements/gp.php
+  swpc: https://services.swpc.noaa.gov
+  gfz: https://kp.gfz-potsdam.de/app/json/
+  donki: https://api.nasa.gov/DONKI
+  donki_mirror: https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get
+  cmr: https://cmr.earthdata.nasa.gov/search
+  eonet: https://eonet.gsfc.nasa.gov/api/v3
+  gibs_wmts: https://gibs.earthdata.nasa.gov/wmts/epsg3857/best
+  geoboundaries: https://www.geoboundaries.org/api/current/gbOpen
+  gemini_model: gemini-2.5-flash
+  gemini_fallback_models: [gemini-flash-latest, gemini-2.0-flash]

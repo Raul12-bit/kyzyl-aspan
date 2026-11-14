@@ -1,0 +1,38 @@
+{
+ "scope": "world",
+ "train_years": [
+  2018,
+  2022
+ ],
+ "val_year": 2023,
+ "test_years": [
+  2024,
+  2025
+ ],
+ "history_until": 2017,
+ "n_train": 2700000,
+ "n_test": 1080000,
+ "p_real": {
+  "roc_auc": 0.9841,
+  "pr_auc": 0.9986,
+  "baseline_confidence_only_auc": 0.5014,
+  "real_share": 0.9287
+ },
+ "p_escalation": {
+  "positives_share": 0.1653,
+  "roc_auc": 0.826,
+  "pr_auc": 0.5473,
+  "baseline_frp_only_auc": 0.5759,
+  "baseline_frp_only_pr_auc": 0.2255
+ },
+ "thresholds": {
+  "critical": 0.8694,
+  "high": 0.5123,
+  "real": 0.5
+ },
+ "model": {
+  "parameters": 1450,
+  "onnx_fp32_kb": 6.8
+ },
+ "seconds": 184
+}

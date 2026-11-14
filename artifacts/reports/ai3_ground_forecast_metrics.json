@@ -1,0 +1,264 @@
+{
+  "train": [
+    2013,
+    2022
+  ],
+  "val": 2023,
+  "test": [
+    2024,
+    2025
+  ],
+  "horizons": {
+    "h1": {
+      "val": {
+        "ai": {
+          "n": 413452,
+          "positives": 9298,
+          "roc_auc": 0.927,
+          "pr_auc": 0.3933,
+          "brier": 0.01724,
+          "recall_top10pct": 0.7489
+        },
+        "baseline_climatology": {
+          "n": 413452,
+          "positives": 9298,
+          "roc_auc": 0.8815,
+          "pr_auc": 0.2896,
+          "brier": 0.02651,
+          "recall_top10pct": 0.6682
+        },
+        "baseline_persistence": {
+          "n": 413452,
+          "positives": 9298,
+          "roc_auc": 0.8939,
+          "pr_auc": 0.3234,
+          "brier": 0.02705,
+          "recall_top10pct": 0.7045
+        }
+      },
+      "test": {
+        "ai": {
+          "n": 826904,
+          "positives": 17298,
+          "roc_auc": 0.9305,
+          "pr_auc": 0.3655,
+          "brier": 0.01669,
+          "recall_top10pct": 0.7699
+        },
+        "baseline_climatology": {
+          "n": 826904,
+          "positives": 17298,
+          "roc_auc": 0.8903,
+          "pr_auc": 0.2617,
+          "brier": 0.02593,
+          "recall_top10pct": 0.6827
+        },
+        "baseline_persistence": {
+          "n": 826904,
+          "positives": 17298,
+          "roc_auc": 0.9011,
+          "pr_auc": 0.3154,
+          "brier": 0.02523,
+          "recall_top10pct": 0.7105
+        }
+      },
+      "seconds": 61.3
+    },
+    "h2": {
+      "val": {
+        "ai": {
+          "n": 413452,
+          "positives": 9295,
+          "roc_auc": 0.9206,
+          "pr_auc": 0.362,
+          "brier": 0.01778,
+          "recall_top10pct": 0.731
+        },
+        "baseline_climatology": {
+          "n": 413452,
+          "positives": 9295,
+          "roc_auc": 0.8817,
+          "pr_auc": 0.2897,
+          "brier": 0.0265,
+          "recall_top10pct": 0.669
+        },
+        "baseline_persistence": {
+          "n": 413452,
+          "positives": 9295,
+          "roc_auc": 0.8862,
+          "pr_auc": 0.2709,
+          "brier": 0.03005,
+          "recall_top10pct": 0.6846
+        }
+      },
+      "test": {
+        "ai": {
+          "n": 818953,
+          "positives": 17294,
+          "roc_auc": 0.9155,
+          "pr_auc": 0.302,
+          "brier": 0.01825,
+          "recall_top10pct": 0.7266
+        },
+        "baseline_climatology": {
+          "n": 818953,
+          "positives": 17294,
+          "roc_auc": 0.8895,
+          "pr_auc": 0.2618,
+          "brier": 0.02617,
+          "recall_top10pct": 0.6807
+        },
+        "baseline_persistence": {
+          "n": 818953,
+          "positives": 17294,
+          "roc_auc": 0.894,
+          "pr_auc": 0.2642,
+          "brier": 0.02831,
+          "recall_top10pct": 0.6926
+        }
+      },
+      "seconds": 54.3
+    },
+    "h3": {
+      "val": {
+        "ai": {
+          "n": 413452,
+          "positives": 9281,
+          "roc_auc": 0.9185,
+          "pr_auc": 0.3432,
+          "brier": 0.01809,
+          "recall_top10pct": 0.725
+        },
+        "baseline_climatology": {
+          "n": 413452,
+          "positives": 9281,
+          "roc_auc": 0.8824,
+          "pr_auc": 0.29,
+          "brier": 0.02647,
+          "recall_top10pct": 0.6694
+        },
+        "baseline_persistence": {
+          "n": 413452,
+          "positives": 9281,
+          "roc_auc": 0.8855,
+          "pr_auc": 0.2426,
+          "brier": 0.03154,
+          "recall_top10pct": 0.6873
+        }
+      },
+      "test": {
+        "ai": {
+          "n": 811002,
+          "positives": 17289,
+          "roc_auc": 0.91,
+          "pr_auc": 0.2975,
+          "brier": 0.01856,
+          "recall_top10pct": 0.7103
+        },
+        "baseline_climatology": {
+          "n": 811002,
+          "positives": 17289,
+          "roc_auc": 0.8888,
+          "pr_auc": 0.2619,
+          "brier": 0.02642,
+          "recall_top10pct": 0.6782
+        },
+        "baseline_persistence": {
+          "n": 811002,
+          "positives": 17289,
+          "roc_auc": 0.8906,
+          "pr_auc": 0.2354,
+          "brier": 0.03022,
+          "recall_top10pct": 0.6856
+        }
+      },
+      "seconds": 48.2
+    },
+    "h4": {
+      "val": {
+        "ai": {
+          "n": 413452,
+          "positives": 9257,
+          "roc_auc": 0.9174,
+          "pr_auc": 0.3385,
+          "brier": 0.01819,
+          "recall_top10pct": 0.7211
+        },
+        "baseline_climatology": {
+          "n": 413452,
+          "positives": 9257,
+          "roc_auc": 0.8835,
+          "pr_auc": 0.2907,
+          "brier": 0.02641,
+          "recall_top10pct": 0.67
+        },
+        "baseline_persistence": {
+          "n": 413452,
+          "positives": 9257,
+          "roc_auc": 0.8848,
+          "pr_auc": 0.2199,
+          "brier": 0.03273,
+          "recall_top10pct": 0.6856
+        }
+      },
+      "test": {
+        "ai": {
+          "n": 803051,
+          "positives": 17289,
+          "roc_auc": 0.9091,
+          "pr_auc": 0.2981,
+          "brier": 0.01872,
+          "recall_top10pct": 0.7023
+        },
+        "baseline_climatology": {
+          "n": 803051,
+          "positives": 17289,
+          "roc_auc": 0.888,
+          "pr_auc": 0.2619,
+          "brier": 0.02668,
+          "recall_top10pct": 0.6738
+        },
+        "baseline_persistence": {
+          "n": 803051,
+          "positives": 17289,
+          "roc_auc": 0.8877,
+          "pr_auc": 0.207,
+          "brier": 0.03196,
+          "recall_top10pct": 0.6814
+        }
+      },
+      "seconds": 113.6
+    }
+  },
+  "feature_importance_h1": {
+    "weeks_since_fire": 0.0533,
+    "clim_woy_next": 0.045,
+    "a_t": 0.0232,
+    "nb1_2w": 0.0187,
+    "lat": 0.0131,
+    "years_burned_share": 0.0106,
+    "sum8": 0.01,
+    "precip_7d": 0.0088,
+    "nb2_2w": 0.0062,
+    "sum4": 0.0052,
+    "lon": 0.0033,
+    "ws10m_max": 0.0028,
+    "a_t3": 0.0027,
+    "woy_cos": 0.0025,
+    "a_t2": 0.0024,
+    "precip_28d": 0.0018,
+    "a_t1": 0.0017,
+    "t2m_anom": 0.0015,
+    "gwet_anom": 0.0002,
+    "n_viirs": 0.0,
+    "precip28_anom": -0.0003,
+    "frp4_log": -0.0035,
+    "clim_woy": -0.0038,
+    "cloud": -0.0038,
+    "nb1_8w": -0.0044,
+    "rh2m": -0.0094,
+    "gwet": -0.0099,
+    "t2m_max": -0.0155,
+    "woy_sin": -0.0177
+  }
+}

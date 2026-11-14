@@ -1,0 +1,407 @@
+{
+  "period": [
+    2003,
+    2025
+  ],
+  "all_sensors": {
+    "start_doy": {
+      "n_years": 23,
+      "days_per_decade": -10.0,
+      "ci95_days_per_decade": [
+        -16.0,
+        -3.1
+      ],
+      "kendall_tau": -0.417,
+      "p_value": 0.0059,
+      "significant": true
+    },
+    "peak_doy": {
+      "n_years": 23,
+      "days_per_decade": -23.0,
+      "ci95_days_per_decade": [
+        -57.3,
+        -8.3
+      ],
+      "kendall_tau": -0.526,
+      "p_value": 0.0003,
+      "significant": true
+    },
+    "end_doy": {
+      "n_years": 23,
+      "days_per_decade": 0.0,
+      "ci95_days_per_decade": [
+        -10.0,
+        7.1
+      ],
+      "kendall_tau": -0.016,
+      "p_value": 0.9156,
+      "significant": false
+    },
+    "yearly": [
+      {
+        "year": 2003,
+        "start_doy": 105,
+        "peak_doy": 281.7,
+        "end_doy": 287,
+        "total": 56397.0
+      },
+      {
+        "year": 2004,
+        "start_doy": 109,
+        "peak_doy": 121.0,
+        "end_doy": 275,
+        "total": 51318.0
+      },
+      {
+        "year": 2005,
+        "start_doy": 105,
+        "peak_doy": 184.2,
+        "end_doy": 288,
+        "total": 36144.0
+      },
+      {
+        "year": 2006,
+        "start_doy": 95,
+        "peak_doy": 241.0,
+        "end_doy": 266,
+        "total": 40638.0
+      },
+      {
+        "year": 2007,
+        "start_doy": 102,
+        "peak_doy": 248.4,
+        "end_doy": 289,
+        "total": 29163.0
+      },
+      {
+        "year": 2008,
+        "start_doy": 90,
+        "peak_doy": 98.8,
+        "end_doy": 278,
+        "total": 41389.0
+      },
+      {
+        "year": 2009,
+        "start_doy": 91,
+        "peak_doy": 287.1,
+        "end_doy": 291,
+        "total": 21843.0
+      },
+      {
+        "year": 2010,
+        "start_doy": 111,
+        "peak_doy": 117.8,
+        "end_doy": 266,
+        "total": 31970.0
+      },
+      {
+        "year": 2011,
+        "start_doy": 88,
+        "peak_doy": 98.5,
+        "end_doy": 284,
+        "total": 13014.0
+      },
+      {
+        "year": 2012,
+        "start_doy": 100,
+        "peak_doy": 106.7,
+        "end_doy": 259,
+        "total": 65056.0
+      },
+      {
+        "year": 2013,
+        "start_doy": 78,
+        "peak_doy": 97.1,
+        "end_doy": 289,
+        "total": 22907.0
+      },
+      {
+        "year": 2014,
+        "start_doy": 93,
+        "peak_doy": 117.5,
+        "end_doy": 251,
+        "total": 45845.0
+      },
+      {
+        "year": 2015,
+        "start_doy": 94,
+        "peak_doy": 113.7,
+        "end_doy": 276,
+        "total": 44460.0
+      },
+      {
+        "year": 2016,
+        "start_doy": 69,
+        "peak_doy": 115.0,
+        "end_doy": 269,
+        "total": 28761.0
+      },
+      {
+        "year": 2017,
+        "start_doy": 104,
+        "peak_doy": 115.4,
+        "end_doy": 270,
+        "total": 73924.0
+      },
+      {
+        "year": 2018,
+        "start_doy": 98,
+        "peak_doy": 105.7,
+        "end_doy": 282,
+        "total": 46428.0
+      },
+      {
+        "year": 2019,
+        "start_doy": 91,
+        "peak_doy": 110.3,
+        "end_doy": 275,
+        "total": 70641.0
+      },
+      {
+        "year": 2020,
+        "start_doy": 76,
+        "peak_doy": 99.0,
+        "end_doy": 289,
+        "total": 55883.0
+      },
+      {
+        "year": 2021,
+        "start_doy": 100,
+        "peak_doy": 109.2,
+        "end_doy": 281,
+        "total": 45520.0
+      },
+      {
+        "year": 2022,
+        "start_doy": 93,
+        "peak_doy": 104.2,
+        "end_doy": 276,
+        "total": 32515.0
+      },
+      {
+        "year": 2023,
+        "start_doy": 83,
+        "peak_doy": 93.7,
+        "end_doy": 231,
+        "total": 26905.0
+      },
+      {
+        "year": 2024,
+        "start_doy": 78,
+        "peak_doy": 99.6,
+        "end_doy": 282,
+        "total": 14242.0
+      },
+      {
+        "year": 2025,
+        "start_doy": 78,
+        "peak_doy": 89.2,
+        "end_doy": 290,
+        "total": 32227.0
+      }
+    ]
+  },
+  "aqua_only": {
+    "start_doy": {
+      "n_years": 23,
+      "days_per_decade": -10.0,
+      "ci95_days_per_decade": [
+        -17.7,
+        -3.3
+      ],
+      "kendall_tau": -0.42,
+      "p_value": 0.0054,
+      "significant": true
+    },
+    "peak_doy": {
+      "n_years": 23,
+      "days_per_decade": -24.0,
+      "ci95_days_per_decade": [
+        -88.9,
+        -6.5
+      ],
+      "kendall_tau": -0.423,
+      "p_value": 0.0042,
+      "significant": true
+    },
+    "end_doy": {
+      "n_years": 23,
+      "days_per_decade": 0.6,
+      "ci95_days_per_decade": [
+        -7.3,
+        7.5
+      ],
+      "kendall_tau": 0.02,
+      "p_value": 0.8948,
+      "significant": false
+    },
+    "yearly": [
+      {
+        "year": 2003,
+        "start_doy": 103,
+        "peak_doy": 281.7,
+        "end_doy": 287,
+        "total": 35397.0
+      },
+      {
+        "year": 2004,
+        "start_doy": 108,
+        "peak_doy": 120.8,
+        "end_doy": 276,
+        "total": 30575.0
+      },
+      {
+        "year": 2005,
+        "start_doy": 102,
+        "peak_doy": 280.3,
+        "end_doy": 289,
+        "total": 21174.0
+      },
+      {
+        "year": 2006,
+        "start_doy": 91,
+        "peak_doy": 241.1,
+        "end_doy": 269,
+        "total": 23546.0
+      },
+      {
+        "year": 2007,
+        "start_doy": 96,
+        "peak_doy": 248.8,
+        "end_doy": 290,
+        "total": 17440.0
+      },
+      {
+        "year": 2008,
+        "start_doy": 90,
+        "peak_doy": 98.6,
+        "end_doy": 279,
+        "total": 24470.0
+      },
+      {
+        "year": 2009,
+        "start_doy": 90,
+        "peak_doy": 287.2,
+        "end_doy": 292,
+        "total": 12875.0
+      },
+      {
+        "year": 2010,
+        "start_doy": 111,
+        "peak_doy": 117.2,
+        "end_doy": 270,
+        "total": 18591.0
+      },
+      {
+        "year": 2011,
+        "start_doy": 86,
+        "peak_doy": 98.1,
+        "end_doy": 286,
+        "total": 7953.0
+      },
+      {
+        "year": 2012,
+        "start_doy": 100,
+        "peak_doy": 106.5,
+        "end_doy": 268,
+        "total": 17910.0
+      },
+      {
+        "year": 2013,
+        "start_doy": 78,
+        "peak_doy": 91.6,
+        "end_doy": 290,
+        "total": 5806.0
+      },
+      {
+        "year": 2014,
+        "start_doy": 92,
+        "peak_doy": 115.9,
+        "end_doy": 257,
+        "total": 11698.0
+      },
+      {
+        "year": 2015,
+        "start_doy": 91,
+        "peak_doy": 113.7,
+        "end_doy": 277,
+        "total": 12089.0
+      },
+      {
+        "year": 2016,
+        "start_doy": 66,
+        "peak_doy": 114.9,
+        "end_doy": 271,
+        "total": 7329.0
+      },
+      {
+        "year": 2017,
+        "start_doy": 103,
+        "peak_doy": 196.5,
+        "end_doy": 282,
+        "total": 21350.0
+      },
+      {
+        "year": 2018,
+        "start_doy": 95,
+        "peak_doy": 104.3,
+        "end_doy": 283,
+        "total": 9806.0
+      },
+      {
+        "year": 2019,
+        "start_doy": 91,
+        "peak_doy": 107.5,
+        "end_doy": 278,
+        "total": 15851.0
+      },
+      {
+        "year": 2020,
+        "start_doy": 74,
+        "peak_doy": 98.3,
+        "end_doy": 290,
+        "total": 12103.0
+      },
+      {
+        "year": 2021,
+        "start_doy": 100,
+        "peak_doy": 107.8,
+        "end_doy": 284,
+        "total": 9573.0
+      },
+      {
+        "year": 2022,
+        "start_doy": 88,
+        "peak_doy": 253.0,
+        "end_doy": 280,
+        "total": 4794.0
+      },
+      {
+        "year": 2023,
+        "start_doy": 82,
+        "peak_doy": 89.3,
+        "end_doy": 232,
+        "total": 5090.0
+      },
+      {
+        "year": 2024,
+        "start_doy": 73,
+        "peak_doy": 100.5,
+        "end_doy": 282,
+        "total": 2413.0
+      },
+      {
+        "year": 2025,
+        "start_doy": 77,
+        "peak_doy": 87.5,
+        "end_doy": 293,
+        "total": 6162.0
+      }
+    ]
+  },
+  "verdict": {
+    "start_doy": "реальный сдвиг (значим и в Aqua-only)",
+    "peak_doy": "реальный сдвиг (значим и в Aqua-only)",
+    "end_doy": "значимого сдвига нет"
+  }
+}

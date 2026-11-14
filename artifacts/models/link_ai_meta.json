@@ -1,0 +1,76 @@
+{
+  "features": [
+    "el",
+    "el_rate",
+    "range_km",
+    "t_since_aos",
+    "t_to_los",
+    "max_el_pass",
+    "sun_sep",
+    "geomag_abs",
+    "alt_km",
+    "fc_precip",
+    "fc_cloud",
+    "rh",
+    "kp",
+    "log_xray",
+    "f107",
+    "margin_now",
+    "margin_trend",
+    "ch_S",
+    "ch_X",
+    "ch_Ka",
+    "ch_OPT"
+  ],
+  "rows_alive": 186740,
+  "test_rows": 47502,
+  "outage_rate": 0.0291,
+  "outage_rate_by_channel": {
+    "Ka": 0.0037,
+    "OPT": 0.0734,
+    "S": 0.0141,
+    "X": 0.0506
+  },
+  "max_kp_in_data": 9.0,
+  "ai": {
+    "roc_auc": 0.9904,
+    "pr_auc": 0.8852,
+    "early_warning_recall_at_5pct_false_alarms": 0.9463
+  },
+  "baseline_margin_rule": {
+    "roc_auc": 0.7757,
+    "pr_auc": 0.1921,
+    "early_warning_recall_at_5pct_false_alarms": 0.4014
+  },
+  "by_channel": {
+    "Ka": {
+      "ai_roc_auc": 0.9953,
+      "ai_pr_auc": 0.4185,
+      "rule_pr_auc": 0.0061,
+      "positives": 33
+    },
+    "OPT": {
+      "ai_roc_auc": 0.715,
+      "ai_pr_auc": 0.3188,
+      "rule_pr_auc": 0.083,
+      "positives": 196
+    },
+    "S": {
+      "ai_roc_auc": 0.9638,
+      "ai_pr_auc": 0.4549,
+      "rule_pr_auc": 0.1368,
+      "positives": 251
+    },
+    "X": {
+      "ai_roc_auc": 0.9999,
+      "ai_pr_auc": 0.9989,
+      "rule_pr_auc": 0.4419,
+      "positives": 935
+    }
+  },
+  "model": {
+    "onnx_kb": 6.0,
+    "parameters": 1249
+  },
+  "train_seconds": 140.7
+}
