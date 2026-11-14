@@ -16,6 +16,78 @@ export const en = {
     nav: { map: 'Fire map', mission: 'Mission', method: 'Method', label: 'Main' },
     language: 'Language',
     useLocation: 'Use my location',
+    theme: { toLight: 'Switch to light theme', toDark: 'Switch to dark theme' },
+  },
+  landing: {
+    title: 'Kyzyl Aspan — fire from space, on one honest scale',
+    heroHint: 'Click the Earth to open the fire map',
+    scroll: 'Scroll',
+    navCta: 'Open map',
+    statement: {
+      eyebrow: 'NASA Space Apps Challenge 2026',
+      title: 'Twenty-six years of fire from space, on one honest scale.',
+      accent: 'one honest scale',
+    },
+    what: {
+      eyebrow: 'What we do',
+      title: 'One question: where does it really burn?',
+      accent: 'really',
+      items: [
+        {
+          kicker: 'Fire map',
+          title: 'Two sensors, one comparable record',
+          body: 'MODIS and VIIRS detections are counted as burning hexagon-days on one H3 grid, so a fire season in 2005 can finally be compared with one in 2025.',
+        },
+        {
+          kicker: 'Noise filter',
+          title: 'Only real fires are counted',
+          body: 'Gas flares, steel works, volcanoes and low-confidence pixels are removed before anything is counted — and the map shows how much was dropped.',
+        },
+        {
+          kicker: 'AI brief',
+          title: 'A region explained in a minute',
+          body: 'Pick a country or draw a box. We compute the statistics; an AI model turns them into a short brief. Without a model key, transparent rules write it instead.',
+        },
+      ],
+      cta: 'Open the map',
+    },
+    numbers: {
+      eyebrow: 'In numbers',
+      items: [
+        { value: '26', unit: 'years', label: 'of MODIS fire detections, since 2000' },
+        { value: '375', unit: 'm', label: 'VIIRS pixel — about 7× less area than a 1 km MODIS pixel' },
+        { value: '3–4×', label: 'more hot pixels from VIIRS over the same fire' },
+        { value: '8', label: 'interface languages, Kazakh included' },
+      ],
+    },
+    how: {
+      eyebrow: 'How it works',
+      title: 'From raw pixels to a number you can trust',
+      cta: 'Read the method',
+    },
+    mission: {
+      eyebrow: 'Concept · space segment',
+      title: 'What the next fire satellite could do on board',
+      body: 'A tiny model that triages hot spots in orbit, a downlink planner that picks the ground station by weather, and satellite-to-satellite cueing — simulated in the browser and clearly labelled as concepts.',
+      cta: 'Explore the mission',
+    },
+    about: {
+      eyebrow: 'Who we are',
+      title: 'A team from Kazakhstan',
+      body: 'Kyzyl Aspan means “red sky” in Kazakh — the colour of the steppe in fire season. We build open tools on open NASA data and say plainly what the numbers can and cannot tell.',
+      facts: [
+        { label: 'Challenge', value: 'NASA Space Apps 2026' },
+        { label: 'Topic', value: 'Harmonization of MODIS and VIIRS hot spots' },
+        { label: 'Data', value: 'NASA FIRMS · MODIS C6.1 · VIIRS 375 m' },
+        { label: 'Status', value: 'MVP · synthetic demo data' },
+      ],
+    },
+    final: { title: 'See where the planet burns.', accent: 'burns', cta: 'Open the fire map' },
+    footer: {
+      disclaimer: 'Built for NASA Space Apps Challenge 2026. Not an official NASA product.',
+      data: 'Fire data: NASA FIRMS. Earth imagery: NASA Blue Marble and Black Marble.',
+      rights: '© 2026 Kyzyl Aspan',
+    },
   },
   intro: {
     eyebrow: 'NASA Space Apps 2026 · MODIS × VIIRS hot spots',
@@ -33,7 +105,8 @@ export const en = {
     satViirsDesc: 'Suomi NPP & NOAA-20 · 375 m pixels · since 2012',
     skip: 'Skip',
     skipHint: 'Skip the transition',
-    globeLabel: 'Rotating 3D Earth with glowing points of fire activity and two satellites, MODIS and VIIRS, on their orbits',
+    globeLabel:
+      'Rotating 3D Earth with glowing points of fire activity and two satellites, MODIS and VIIRS, on their orbits',
     noGlobe: 'Simplified view: this browser cannot render the 3D globe.',
   },
   geo: {
@@ -95,7 +168,8 @@ export const en = {
       count: (n: string) => `${n} in range`,
       notAvailable: 'not yet in orbit',
       notSummed: 'Shown side by side, never added up.',
-      detectionNotFire: 'A detection is a hot pixel, not a fire: one fire can light up many pixels, and clouds can hide it.',
+      detectionNotFire:
+        'A detection is a hot pixel, not a fire: one fire can light up many pixels, and clouds can hide it.',
     },
     noise: {
       title: 'Noise filter',
@@ -105,14 +179,14 @@ export const en = {
       staticDesc: 'Gas flares, steel works, volcanoes: hot in the same cell every season, year after year',
       removed: (n: string) => `${n} removed`,
       staticCells: (n: string) => `${n} persistent cells found in 26 years`,
-      score: (precision: string, kept: string) => `On synthetic truth: ${precision} of removed points were noise; ${kept} of real fires kept.`,
+      score: (precision: string, kept: string) =>
+        `On synthetic truth: ${precision} of removed points were noise; ${kept} of real fires kept.`,
     },
     legend: {
       title: 'Legend',
       square: 'MODIS detection',
       dot: 'VIIRS detection',
-      size: 'Size = fire radiative power',
-      cluster: 'Ring = nearby detections grouped',
+      cluster: 'Larger hexagon = nearby detections grouped',
       hex: 'Burning hexagon-days',
       less: 'fewer',
       more: 'more',
@@ -132,7 +206,8 @@ export const en = {
       loading: 'Loading detections…',
       error: 'Detections could not be loaded.',
       basemapDown: 'Basemap unavailable — data shown on a plain background.',
-      noWebgl: 'Map rendering is unavailable in this browser. You can still search regions and read the analysis.',
+      noWebgl:
+        'Map rendering is unavailable in this browser. You can still search regions and read the analysis.',
     },
     controls: { zoomIn: 'Zoom in', zoomOut: 'Zoom out', reset: 'Back to the area', world: 'Whole world' },
     tooltip: {
@@ -156,7 +231,8 @@ export const en = {
       removed: 'Noise removed',
       ratioRaw: 'VIIRS / MODIS, pixels',
       ratioHex: 'VIIRS / MODIS, hexagons',
-      ratioHint: 'Counting hexagons instead of pixels shrinks the 3–4× resolution gap — the rest is calibrated.',
+      ratioHint:
+        'Counting hexagons instead of pixels shrinks the 3–4× resolution gap — the rest is calibrated.',
       calendar: 'Harmonized activity, 2000–2026',
       calendarHint: 'MODIS-equivalent burning hexagon-days per year; whiskers show the 90% interval.',
       peak: 'Peak months',
@@ -177,13 +253,15 @@ export const en = {
       sourceGemini: (model: string) => `${model} · model-written text, may contain mistakes`,
       sourceRules: 'Rule-based summary · the Gemini key is not configured on the server',
       error: 'The analysis failed.',
-      offline: 'The analysis server is not reachable — showing the rule-based summary. Start it with “pnpm server”.',
+      offline:
+        'The analysis server is not reachable — showing the rule-based summary. Start it with “pnpm server”.',
       disclaimer: 'Not an official fire warning. Follow your local authorities.',
       showPayload: 'What is sent',
       hidePayload: 'Hide',
       levels: { low: 'Low', moderate: 'Moderate', elevated: 'Elevated', high: 'High' },
       findings: {
-        risk: (level: string, months: string) => `${level} fire activity expected in ${months}, judging by the season and recent months.`,
+        risk: (level: string, months: string) =>
+          `${level} fire activity expected in ${months}, judging by the season and recent months.`,
         season: (months: string) => `Most fire activity happens in ${months}.`,
         trendUp: (pct: string) => `Activity has been rising by about ${pct} a year since 2000.`,
         trendDown: (pct: string) => `Activity has been falling by about ${pct} a year since 2000.`,
@@ -192,8 +270,10 @@ export const en = {
         recentLow: (x: string) => `The last 12 months were quieter than usual (${x} the typical level).`,
         recentTypical: 'The last 12 months were close to the typical level.',
         anomalies: (months: string) => `Unusually active months: ${months}.`,
-        noise: (share: string, cells: string) => `The filter removed ${share} of hot pixels as noise, including ${cells} persistent heat-source cells.`,
-        sensors: (raw: string, hex: string) => `VIIRS sees ${raw}× more hot pixels than MODIS here, but only ${hex}× more burning hexagons — the scale is corrected for that.`,
+        noise: (share: string, cells: string) =>
+          `The filter removed ${share} of hot pixels as noise, including ${cells} persistent heat-source cells.`,
+        sensors: (raw: string, hex: string) =>
+          `VIIRS sees ${raw}× more hot pixels than MODIS here, but only ${hex}× more burning hexagons — the scale is corrected for that.`,
         uncertainty: (pct: string) => `Typical uncertainty since 2012: ±${pct} (90% interval).`,
       },
     },
@@ -252,11 +332,18 @@ export const en = {
       rain: 'Rain',
       ka: 'Ka holds',
       decision: 'Decision',
-      decisions: { ka: 'Ka-band', 'x-fallback': 'Rain risk → X-band', 'x-only': 'X-band (no Ka)', skip: 'Skip: storm' },
+      decisions: {
+        ka: 'Ka-band',
+        'x-fallback': 'Rain risk → X-band',
+        'x-only': 'X-band (no Ka)',
+        skip: 'Skip: storm',
+      },
       done: (when: string) => `Backlog cleared in ${when}`,
       notDone: 'Backlog not cleared within 12 h',
-      failures: (plan: string, naive: string) => `Expected passes lost to rain: ${plan} with the planner vs ${naive} if it always tried Ka.`,
-      assumptions: 'Circular orbits, assumed station bands and link margins, synthetic weather. The structure is real; the numbers are illustrative.',
+      failures: (plan: string, naive: string) =>
+        `Expected passes lost to rain: ${plan} with the planner vs ${naive} if it always tried Ka.`,
+      assumptions:
+        'Circular orbits, assumed station bands and link margins, synthetic weather. The structure is real; the numbers are illustrative.',
     },
     cue: {
       kicker: '03 · Satellite-to-satellite',
@@ -302,8 +389,14 @@ export const en = {
     principles: {
       title: 'Rules we never break',
       items: [
-        { title: 'Detection ≠ fire', body: 'We count hot pixels and say so. One fire can be many detections.' },
-        { title: 'Rescale, never sum', body: 'MODIS and VIIRS are brought to one scale, not added together.' },
+        {
+          title: 'Detection ≠ fire',
+          body: 'We count hot pixels and say so. One fire can be many detections.',
+        },
+        {
+          title: 'Rescale, never sum',
+          body: 'MODIS and VIIRS are brought to one scale, not added together.',
+        },
         { title: 'Every number has a range', body: 'No harmonized value is shown without its interval.' },
       ],
     },
@@ -319,9 +412,18 @@ export const en = {
     sources: {
       title: 'Data this is designed for',
       items: [
-        { name: 'MODIS Collection 6.1 Active Fire (MCD14ML)', note: 'Terra since 2000, Aqua since mid-2002 · 1 km' },
-        { name: 'VIIRS 375 m Active Fire (VNP14IMGML, VJ114IMGML)', note: 'Suomi NPP since 2012, NOAA-20 since 2018 · 375 m' },
-        { name: 'NASA FIRMS', note: 'Fire Information for Resource Management System — distribution of both' },
+        {
+          name: 'MODIS Collection 6.1 Active Fire (MCD14ML)',
+          note: 'Terra since 2000, Aqua since mid-2002 · 1 km',
+        },
+        {
+          name: 'VIIRS 375 m Active Fire (VNP14IMGML, VJ114IMGML)',
+          note: 'Suomi NPP since 2012, NOAA-20 since 2018 · 375 m',
+        },
+        {
+          name: 'NASA FIRMS',
+          note: 'Fire Information for Resource Management System — distribution of both',
+        },
         { name: 'H3 by Uber', note: 'Hierarchical hexagonal grid, open source' },
       ],
       link: 'Open NASA FIRMS',
@@ -335,9 +437,18 @@ export const en = {
     done: 'Got it',
     skip: 'Skip tour',
     steps: [
-      { title: 'Pick an area', body: 'Click a country on the map, search one, or draw a box. Its statistics and an AI briefing appear here.' },
-      { title: 'Filter the noise', body: 'Flares, factories and glint are removed by default. Switch the filters off to see what they hide, or switch to H3 hexagons.' },
-      { title: 'Scrub 26 years', body: 'Drag the handles to filter by date, or press play to watch the seasons roll by.' },
+      {
+        title: 'Pick an area',
+        body: 'Click a country on the map, search one, or draw a box. Its statistics and an AI briefing appear here.',
+      },
+      {
+        title: 'Filter the noise',
+        body: 'Flares, factories and glint are removed by default. Switch the filters off to see what they hide, or switch to H3 hexagons.',
+      },
+      {
+        title: 'Scrub 26 years',
+        body: 'Drag the handles to filter by date, or press play to watch the seasons roll by.',
+      },
     ],
   },
   common: {

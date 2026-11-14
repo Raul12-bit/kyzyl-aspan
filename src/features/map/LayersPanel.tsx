@@ -6,7 +6,7 @@ import { FLAG_LOW_CONFIDENCE, FLAG_STATIC } from '@/domain/noise';
 import { useI18n } from '@/i18n';
 import { VIIRS_START_INDEX } from '@/lib/date';
 import { rampColors } from '@/styles/tokens';
-import { Icon, Segmented, SensorMark, Skeleton, Switch } from '@/ui';
+import { Hex, Icon, Segmented, SensorMark, Skeleton, Switch } from '@/ui';
 import { useMapStore, type MapView } from './mapStore';
 import { useEffectiveRange } from './timeStore';
 import { countRange, useFilterScore, type FireIndex } from './useFireData';
@@ -23,7 +23,7 @@ function SensorRow({ sensor, index }: { sensor: Sensor; index: FireIndex | null 
 
   return (
     <div className="flex items-center gap-3 py-2.5">
-      <span className="grid h-8 w-8 flex-none place-items-center rounded-[10px] border border-line bg-[rgb(255_255_255/0.03)]">
+      <span className="grid h-8 w-8 flex-none place-items-center rounded-[10px] border border-line bg-[var(--el-tint-1)]">
         <SensorMark kind={sensor} size={10} />
       </span>
       <div className="min-w-0 flex-1">
@@ -51,7 +51,7 @@ function NoiseRow({ kind, removed }: { kind: 'lowConfidence' | 'staticSources'; 
   const desc = kind === 'lowConfidence' ? m.map.noise.lowConfDesc : m.map.noise.staticDesc;
   return (
     <div className="flex items-start gap-3 py-2.5">
-      <span className="mt-0.5 grid h-8 w-8 flex-none place-items-center rounded-[10px] border border-line bg-[rgb(255_255_255/0.03)] text-trust-low">
+      <span className="mt-0.5 grid h-8 w-8 flex-none place-items-center rounded-[10px] border border-line bg-[var(--el-tint-1)] text-trust-low">
         <Icon name={kind === 'lowConfidence' ? 'alert' : 'flame'} size={16} />
       </span>
       <div className="min-w-0 flex-1">
@@ -166,16 +166,8 @@ export function LayersPanelBody({ index, archive }: { index: FireIndex | null; a
             {m.map.legend.dot}
           </li>
           <li className="flex items-center gap-3">
-            <span className="flex w-6 items-end justify-center gap-0.5" aria-hidden>
-              <span className="h-1 w-1 rounded-full bg-ink-dim" />
-              <span className="h-1.5 w-1.5 rounded-full bg-ink-dim" />
-              <span className="h-2.5 w-2.5 rounded-full bg-ink-dim" />
-            </span>
-            {m.map.legend.size}
-          </li>
-          <li className="flex items-center gap-3">
             <span className="grid w-6 place-items-center" aria-hidden>
-              <span className="h-4 w-4 rounded-full border border-ink-dim" />
+              <Hex size={15} fill="transparent" stroke="var(--el-ink-dim)" strokeWidth={1.2} />
             </span>
             {m.map.legend.cluster}
           </li>
@@ -183,7 +175,7 @@ export function LayersPanelBody({ index, archive }: { index: FireIndex | null; a
       )}
       <p className="m-0 mt-3 flex items-center gap-3 text-[12.5px] text-ink-muted">
         <span className="grid w-6 place-items-center" aria-hidden>
-          <span className="h-3.5 w-5 rounded-[2px] border border-dashed border-amber-soft" style={{ boxShadow: '0 0 8px rgb(255 82 54 / 0.6)' }} />
+          <span className="h-3.5 w-5 rounded-[2px] border border-orange" style={{ background: 'color-mix(in srgb, var(--el-orange) 8%, transparent)' }} />
         </span>
         {m.map.legend.selection}
       </p>

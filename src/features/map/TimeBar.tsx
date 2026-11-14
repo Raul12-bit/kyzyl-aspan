@@ -167,7 +167,7 @@ export function TimeBar({ index, compact = false }: { index: FireIndex | null; c
             </span>
           ))}
           <span
-            className="num absolute -top-[66px] -translate-x-1/2 rounded-pill border border-[rgb(154_166_255/0.35)] bg-[rgb(5_7_13/0.8)] px-1.5 text-[9.5px] uppercase tracking-[0.1em] text-viirs"
+            className="num absolute -top-[66px] -translate-x-1/2 rounded-pill border border-[rgb(154_166_255/0.35)] bg-[var(--el-panel)] px-1.5 text-[9.5px] uppercase tracking-[0.1em] text-viirs"
             style={{ left: `${(VIIRS_START_INDEX / MAX) * 100}%` }}
           >
             {m.map.time.viirs}

@@ -12,6 +12,82 @@ export const de: Messages = {
     nav: { map: 'Feuerkarte', mission: 'Mission', method: 'Methode', label: 'Hauptnavigation' },
     language: 'Sprache',
     useLocation: 'Meinen Standort verwenden',
+    theme: { toLight: 'Zum hellen Design wechseln', toDark: 'Zum dunklen Design wechseln' },
+  },
+  landing: {
+    title: 'Kyzyl Aspan — Feuer aus dem All, auf einer ehrlichen Skala',
+    heroHint: 'Klicken Sie auf die Erde, um die Feuerkarte zu öffnen',
+    scroll: 'Scrollen',
+    navCta: 'Karte öffnen',
+    statement: {
+      eyebrow: 'NASA Space Apps Challenge 2026',
+      title: 'Sechsundzwanzig Jahre Feuer aus dem All — auf einer ehrlichen Skala.',
+      accent: 'einer ehrlichen Skala',
+    },
+    what: {
+      eyebrow: 'Was wir tun',
+      title: 'Eine Frage: Wo brennt es wirklich?',
+      accent: 'wirklich',
+      items: [
+        {
+          kicker: 'Feuerkarte',
+          title: 'Zwei Sensoren, eine vergleichbare Zeitreihe',
+          body: 'MODIS- und VIIRS-Detektionen werden als brennende Hexagon-Tage auf einem H3-Raster gezählt — so lässt sich eine Feuersaison 2005 endlich mit 2025 vergleichen.',
+        },
+        {
+          kicker: 'Rauschfilter',
+          title: 'Nur echte Feuer zählen',
+          body: 'Gasfackeln, Stahlwerke, Vulkane und Pixel geringer Konfidenz werden vor dem Zählen entfernt — und die Karte zeigt, wie viel verworfen wurde.',
+        },
+        {
+          kicker: 'KI-Kurzbericht',
+          title: 'Eine Region in einer Minute',
+          body: 'Wählen Sie ein Land oder ziehen Sie einen Rahmen. Wir berechnen die Statistik, ein KI-Modell macht daraus einen kurzen Bericht. Ohne Modellschlüssel schreiben ihn transparente Regeln.',
+        },
+      ],
+      cta: 'Karte öffnen',
+    },
+    numbers: {
+      eyebrow: 'In Zahlen',
+      items: [
+        { value: '26', unit: 'Jahre', label: 'MODIS-Branddetektionen, seit 2000' },
+        {
+          value: '375',
+          unit: 'm',
+          label: 'VIIRS-Pixel — rund 7-mal weniger Fläche als ein 1-km-Pixel von MODIS',
+        },
+        { value: '3–4×', label: 'mehr heiße Pixel bei VIIRS über demselben Feuer' },
+        { value: '8', label: 'Sprachen der Oberfläche, inklusive Kasachisch' },
+      ],
+    },
+    how: {
+      eyebrow: 'So funktioniert es',
+      title: 'Von Rohpixeln zu einer Zahl, der man trauen kann',
+      cta: 'Zur Methode',
+    },
+    mission: {
+      eyebrow: 'Konzept · Raumsegment',
+      title: 'Was der nächste Feuersatellit an Bord leisten könnte',
+      body: 'Ein winziges Modell, das Hotspots im Orbit vorsortiert, ein Downlink-Planer, der die Bodenstation nach dem Wetter wählt, und Satellit-zu-Satellit-Hinweise — im Browser simuliert und klar als Konzept gekennzeichnet.',
+      cta: 'Mission ansehen',
+    },
+    about: {
+      eyebrow: 'Wer wir sind',
+      title: 'Ein Team aus Kasachstan',
+      body: 'Kyzyl Aspan heißt auf Kasachisch „roter Himmel“ — die Farbe der Steppe in der Brandsaison. Wir bauen offene Werkzeuge auf offenen NASA-Daten und sagen klar, was die Zahlen aussagen können und was nicht.',
+      facts: [
+        { label: 'Wettbewerb', value: 'NASA Space Apps 2026' },
+        { label: 'Thema', value: 'Harmonisierung von MODIS- und VIIRS-Hotspots' },
+        { label: 'Daten', value: 'NASA FIRMS · MODIS C6.1 · VIIRS 375 m' },
+        { label: 'Status', value: 'MVP · synthetische Demodaten' },
+      ],
+    },
+    final: { title: 'Sehen Sie, wo der Planet brennt.', accent: 'brennt', cta: 'Feuerkarte öffnen' },
+    footer: {
+      disclaimer: 'Entwickelt für die NASA Space Apps Challenge 2026. Kein offizielles NASA-Produkt.',
+      data: 'Branddaten: NASA FIRMS. Erdbilder: NASA Blue Marble und Black Marble.',
+      rights: '© 2026 Kyzyl Aspan',
+    },
   },
   intro: {
     eyebrow: 'NASA Space Apps 2026 · MODIS × VIIRS Hotspots',
@@ -29,7 +105,8 @@ export const de: Messages = {
     satViirsDesc: 'Suomi NPP & NOAA-20 · 375-m-Pixel · seit 2012',
     skip: 'Überspringen',
     skipHint: 'Übergang überspringen',
-    globeLabel: 'Rotierende 3D-Erde mit leuchtenden Brandherden und zwei Satelliten, MODIS und VIIRS, auf ihren Umlaufbahnen',
+    globeLabel:
+      'Rotierende 3D-Erde mit leuchtenden Brandherden und zwei Satelliten, MODIS und VIIRS, auf ihren Umlaufbahnen',
     noGlobe: 'Vereinfachte Ansicht: Dieser Browser kann den 3D-Globus nicht darstellen.',
   },
   geo: {
@@ -91,7 +168,8 @@ export const de: Messages = {
       count: (n: string) => `${n} im Zeitraum`,
       notAvailable: 'noch nicht im Orbit',
       notSummed: 'Nebeneinander gezeigt, nie addiert.',
-      detectionNotFire: 'Eine Detektion ist ein heißes Pixel, kein Feuer: Ein Feuer kann viele Pixel aufleuchten lassen, und Wolken können es verdecken.',
+      detectionNotFire:
+        'Eine Detektion ist ein heißes Pixel, kein Feuer: Ein Feuer kann viele Pixel aufleuchten lassen, und Wolken können es verdecken.',
     },
     noise: {
       title: 'Rauschfilter',
@@ -101,14 +179,14 @@ export const de: Messages = {
       staticDesc: 'Gasfackeln, Stahlwerke, Vulkane: in derselben Zelle heiß, jede Saison, Jahr für Jahr',
       removed: (n: string) => `${n} entfernt`,
       staticCells: (n: string) => `${n} dauerhafte Zellen in 26 Jahren gefunden.`,
-      score: (precision: string, kept: string) => `Gegen die synthetische Wahrheit: ${precision} des Entfernten war Rauschen; ${kept} der echten Feuer blieben erhalten.`,
+      score: (precision: string, kept: string) =>
+        `Gegen die synthetische Wahrheit: ${precision} des Entfernten war Rauschen; ${kept} der echten Feuer blieben erhalten.`,
     },
     legend: {
       title: 'Legende',
       square: 'MODIS-Detektion',
       dot: 'VIIRS-Detektion',
-      size: 'Größe = Strahlungsleistung (FRP)',
-      cluster: 'Ring = benachbarte Detektionen gruppiert',
+      cluster: 'Großes Sechseck = benachbarte Detektionen gruppiert',
       hex: 'Brandtage pro Sechseck',
       less: 'weniger',
       more: 'mehr',
@@ -130,7 +208,12 @@ export const de: Messages = {
       basemapDown: 'Grundkarte nicht verfügbar – Daten auf schlichtem Hintergrund.',
       noWebgl: 'Dieser Browser kann die Karte nicht darstellen. Suche und Analyse funktionieren weiterhin.',
     },
-    controls: { zoomIn: 'Vergrößern', zoomOut: 'Verkleinern', reset: 'Zurück zum Gebiet', world: 'Ganze Welt' },
+    controls: {
+      zoomIn: 'Vergrößern',
+      zoomOut: 'Verkleinern',
+      reset: 'Zurück zum Gebiet',
+      world: 'Ganze Welt',
+    },
     tooltip: {
       frp: 'FRP',
       confidence: 'Konfidenz',
@@ -152,7 +235,8 @@ export const de: Messages = {
       removed: 'Entferntes Rauschen',
       ratioRaw: 'VIIRS / MODIS, Pixel',
       ratioHex: 'VIIRS / MODIS, Sechsecke',
-      ratioHint: 'Sechsecke statt Pixel zu zählen verkleinert die 3–4-fache Auflösungslücke – der Rest wird kalibriert.',
+      ratioHint:
+        'Sechsecke statt Pixel zu zählen verkleinert die 3–4-fache Auflösungslücke – der Rest wird kalibriert.',
       calendar: 'Harmonisierte Aktivität, 2000–2026',
       calendarHint: 'MODIS-äquivalente Brand-Sechseck-Tage pro Jahr; die Linien zeigen das 90-%-Intervall.',
       peak: 'Spitzenmonate',
@@ -166,30 +250,36 @@ export const de: Messages = {
     },
     ai: {
       title: 'KI-Risikoanalyse',
-      subtitle: 'Gemini liest die Statistik oben – nicht die Karte – und schreibt eine kurze Risikoeinschätzung.',
+      subtitle:
+        'Gemini liest die Statistik oben – nicht die Karte – und schreibt eine kurze Risikoeinschätzung.',
       run: 'Mit KI analysieren',
       rerun: 'Erneut',
       loading: 'Zahlen werden gelesen…',
       sourceGemini: (model: string) => `${model} · von einem Modell geschrieben, kann Fehler enthalten`,
       sourceRules: 'Regelbasierte Zusammenfassung · Gemini-Schlüssel ist auf dem Server nicht konfiguriert',
       error: 'Die Analyse ist fehlgeschlagen.',
-      offline: 'Der Analyseserver ist nicht erreichbar – regelbasierte Zusammenfassung angezeigt. Starten Sie ihn mit „pnpm server“.',
+      offline:
+        'Der Analyseserver ist nicht erreichbar – regelbasierte Zusammenfassung angezeigt. Starten Sie ihn mit „pnpm server“.',
       disclaimer: 'Keine offizielle Brandwarnung. Folgen Sie Ihren örtlichen Behörden.',
       showPayload: 'Was gesendet wird',
       hidePayload: 'Ausblenden',
       levels: { low: 'Niedrig', moderate: 'Mäßig', elevated: 'Erhöht', high: 'Hoch' },
       findings: {
-        risk: (level: string, months: string) => `Erwartete Brandaktivität in ${months}: ${level}, nach Saison und den letzten Monaten.`,
+        risk: (level: string, months: string) =>
+          `Erwartete Brandaktivität in ${months}: ${level}, nach Saison und den letzten Monaten.`,
         season: (months: string) => `Die meiste Aktivität fällt in ${months}.`,
         trendUp: (pct: string) => `Die Aktivität steigt seit 2000 um etwa ${pct} pro Jahr.`,
         trendDown: (pct: string) => `Die Aktivität sinkt seit 2000 um etwa ${pct} pro Jahr.`,
         trendFlat: 'Es gibt keinen klaren langfristigen Trend.',
         recentHigh: (x: string) => `Die letzten 12 Monate lagen bei ${x} des üblichen Niveaus.`,
-        recentLow: (x: string) => `Die letzten 12 Monate waren ruhiger als üblich (${x} des üblichen Niveaus).`,
+        recentLow: (x: string) =>
+          `Die letzten 12 Monate waren ruhiger als üblich (${x} des üblichen Niveaus).`,
         recentTypical: 'Die letzten 12 Monate lagen nahe am üblichen Niveau.',
         anomalies: (months: string) => `Ungewöhnlich aktive Monate: ${months}.`,
-        noise: (share: string, cells: string) => `Der Filter entfernte ${share} der heißen Pixel als Rauschen, darunter ${cells} Zellen dauerhafter Wärmequellen.`,
-        sensors: (raw: string, hex: string) => `Hier sieht VIIRS ${raw}× mehr heiße Pixel als MODIS, aber nur ${hex}× mehr brennende Sechsecke – die Skala gleicht das aus.`,
+        noise: (share: string, cells: string) =>
+          `Der Filter entfernte ${share} der heißen Pixel als Rauschen, darunter ${cells} Zellen dauerhafter Wärmequellen.`,
+        sensors: (raw: string, hex: string) =>
+          `Hier sieht VIIRS ${raw}× mehr heiße Pixel als MODIS, aber nur ${hex}× mehr brennende Sechsecke – die Skala gleicht das aus.`,
         uncertainty: (pct: string) => `Typische Unsicherheit seit 2012: ±${pct} (90-%-Intervall).`,
       },
     },
@@ -225,7 +315,8 @@ export const de: Messages = {
       verdictNoise: 'Kann warten',
       replay: (held: string, total: string, share: string) =>
         `Auf das ganze Archiv angewendet: ${held} von ${total} heißen Pixeln würden zurückgehalten (${share}) – freie Übertragungsfenster für echte Feuer.`,
-      imageNote: 'Nächster Schritt, nicht umgesetzt: ein winziges CNN, das an Bord thermische Bildausschnitte prüft.',
+      imageNote:
+        'Nächster Schritt, nicht umgesetzt: ein winziges CNN, das an Bord thermische Bildausschnitte prüft.',
       features: {
         lowConfidence: 'niedrige Konfidenz',
         highConfidence: 'hohe Konfidenz',
@@ -248,11 +339,18 @@ export const de: Messages = {
       rain: 'Regen',
       ka: 'Ka hält',
       decision: 'Entscheidung',
-      decisions: { ka: 'Ka-Band', 'x-fallback': 'Regenrisiko → X', 'x-only': 'X-Band (kein Ka)', skip: 'Auslassen: Gewitter' },
+      decisions: {
+        ka: 'Ka-Band',
+        'x-fallback': 'Regenrisiko → X',
+        'x-only': 'X-Band (kein Ka)',
+        skip: 'Auslassen: Gewitter',
+      },
       done: (when: string) => `Daten übertragen in ${when}`,
       notDone: 'Daten in 12 h nicht vollständig übertragen',
-      failures: (plan: string, naive: string) => `Erwartete Ausfälle durch Regen: ${plan} mit dem Planer gegenüber ${naive}, wenn immer Ka versucht würde.`,
-      assumptions: 'Kreisbahnen, angenommene Stationsbänder und Linkreserven, synthetisches Wetter. Die Struktur ist echt, die Zahlen sind illustrativ.',
+      failures: (plan: string, naive: string) =>
+        `Erwartete Ausfälle durch Regen: ${plan} mit dem Planer gegenüber ${naive}, wenn immer Ka versucht würde.`,
+      assumptions:
+        'Kreisbahnen, angenommene Stationsbänder und Linkreserven, synthetisches Wetter. Die Struktur ist echt, die Zahlen sind illustrativ.',
     },
     cue: {
       kicker: '03 · Satellit zu Satellit',
@@ -262,7 +360,12 @@ export const de: Messages = {
       confidence: 'Konfidenz der Detektion',
       clear: 'Chance auf klaren Himmel',
       site: 'Ort',
-      steps: { detect: 'Entdeckt', relay: 'Warnung weitergeleitet', follow: 'Zweiter Blick', confirm: 'Bestätigt' },
+      steps: {
+        detect: 'Entdeckt',
+        relay: 'Warnung weitergeleitet',
+        follow: 'Zweiter Blick',
+        confirm: 'Bestätigt',
+      },
       next: (sat: string, wait: string) => `${sat} sieht den Ort in ${wait}`,
       none: 'Kein Satellit deckt den Ort innerhalb von 36 h ab.',
       confirmChance: 'Bestätigungschance',
@@ -298,9 +401,18 @@ export const de: Messages = {
     principles: {
       title: 'Regeln, die wir nie brechen',
       items: [
-        { title: 'Detektion ≠ Feuer', body: 'Wir zählen heiße Pixel und sagen das. Ein Feuer kann viele Detektionen sein.' },
-        { title: 'Umskalieren, nie addieren', body: 'MODIS und VIIRS werden auf eine Skala gebracht, nicht addiert.' },
-        { title: 'Jede Zahl hat einen Bereich', body: 'Kein harmonisierter Wert erscheint ohne sein Intervall.' },
+        {
+          title: 'Detektion ≠ Feuer',
+          body: 'Wir zählen heiße Pixel und sagen das. Ein Feuer kann viele Detektionen sein.',
+        },
+        {
+          title: 'Umskalieren, nie addieren',
+          body: 'MODIS und VIIRS werden auf eine Skala gebracht, nicht addiert.',
+        },
+        {
+          title: 'Jede Zahl hat einen Bereich',
+          body: 'Kein harmonisierter Wert erscheint ohne sein Intervall.',
+        },
       ],
     },
     limits: {
@@ -315,8 +427,14 @@ export const de: Messages = {
     sources: {
       title: 'Daten, für die es gebaut ist',
       items: [
-        { name: 'MODIS Collection 6.1 Active Fire (MCD14ML)', note: 'Terra seit 2000, Aqua seit Mitte 2002 · 1 km' },
-        { name: 'VIIRS 375 m Active Fire (VNP14IMGML, VJ114IMGML)', note: 'Suomi NPP seit 2012, NOAA-20 seit 2018 · 375 m' },
+        {
+          name: 'MODIS Collection 6.1 Active Fire (MCD14ML)',
+          note: 'Terra seit 2000, Aqua seit Mitte 2002 · 1 km',
+        },
+        {
+          name: 'VIIRS 375 m Active Fire (VNP14IMGML, VJ114IMGML)',
+          note: 'Suomi NPP seit 2012, NOAA-20 seit 2018 · 375 m',
+        },
         { name: 'NASA FIRMS', note: 'Fire Information for Resource Management System – verteilt beide' },
         { name: 'H3 von Uber', note: 'Hierarchisches Sechseckraster, Open Source' },
       ],
@@ -331,9 +449,18 @@ export const de: Messages = {
     done: 'Verstanden',
     skip: 'Tour überspringen',
     steps: [
-      { title: 'Gebiet wählen', body: 'Klicken Sie auf ein Land, suchen Sie es oder zeichnen Sie ein Rechteck. Hier erscheinen Statistik und KI-Einschätzung.' },
-      { title: 'Rauschen filtern', body: 'Fackeln, Fabriken und Reflexe sind standardmäßig entfernt. Schalten Sie die Filter aus, um zu sehen, was sie verbergen, oder wechseln Sie zu H3-Sechsecken.' },
-      { title: '26 Jahre durchlaufen', body: 'Ziehen Sie die Regler, um nach Datum zu filtern, oder drücken Sie Play und sehen Sie die Jahreszeiten vorbeiziehen.' },
+      {
+        title: 'Gebiet wählen',
+        body: 'Klicken Sie auf ein Land, suchen Sie es oder zeichnen Sie ein Rechteck. Hier erscheinen Statistik und KI-Einschätzung.',
+      },
+      {
+        title: 'Rauschen filtern',
+        body: 'Fackeln, Fabriken und Reflexe sind standardmäßig entfernt. Schalten Sie die Filter aus, um zu sehen, was sie verbergen, oder wechseln Sie zu H3-Sechsecken.',
+      },
+      {
+        title: '26 Jahre durchlaufen',
+        body: 'Ziehen Sie die Regler, um nach Datum zu filtern, oder drücken Sie Play und sehen Sie die Jahreszeiten vorbeiziehen.',
+      },
     ],
   },
   common: {

@@ -20,7 +20,7 @@ const WORLD: BBox = [-180, -85, 180, 85];
 
 function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: string }) {
   const body = (
-    <div className="min-w-0 rounded-[12px] border border-line bg-[rgb(255_255_255/0.02)] px-3 py-2.5">
+    <div className="min-w-0 rounded-[12px] border border-line bg-[var(--el-tint-1)] px-3 py-2.5">
       <p className="m-0 line-clamp-2 min-h-[2lh] text-[11.5px] leading-tight text-ink-dim">{label}</p>
       <p className="stat-value m-0 mt-0.5 truncate !text-[18px]" style={tone ? { color: tone } : undefined}>
         {value}

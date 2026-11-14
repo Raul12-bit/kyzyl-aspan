@@ -11,6 +11,74 @@ export const zh: Messages = {
     nav: { map: '火点地图', mission: '任务', method: '方法', label: '主导航' },
     language: '语言',
     useLocation: '使用我的位置',
+    theme: { toLight: '切换到浅色主题', toDark: '切换到深色主题' },
+  },
+  landing: {
+    title: 'Kyzyl Aspan —— 从太空看火，用同一把诚实的尺子',
+    heroHint: '点击地球，打开火点地图',
+    scroll: '向下滚动',
+    navCta: '打开地图',
+    statement: {
+      eyebrow: 'NASA Space Apps Challenge 2026',
+      title: '二十六年的太空火点记录，放在同一把诚实的尺子上。',
+      accent: '同一把诚实的尺子',
+    },
+    what: {
+      eyebrow: '我们做什么',
+      title: '只有一个问题：哪里真的在燃烧？',
+      accent: '真的',
+      items: [
+        {
+          kicker: '火点地图',
+          title: '两个传感器，一份可比的记录',
+          body: 'MODIS 与 VIIRS 的探测统一按 H3 网格上的“燃烧六边形日”计数，2005 年的火季终于可以和 2025 年相比。',
+        },
+        {
+          kicker: '噪声过滤',
+          title: '只统计真正的火',
+          body: '天然气火炬、钢铁厂、火山和低置信度像元在计数前即被剔除，地图会显示剔除了多少。',
+        },
+        {
+          kicker: 'AI 简报',
+          title: '一分钟读懂一个地区',
+          body: '选择一个国家或框选一片区域。我们计算统计数据，再由 AI 模型写成简短的简报；没有模型密钥时，由透明的规则生成。',
+        },
+      ],
+      cta: '打开地图',
+    },
+    numbers: {
+      eyebrow: '数字一览',
+      items: [
+        { value: '26', unit: '年', label: '自 2000 年以来的 MODIS 火点探测' },
+        { value: '375', unit: '米', label: 'VIIRS 像元面积约为 MODIS 1 公里像元的七分之一' },
+        { value: '3–4×', label: '同一场火，VIIRS 看到的高温像元更多' },
+        { value: '8', label: '种界面语言，包括哈萨克语' },
+      ],
+    },
+    how: { eyebrow: '工作原理', title: '从原始像元到可信的数字', cta: '阅读方法' },
+    mission: {
+      eyebrow: '概念 · 空间段',
+      title: '下一代火灾卫星可以在星上做什么',
+      body: '在轨筛选火点的微型模型、根据天气选择地面站的下传规划器，以及卫星间引导——均在浏览器中模拟，并明确标注为概念。',
+      cta: '查看任务',
+    },
+    about: {
+      eyebrow: '关于我们',
+      title: '来自哈萨克斯坦的团队',
+      body: 'Kyzyl Aspan 在哈萨克语中意为“红色的天空”——火季草原的颜色。我们基于 NASA 开放数据打造开放工具，并清楚说明这些数字能说明什么、不能说明什么。',
+      facts: [
+        { label: '赛事', value: 'NASA Space Apps 2026' },
+        { label: '主题', value: 'MODIS 与 VIIRS 火点的统一' },
+        { label: '数据', value: 'NASA FIRMS · MODIS C6.1 · VIIRS 375 米' },
+        { label: '状态', value: 'MVP · 合成演示数据' },
+      ],
+    },
+    final: { title: '看看地球哪里在燃烧。', accent: '燃烧', cta: '打开火点地图' },
+    footer: {
+      disclaimer: '为 NASA Space Apps Challenge 2026 打造，并非 NASA 官方产品。',
+      data: '火点数据：NASA FIRMS。地球影像：NASA Blue Marble 与 Black Marble。',
+      rights: '© 2026 Kyzyl Aspan',
+    },
   },
   intro: {
     eyebrow: 'NASA Space Apps 2026 · MODIS × VIIRS 热点',
@@ -100,14 +168,14 @@ export const zh: Messages = {
       staticDesc: '天然气火炬、钢铁厂、火山：同一格子每个季节、年复一年都很热',
       removed: (n: string) => `已去除 ${n}`,
       staticCells: (n: string) => `26 年间发现 ${n} 个持续热源格子。`,
-      score: (precision: string, kept: string) => `对照合成真值：被去除的点中 ${precision} 确为噪声；保留了 ${kept} 的真实火情。`,
+      score: (precision: string, kept: string) =>
+        `对照合成真值：被去除的点中 ${precision} 确为噪声；保留了 ${kept} 的真实火情。`,
     },
     legend: {
       title: '图例',
       square: 'MODIS 探测',
       dot: 'VIIRS 探测',
-      size: '大小 = 火辐射功率（FRP）',
-      cluster: '圆环 = 邻近探测聚合',
+      cluster: '大六边形 = 邻近探测聚合',
       hex: '六边形燃烧日数',
       less: '少',
       more: '多',
@@ -178,7 +246,8 @@ export const zh: Messages = {
       hidePayload: '隐藏',
       levels: { low: '低', moderate: '中等', elevated: '偏高', high: '高' },
       findings: {
-        risk: (level: string, months: string) => `根据季节与近几个月情况，预计${months}的火情活动水平为：${level}。`,
+        risk: (level: string, months: string) =>
+          `根据季节与近几个月情况，预计${months}的火情活动水平为：${level}。`,
         season: (months: string) => `大部分火情发生在${months}。`,
         trendUp: (pct: string) => `自 2000 年以来，火情活动每年约增加 ${pct}。`,
         trendDown: (pct: string) => `自 2000 年以来，火情活动每年约减少 ${pct}。`,
@@ -187,8 +256,10 @@ export const zh: Messages = {
         recentLow: (x: string) => `最近 12 个月比往常平静（为常年水平的 ${x}）。`,
         recentTypical: '最近 12 个月接近常年水平。',
         anomalies: (months: string) => `异常活跃的月份：${months}。`,
-        noise: (share: string, cells: string) => `过滤器把 ${share} 的高温像元当作噪声去除，其中包括 ${cells} 个持续热源格子。`,
-        sensors: (raw: string, hex: string) => `在这里，VIIRS 看到的高温像元是 MODIS 的 ${raw} 倍，但燃烧六边形只有 ${hex} 倍——统一尺度已对此校正。`,
+        noise: (share: string, cells: string) =>
+          `过滤器把 ${share} 的高温像元当作噪声去除，其中包括 ${cells} 个持续热源格子。`,
+        sensors: (raw: string, hex: string) =>
+          `在这里，VIIRS 看到的高温像元是 MODIS 的 ${raw} 倍，但燃烧六边形只有 ${hex} 倍——统一尺度已对此校正。`,
         uncertainty: (pct: string) => `2012 年以来的典型不确定度：±${pct}（90% 区间）。`,
       },
     },
@@ -211,7 +282,8 @@ export const zh: Messages = {
       recall: '召回率',
       baseline: '简单规则',
       model: '模型',
-      honest: (model: string, rule: string) => `如实结果：在留出地区，模型的 F1 为 ${model}，简单规则为 ${rule}——几乎没有更好。它的价值在于体积小、可自主运行，而非精度。`,
+      honest: (model: string, rule: string) =>
+        `如实结果：在留出地区，模型的 F1 为 ${model}，简单规则为 ${rule}——几乎没有更好。它的价值在于体积小、可自主运行，而非精度。`,
       tryTitle: '试试一个高温像元',
       confidence: '产品置信度',
       frp: '火辐射功率（MW）',
@@ -246,10 +318,16 @@ export const zh: Messages = {
       rain: '降雨',
       ka: 'Ka 可用率',
       decision: '决策',
-      decisions: { ka: 'Ka 波段', 'x-fallback': '降雨风险 → X', 'x-only': 'X 波段（无 Ka）', skip: '跳过：雷暴' },
+      decisions: {
+        ka: 'Ka 波段',
+        'x-fallback': '降雨风险 → X',
+        'x-only': 'X 波段（无 Ka）',
+        skip: '跳过：雷暴',
+      },
       done: (when: string) => `数据在 ${when} 内传完`,
       notDone: '12 小时内未能传完数据',
-      failures: (plan: string, naive: string) => `因降雨预计损失的过境次数：使用规划器为 ${plan}，若始终尝试 Ka 则为 ${naive}。`,
+      failures: (plan: string, naive: string) =>
+        `因降雨预计损失的过境次数：使用规划器为 ${plan}，若始终尝试 Ka 则为 ${naive}。`,
       assumptions: '圆轨道、假设的地面站波段与链路余量、合成天气。逻辑是真实的，数字仅作示意。',
     },
     cue: {
@@ -313,8 +391,14 @@ export const zh: Messages = {
     sources: {
       title: '面向的数据',
       items: [
-        { name: 'MODIS Collection 6.1 Active Fire (MCD14ML)', note: 'Terra 自 2000 年，Aqua 自 2002 年中 · 1 公里' },
-        { name: 'VIIRS 375 m Active Fire (VNP14IMGML, VJ114IMGML)', note: 'Suomi NPP 自 2012 年，NOAA-20 自 2018 年 · 375 米' },
+        {
+          name: 'MODIS Collection 6.1 Active Fire (MCD14ML)',
+          note: 'Terra 自 2000 年，Aqua 自 2002 年中 · 1 公里',
+        },
+        {
+          name: 'VIIRS 375 m Active Fire (VNP14IMGML, VJ114IMGML)',
+          note: 'Suomi NPP 自 2012 年，NOAA-20 自 2018 年 · 375 米',
+        },
         { name: 'NASA FIRMS', note: '资源管理火情信息系统——同时分发两者' },
         { name: 'Uber H3', note: '分层六边形网格，开源' },
       ],
@@ -330,7 +414,10 @@ export const zh: Messages = {
     skip: '跳过导览',
     steps: [
       { title: '选择区域', body: '点击地图上的国家、搜索或框选。这里会出现它的统计数据和 AI 简报。' },
-      { title: '过滤噪声', body: '火炬、工厂和耀光默认已去除。关闭过滤器可查看它们隐藏了什么，也可以切换到 H3 六边形。' },
+      {
+        title: '过滤噪声',
+        body: '火炬、工厂和耀光默认已去除。关闭过滤器可查看它们隐藏了什么，也可以切换到 H3 六边形。',
+      },
       { title: '浏览 26 年', body: '拖动滑块按日期筛选，或点击播放观看季节更替。' },
     ],
   },

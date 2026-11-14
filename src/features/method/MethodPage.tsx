@@ -8,13 +8,13 @@ const STEP_ICONS: IconName[] = ['shield', 'layers', 'compare', 'sparkles'];
 function PixelsToHexagon() {
   const hex = (cx: number, cy: number, r: number) =>
     Array.from({ length: 6 }, (_, i) => {
-      const a = (Math.PI / 3) * i;
+      const a = (Math.PI / 3) * i + Math.PI / 6;
       return `${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`;
     }).join(' ');
   return (
     <svg viewBox="0 0 320 120" className="block h-auto w-full" aria-hidden>
       {/* MODIS: one coarse pixel */}
-      <rect x="18" y="26" width="68" height="68" rx="3" fill="rgb(61 219 217 / 0.14)" stroke="var(--el-modis)" strokeWidth="1.5" />
+      <rect x="18" y="26" width="68" height="68" rx="3" fill="color-mix(in srgb, var(--el-modis) 14%, transparent)" stroke="var(--el-modis)" strokeWidth="1.5" />
       <text x="52" y="112" textAnchor="middle" fontSize="10" fill="var(--el-modis)" fontFamily="var(--el-font-mono)">
         MODIS 1 km
       </text>
@@ -24,7 +24,7 @@ function PixelsToHexagon() {
         const y = 26 + Math.floor(i / 3) * 23;
         const hot = [0, 1, 3, 4, 5, 7].includes(i);
         return (
-          <rect key={i} x={x} y={y} width="20" height="20" rx="2" fill={hot ? 'rgb(154 166 255 / 0.32)' : 'transparent'} stroke="var(--el-viirs)" strokeOpacity={hot ? 1 : 0.35} />
+          <rect key={i} x={x} y={y} width="20" height="20" rx="2" fill={hot ? 'color-mix(in srgb, var(--el-viirs) 32%, transparent)' : 'transparent'} stroke="var(--el-viirs)" strokeOpacity={hot ? 1 : 0.35} />
         );
       })}
       <text x="152" y="112" textAnchor="middle" fontSize="10" fill="var(--el-viirs)" fontFamily="var(--el-font-mono)">
@@ -32,7 +32,7 @@ function PixelsToHexagon() {
       </text>
       <path d="M200 60h22m-6-5 6 5-6 5" stroke="var(--el-ink-dim)" fill="none" strokeWidth="1.5" strokeLinecap="round" />
       {/* the hexagon: one burning hexagon-day for both */}
-      <polygon points={hex(268, 60, 40)} fill="rgb(255 138 61 / 0.22)" stroke="var(--el-amber)" strokeWidth="1.8" />
+      <polygon points={hex(268, 60, 40)} fill="color-mix(in srgb, var(--el-orange) 22%, transparent)" stroke="var(--el-orange)" strokeWidth="1.8" />
       <text x="268" y="58" textAnchor="middle" fontSize="18" fill="var(--el-amber-soft)" fontFamily="var(--el-font-mono)">
         1
       </text>
@@ -79,7 +79,7 @@ export function MethodPage() {
               </h2>
               <p className="m-0 mt-2.5 text-[14.5px] leading-relaxed text-ink-muted">{step.body}</p>
               {i === 1 ? (
-                <div className="mt-5 rounded-[14px] border border-line bg-[rgb(0_0_0/0.2)] p-3">
+                <div className="mt-5 rounded-[14px] border border-line bg-[var(--el-inset)] p-3">
                   <PixelsToHexagon />
                 </div>
               ) : null}
@@ -139,9 +139,9 @@ export function MethodPage() {
           </section>
         </div>
 
-        <div className="mt-16 flex flex-col items-start justify-between gap-6 rounded-panel border border-line bg-[rgb(255_255_255/0.02)] p-6 md:flex-row md:items-center md:p-8">
+        <div className="mt-16 flex flex-col items-start justify-between gap-6 rounded-panel border border-line bg-[var(--el-tint-1)] p-6 md:flex-row md:items-center md:p-8">
           <img src="/brand/kyzyl-aspan-logo.webp" alt={m.app.name} width={220} height={147} className="h-auto w-[180px] rounded-[14px] bg-white p-2 md:w-[220px]" loading="lazy" />
-          <ButtonLink to="/?intro=0" variant="primary" size="lg" iconRight="arrowRight">
+          <ButtonLink to="/map" variant="primary" size="lg" iconRight="arrowRight">
             {m.method.cta}
           </ButtonLink>
         </div>

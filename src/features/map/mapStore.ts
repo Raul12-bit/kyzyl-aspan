@@ -34,7 +34,8 @@ export const useMapStore = create<MapStore>((set) => ({
   mapMode: false,
   sensors: { MODIS: true, VIIRS: true },
   drawing: false,
-  view: 'points',
+  // Burning H3 hexagons first: the comparable, de-noised view. Raw detections are one click away.
+  view: 'hex',
   noise: DEFAULT_NOISE,
   hexRes: 3,
   setSensor: (sensor, on) => set((s) => ({ sensors: { ...s.sensors, [sensor]: on } })),

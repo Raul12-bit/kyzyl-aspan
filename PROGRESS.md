@@ -21,7 +21,8 @@ Last update: 2026-11-14.
 | 4 | **Onboard AI** (tiny model trained on the 26-year archive) | ✅ concept | 🟡 trained offline by script | `src/domain/onboard.ts`, `scripts/mock/train-model.ts`, page `/mission` |
 | 5 | **Link prediction** (orbits + stations + weather → Ka/X/other station) | ✅ concept | ⛔ not started | `src/domain/orbit.ts`, `downlink.ts`; synthetic weather |
 | 6 | **Satellite-to-satellite cueing** | ✅ concept | ⛔ not applicable to MODIS/VIIRS | `src/domain/crosscue.ts`; clearly labelled as a concept |
-| 7 | 3D Earth intro with MODIS + VIIRS satellites, dive → white flash → map | ✅ | — | three.js, lazy chunk, `src/features/globe/` |
+| 7 | 3D Earth intro with MODIS + VIIRS satellites, dive → white flash → map | ✅ | — | three.js, lazy chunk, `src/features/globe/`; real NASA models (Terra, Aqua, Suomi NPP) since the redesign |
+| 7a | **Landing page** (header + centred Earth, story on scroll) and minimal-luxury redesign, light/dark | ✅ | — | `src/features/landing/`; see §5 “Design” |
 | 8 | Geolocation → language + landing country | ✅ | — | offline point-in-polygon, nothing sent to a server |
 | 9 | i18n: en, ru, kk, es, fr, de, pt, zh | ✅ | — | every dictionary type-checked + tested |
 | 10 | Real data (FIRMS MCD14ML / VNP14IMGML / VJ114IMGML) | — | ⛔ **main backend task** | see §4 |
@@ -89,6 +90,10 @@ The UI talks to data **only** through `src/data/DataSource.ts`. Switch to a real
 
 ## 4. API contract for the backend
 
+**Machine-readable contract: [`docs/openapi.yaml`](docs/openapi.yaml)** (OpenAPI 3.1 — every endpoint, schema,
+error code and limit below). Generate server stubs / types from it. The frontend is complete against this
+contract: switching from mock data is `VITE_DATA_SOURCE=http` + `VITE_API_URL=…`, no UI change.
+
 All JSON, UTF-8, CORS for the frontend origin. Types live in `src/data/types.ts` and
 `src/domain/*.ts`; runtime shape guards in `src/data/HttpDataSource.ts`.
 
@@ -140,8 +145,29 @@ Backend tasks, in order:
 - **3D performance**: three.js chunk ~137 kB gzip, loaded with the intro only and disposed after the
   dive (GPU memory freed). Phones / ≤4 GB RAM / data-saver get the low profile (1024 px texture,
   fewer segments, DPR ≤ 1.5, no MSAA). Rendering pauses in background tabs.
-- **Bundle**: first-screen JS 105 kB gzip (was 192 kB): `h3-js` (64 kB) loads with the map,
-  dictionaries per language.
+- **Bundle**: first-screen JS ~110 kB gzip: `h3-js` (64 kB) loads with the map, dictionaries per
+  language. Globe chunk 156 kB gzip; the glTF loader is a separate 15 kB chunk loaded after the planet shows.
+- **Satellite models**: NASA 3D Resources (public domain) — Terra, Aqua, Suomi NPP. Originals 6.4 MB
+  (117k-triangle CAD meshes, Draco, PNG duplicates). `pnpm models:build <dir>` (script
+  `scripts/build-satellite-models.mjs`, uses only libraries bundled with three) decodes, welds, simplifies
+  to 4–10k triangles and drops normals → **487 kB total** in `public/models/`, no Draco decoder at runtime.
+  Normals are rebuilt in the browser with a 35° crease. Phones / low profile keep procedural models (0 bytes).
+- **Design** (2026-11-14 redesign, v2): one accent per theme — fire orange `#f37021` on warm obsidian
+  `#0a0a0b`, burnt orange `#b84a12` on porcelain `#f6f4ef`. Heat ramp embers → orange → amber (no cream).
+  Instruments: MODIS = steel, outline hexagons; VIIRS = amber, filled hexagons; harmonized = ink.
+  **One shape everywhere: the pointy-top hexagon** — H3 cells on the map (default view, with real seams
+  between cells), detection marks (SDF icon), fires on the 3D globe, legends, landing illustrations,
+  markers. Display type is Onest at weight 340; accents are colour, not a second typeface; monospace
+  only for numbers. Landing:
+  `/` shows only the header and the Earth; sections reveal on scroll (one shared IntersectionObserver,
+  transforms/opacity only). Map: same header as the site, one toolbar opens one panel at a time (area or
+  layers), min zoom = one world width. The map re-tints live on theme change (basemap + data layers).
+  Theme switch cross-fades via the View Transitions API.
+- **Dive transition**: no white flash. A veil in the page colour starts rising 0.55 s before the camera
+  reaches the surface (1.2 s cubic plunge), holds while the map lands, then lifts over 1.1 s while the
+  map settles from a 6% zoom with a 4 px blur. Pinned by `introMachine.test.ts`.
+- **Dev hook**: in `pnpm dev`, `window.__earth.debugStep()` draws a globe frame by hand — background tabs
+  never tick `requestAnimationFrame`, so automated checks use it. Not present in production builds.
 - **Honest numbers** (synthetic data, spatial hold-out):
   - onboard model F1 **0.951** vs simple rule **0.921** — small gain; the value is size (80 bytes) and autonomy;
   - KZ box, overlap period: raw VIIRS/MODIS **3.94×** → burning hexagon-days **2.04×** after the H3 step;
@@ -161,8 +187,27 @@ Backend tasks, in order:
 - [ ] Province outlines (only country outlines; provinces are boxes).
 - [ ] E2E tests (Playwright) for the intro → map flow; currently verified manually in a browser.
 - [ ] Old Figma file and `figma-plugin/` still carry the Emberline name.
+- [ ] Redesign verified in a desktop browser pane and at 375 px emulation only — not on a real phone,
+      and frame rate / GPU cost on low-end devices was not measured.
+- [ ] Map screen inner panels (area statistics, AI brief) keep their previous content; restyled, not
+      re-architected. Mission page demos are unchanged apart from type, colours and surfaces.
+- [ ] `@fontsource-variable/cormorant-garamond` is no longer imported; remove it with
+      `pnpm remove @fontsource-variable/cormorant-garamond` (needs registry access).
+- [ ] Higgsfield: the connected MCP is read-only (no media generation) and the account has no generations;
+      all visuals are code (SVG, three.js) and NASA imagery/models.
 
 ## 7. Change log
+
+- **2026-11-14 · Redesign v2** — hexagons everywhere (map H3 view by default with seams, SDF hexagon
+  detections, hexagonal fires on the globe, legends, illustrations); orange accent and amber heat ramp
+  instead of champagne/cream; soft page-colour veil instead of the white flash; map header and panels in
+  the landing's style; live map re-tint on theme change; no serif italics or shouted mono labels;
+  `docs/openapi.yaml` for the backend; camera padding fixed for the removed right panel.
+- **2026-11-14 · Redesign** — minimal-luxury design system (palette, type, surfaces, light/dark with
+  cross-fade); new landing page `/` (header + centred Earth, statement, features with SVG visuals, numbers,
+  method steps, mission band, about, footer); Earth shader fixes (no terminator band, tight glint, soft
+  halo without a gap), orbit rings removed, NASA satellite models; map declutter (toolbar + one panel,
+  centred time bar); header solid on scroll; fixed empty `unit` strings that failed the i18n test.
 
 - **2026-11-14 · Stage 4** — rebrand to Kyzyl Aspan; three.js globe with MODIS/VIIRS; dive transition;
   geolocation + 8 languages; noise filter + H3 view on the map; country click → stats → AI panel;

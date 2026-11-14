@@ -30,10 +30,10 @@ function MetricBars({ model }: { model: OnboardModel }) {
             </span>
           </div>
           <div className="grid gap-1">
-            <span className="block h-2 rounded-full bg-[rgb(255_255_255/0.06)]">
+            <span className="block h-2 rounded-full bg-[var(--el-tint-2)]">
               <span className="block h-2 rounded-full" style={{ width: x(model.metrics.test[r.key]), background: 'var(--el-grad-ember)' }} />
             </span>
-            <span className="block h-2 rounded-full bg-[rgb(255_255_255/0.06)]">
+            <span className="block h-2 rounded-full bg-[var(--el-tint-2)]">
               <span className="block h-2 rounded-full bg-ink-dim" style={{ width: x(model.metrics.baseline[r.key]) }} />
             </span>
           </div>
@@ -65,7 +65,7 @@ function Weights({ model }: { model: OnboardModel }) {
         return (
           <li key={f} className="grid grid-cols-[7.5rem_1fr] items-center gap-2 text-[11.5px]">
             <span className="truncate text-ink-dim">{m.mission.onboard.features[f as keyof typeof m.mission.onboard.features]}</span>
-            <span className="relative h-2 rounded-full bg-[rgb(255_255_255/0.05)]">
+            <span className="relative h-2 rounded-full bg-[var(--el-tint-2)]">
               <span className="absolute inset-y-0 left-1/2 w-px bg-line-strong" />
               <span
                 className="absolute inset-y-0 rounded-full"
@@ -119,8 +119,8 @@ function TryIt({ model }: { model: OnboardModel }) {
       <div
         className="flex items-center justify-between gap-4 rounded-[14px] border px-4 py-3 transition-colors duration-300"
         style={{
-          borderColor: fire ? 'rgb(255 82 54 / 0.5)' : 'var(--el-line-strong)',
-          background: fire ? 'rgb(255 82 54 / 0.08)' : 'rgb(255 255 255 / 0.02)',
+          borderColor: fire ? 'color-mix(in srgb, var(--el-kyzyl) 50%, transparent)' : 'var(--el-line-strong)',
+          background: fire ? 'color-mix(in srgb, var(--el-kyzyl) 8%, transparent)' : 'var(--el-tint-1)',
         }}
         aria-live="polite"
       >
@@ -130,7 +130,7 @@ function TryIt({ model }: { model: OnboardModel }) {
         </div>
         <span
           className="rounded-pill px-3 py-1.5 text-[12.5px] font-semibold"
-          style={{ background: fire ? 'var(--el-grad-ember)' : 'rgb(255 255 255 / 0.08)', color: fire ? 'var(--el-ink-on-fire)' : 'var(--el-ink-muted)' }}
+          style={{ background: fire ? 'var(--el-grad-ember)' : 'var(--el-tint-3)', color: fire ? 'var(--el-ink-on-fire)' : 'var(--el-ink-muted)' }}
         >
           {fire ? m.mission.onboard.verdictFire : m.mission.onboard.verdictNoise}
         </span>

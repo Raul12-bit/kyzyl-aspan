@@ -1,63 +1,110 @@
 import {
   AdditiveBlending,
+  AmbientLight,
   BackSide,
   BufferAttribute,
   BufferGeometry,
   CanvasTexture,
   Color,
-  ConeGeometry,
+  DirectionalLight,
   Group,
+  ImageBitmapLoader,
   Line,
   LineBasicMaterial,
-  LineLoop,
   Mesh,
-  MeshBasicMaterial,
+  NoColorSpace,
+  NormalBlending,
   PerspectiveCamera,
-  PlaneGeometry,
+  PMREMGenerator,
   Points,
   Raycaster,
   Scene,
   ShaderMaterial,
   SphereGeometry,
   SRGBColorSpace,
+  Texture,
   Vector2,
   Vector3,
   WebGLRenderer,
-  BoxGeometry,
-  type Texture,
+  type Blending,
 } from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { CountryShape } from '@/domain/countries';
-import { EARTH_RADIUS_KM, EARTH_ROTATION, FLEET, periodSec, positionEci, type Satellite } from '@/domain/orbit';
-import { paintEarth, paintPlaceholder } from './earthTexture';
+import { EARTH_RADIUS_KM, EARTH_ROTATION, FLEET, positionEci, type Satellite } from '@/domain/orbit';
+import { paintEarth } from './earthTexture';
 import { fromEcef, latLngToXYZ, nearestAngle, spinToFace, xyzToLatLng } from './geo3d';
+import type { loadNasaSatellite as LoadNasaSatellite, NasaModel } from './nasaSatellites';
+import { buildSatellite, disposeSatelliteKit, type SatelliteKind } from './satelliteModels';
 
 export type Quality = 'high' | 'low';
+export type SceneTheme = 'dark' | 'light';
 
 export interface EarthSceneOptions {
   quality: Quality;
   reducedMotion: boolean;
-  /** Screen-space label elements that follow the two satellites (MODIS, VIIRS). */
-  labels?: Partial<Record<'MODIS' | 'VIIRS', HTMLElement>>;
+  theme: SceneTheme;
   onHoverEarth?: (over: boolean) => void;
   /** Click (not drag) on the planet. */
   onPick?: (lat: number, lng: number, screen: { x: number; y: number }) => void;
+  /** The daylight texture is on the GPU — the planet can be shown. */
+  onReady?: () => void;
 }
 
-const SENSOR_COLOR = { MODIS: new Color('#3ddbd9'), VIIRS: new Color('#9aa6ff') } as const;
-/** Satellites drawn: one representative platform per sensor. */
-const SHOWN: Record<'MODIS' | 'VIIRS', Satellite> = {
-  MODIS: FLEET.find((s) => s.id === 'terra')!,
-  VIIRS: FLEET.find((s) => s.id === 'snpp')!,
-};
-/** Orbit altitude is exaggerated ×2.6 so the satellites read at a glance. */
-const ALTITUDE_EXAGGERATION = 2.6;
-/** Simulation speed: one Terra orbit takes ~25 s on screen. */
-const TIME_WARP = 240;
-/** Base angular speed of the idle spin, rad/s (on top of the simulated Earth rotation). */
-const IDLE_SPIN = 0.045;
+/** NASA Blue Marble / Black Marble derived maps (public domain imagery, via the three.js examples). */
+const TEXTURES = {
+  day: '/textures/earth/earth_day_4096.jpg',
+  night: '/textures/earth/earth_night_4096.jpg',
+  specular: '/textures/earth/earth_specular_2048.jpg',
+  clouds: '/textures/earth/earth_clouds_1024.png',
+} as const;
+
+/**
+ * Satellites drawn: two MODIS platforms and one VIIRS platform. High quality loads NASA's real models;
+ * the light profile (phones, data saver) keeps the procedural ones, which cost nothing to download.
+ */
+const SHOWN: { id: string; kind: SatelliteKind; model: NasaModel }[] = [
+  { id: 'terra', kind: 'eos', model: 'terra' },
+  { id: 'aqua', kind: 'eos', model: 'aqua' },
+  { id: 'snpp', kind: 'jpss', model: 'snpp' },
+];
+/** Orbit altitude is exaggerated so the satellites clear the atmosphere visibly. */
+const ALTITUDE_EXAGGERATION = 2.4;
+/** Simulation speed: one orbit takes ~50 s on screen. */
+const TIME_WARP = 120;
+/** Idle spin on top of the simulated rotation, rad/s. */
+const IDLE_SPIN = 0.028;
+/** Size of a procedural satellite model in scene units (Earth radius = 1). */
+const SAT_SCALE = 0.04;
+/** Longest side of a NASA model in scene units — matches the procedural ones (~0.11). */
+const SAT_SIZE = 0.15;
+/** Outer air shell radius (Earth = 1): wide enough for a soft halo. */
+const ATMO_RADIUS = 1.1;
+/** Sunlight comes from the upper left, slightly in front: most of the disc is lit, a crescent of night on the right. */
+const SUN_DIR = new Vector3(-0.62, 0.38, 0.69).normalize();
+
+const THEME = {
+  dark: {
+    atmoInner: new Color('#a8d0ff'),
+    atmoOuter: new Color('#3a6fe0'),
+    atmoIntensity: 0.85,
+    atmoBlending: AdditiveBlending as Blending,
+    ambient: 0.035,
+    trail: new Color('#f3a06a'),
+    fireBlending: NormalBlending as Blending,
+  },
+  light: {
+    atmoInner: new Color('#9fc4f5'),
+    atmoOuter: new Color('#c9dcf5'),
+    atmoIntensity: 0.6,
+    atmoBlending: NormalBlending as Blending,
+    ambient: 0.07,
+    trail: new Color('#b84a12'),
+    fireBlending: NormalBlending as Blending,
+  },
+} as const;
 
 const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
-const easeInQuart = (t: number) => t * t * t * t;
+const easeInCubic = (t: number) => t * t * t;
 
 const earthVertex = /* glsl */ `
   varying vec2 vUv;
@@ -72,35 +119,66 @@ const earthVertex = /* glsl */ `
   }
 `;
 
+/**
+ * Day/night Earth: lit daylight map, warm city lights on the night side, a sun glint on the oceans,
+ * drifting clouds with a soft shadow, and an inner atmospheric rim. One draw call.
+ */
 const earthFragment = /* glsl */ `
-  uniform sampler2D uMap;
+  uniform sampler2D uDay;
+  uniform sampler2D uNight;
+  uniform sampler2D uSpec;
+  uniform sampler2D uClouds;
+  uniform float uHasNight;
+  uniform float uHasSpec;
+  uniform float uHasClouds;
+  uniform float uCloudShift;
   uniform vec3 uSunDir;
-  uniform vec3 uRim;
+  uniform vec3 uAtmo;
+  uniform float uAmbient;
   uniform float uOpacity;
   varying vec2 vUv;
   varying vec3 vNormalW;
   varying vec3 vViewDirW;
   void main() {
-    vec3 base = texture2D(uMap, vUv).rgb;
-    float sun = dot(normalize(vNormalW), uSunDir);
-    float light = 0.42 + 0.9 * smoothstep(-0.25, 0.75, sun);
-    float fres = pow(1.0 - max(dot(normalize(vNormalW), normalize(vViewDirW)), 0.0), 2.6);
-    vec3 col = base * light + uRim * fres * 0.32;
-    gl_FragColor = vec4(col, uOpacity);
-  }
-`;
+    vec3 n = normalize(vNormalW);
+    vec3 v = normalize(vViewDirW);
+    float ndl = dot(n, uSunDir);
+    float day = smoothstep(-0.12, 0.32, ndl);
 
-const atmosphereFragment = /* glsl */ `
-  uniform vec3 uInner;
-  uniform vec3 uOuter;
-  uniform float uIntensity;
-  varying vec3 vNormalW;
-  varying vec3 vViewDirW;
-  void main() {
-    float d = dot(normalize(vNormalW), normalize(vViewDirW));
-    float glow = pow(clamp(1.0 + d * 1.6, 0.0, 1.0), 4.0);
-    vec3 col = mix(uOuter, uInner, glow);
-    gl_FragColor = vec4(col, glow * uIntensity);
+    vec3 albedo = texture2D(uDay, vUv).rgb;
+    vec2 cuv = vec2(vUv.x + uCloudShift, vUv.y);
+    float cloud = uHasClouds * texture2D(uClouds, cuv).r;
+    float cloudShadow = uHasClouds * texture2D(uClouds, cuv + vec2(0.0025, -0.002)).r;
+
+    float diffuse = max(ndl, 0.0);
+    vec3 col = albedo * (1.0 - 0.35 * cloudShadow) * (uAmbient + 1.15 * diffuse);
+
+    // Sun glint on water (specular map = ocean mask): a tight hot spot plus a faint wide sheen.
+    vec3 h = normalize(uSunDir + v);
+    float water = uHasSpec * texture2D(uSpec, vUv).r;
+    float nh = max(dot(n, h), 0.0);
+    float glint = (pow(nh, 220.0) * 0.35 + pow(nh, 18.0) * 0.02) * water * (1.0 - cloud);
+    col += vec3(1.0, 0.9, 0.74) * glint * day;
+
+    // Clouds catch the light (and stay faintly visible at night).
+    col = mix(col, vec3(1.0) * (uAmbient * 0.6 + 1.05 * diffuse), cloud * 0.9);
+
+    // City lights: Black Marble, warmed to gold, only where the sun has set.
+    // The Black Marble map has a faint non-black floor; cut it so only real lights glow.
+    vec3 lights = max(texture2D(uNight, vUv).rgb - 0.07, 0.0) * uHasNight;
+    lights = pow(lights, vec3(1.35)) * vec3(1.0, 0.74, 0.42) * 2.6;
+    col += lights * (1.0 - day) * (1.0 - cloud * 0.75);
+
+    // Gentle limb darkening and the inner limb of the air. (No added terminator tint: small linear
+    // additions turn into a visible brown band after the sRGB conversion on the dark side.)
+    float facing = max(dot(n, v), 0.0);
+    col *= mix(0.78, 1.0, pow(facing, 0.45));
+    float fres = pow(1.0 - facing, 4.0);
+    col += uAtmo * fres * (0.12 + 0.88 * smoothstep(-0.25, 0.55, ndl)) * 0.75;
+
+    gl_FragColor = vec4(col, uOpacity);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
   }
 `;
 
@@ -115,6 +193,31 @@ const atmosphereVertex = /* glsl */ `
   }
 `;
 
+/**
+ * Outer halo, drawn on the back faces of a larger shell. On that shell dot(n, view) runs from 0 at
+ * its silhouette to -uLimb where it meets the planet's limb, so the glow is brightest against the
+ * Earth and fades smoothly into space — no gap, no hard ring.
+ */
+const atmosphereFragment = /* glsl */ `
+  uniform vec3 uInner;
+  uniform vec3 uOuter;
+  uniform vec3 uSunDir;
+  uniform float uIntensity;
+  uniform float uLimb;
+  varying vec3 vNormalW;
+  varying vec3 vViewDirW;
+  void main() {
+    vec3 n = normalize(vNormalW);
+    float d = dot(n, normalize(vViewDirW));
+    float k = clamp(-d / uLimb, 0.0, 1.0);
+    float glow = pow(k, 2.6);
+    float lit = 0.2 + 0.8 * smoothstep(-0.35, 0.65, dot(n, uSunDir));
+    vec3 col = mix(uOuter, uInner, pow(k, 4.0));
+    gl_FragColor = vec4(col, glow * lit * uIntensity);
+    #include <colorspace_fragment>
+  }
+`;
+
 const fireVertex = /* glsl */ `
   attribute float aWeight;
   attribute float aPhase;
@@ -123,41 +226,56 @@ const fireVertex = /* glsl */ `
   uniform float uFade;
   varying float vWeight;
   varying float vFlicker;
+  varying float vFacing;
   void main() {
     vWeight = aWeight;
-    vFlicker = 0.72 + 0.28 * sin(uTime * (2.2 + aPhase) + aPhase * 6.2831);
+    vFlicker = 0.75 + 0.25 * sin(uTime * (1.6 + aPhase) + aPhase * 6.2831);
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = (3.0 + aWeight * 13.0) * uScale * uFade / -mv.z;
+    // Fade points near the limb so the planet's edge stays clean.
+    vec3 nView = normalize(mat3(modelViewMatrix) * normalize(position));
+    vFacing = smoothstep(0.05, 0.35, dot(nView, normalize(-mv.xyz)));
+    gl_PointSize = (6.0 + aWeight * 9.0) * uScale * uFade / -mv.z;
     gl_Position = projectionMatrix * mv;
   }
 `;
 
+/**
+ * Each fire is a crisp pointy-top hexagon (the product's one shape), coloured along the heat ramp by
+ * its weight: embers → orange → amber. The edge is antialiased in the sprite's own pixel space.
+ */
 const fireFragment = /* glsl */ `
+  uniform vec3 uHot;
+  uniform vec3 uMid;
+  uniform vec3 uCore;
   varying float vWeight;
   varying float vFlicker;
+  varying float vFacing;
   void main() {
-    float d = length(gl_PointCoord - 0.5);
-    float a = smoothstep(0.5, 0.0, d);
-    vec3 hot = mix(vec3(1.0, 0.32, 0.21), vec3(1.0, 0.82, 0.55), smoothstep(0.25, 0.0, d));
-    gl_FragColor = vec4(hot * vFlicker, a * (0.35 + 0.65 * vWeight));
+    vec2 p = abs(gl_PointCoord - 0.5) * 2.0;
+    float d = max(p.x, p.x * 0.5 + p.y * 0.8660254);
+    float edge = fwidth(d) * 1.2 + 0.02;
+    float a = 1.0 - smoothstep(0.84 - edge, 0.84, d);
+    vec3 col = vWeight < 0.5 ? mix(uHot, uMid, vWeight * 2.0) : mix(uMid, uCore, vWeight * 2.0 - 1.0);
+    gl_FragColor = vec4(col * (0.9 + 0.1 * vFlicker), a * (0.6 + 0.4 * vWeight) * vFacing);
+    #include <colorspace_fragment>
   }
 `;
 
 interface SatVisual {
   sat: Satellite;
-  group: Group;
-  trail: Line;
+  kind: SatelliteKind;
+  modelName: NasaModel;
+  /** Positioned and oriented every frame; holds whichever model is loaded. */
+  model: Group;
+  trail: Line<BufferGeometry, LineBasicMaterial>;
   trailPositions: Float32Array;
-  cone: Mesh;
-  orbit: LineLoop<BufferGeometry, LineBasicMaterial>;
-  label?: HTMLElement;
-  sensor: 'MODIS' | 'VIIRS';
+  trailColors: Float32Array;
 }
 
 /**
- * The intro planet. Imperative three.js, mounted once by GlobeCanvas, disposed when the dive ends.
- * Draw calls: Earth, atmosphere, fire points, two satellites (body + panels + cone), two orbits and
- * two trails — about a dozen, cheap enough for phones.
+ * The landing planet. Imperative three.js, mounted once by GlobeCanvas and disposed on unmount.
+ * Draw calls: Earth (one shader: day, night, clouds, glint), atmosphere, fire points, three
+ * satellite models (NASA glTF, or ~15 procedural meshes each on the light profile) and three trails.
  */
 export class EarthScene {
   private readonly renderer: WebGLRenderer;
@@ -171,14 +289,16 @@ export class EarthScene {
   private readonly sats: SatVisual[] = [];
   private readonly raycaster = new Raycaster();
   private readonly pointer = new Vector2();
-  private texture: Texture;
+  private readonly textures: Texture[] = [];
+  private hasPhoto = false;
   private raf = 0;
   private running = false;
+  private visible = true;
   private last = 0;
   private simTime = 0;
   private spinAngle = 0;
   private spinVelocity = 0;
-  private tiltAngle = 0.32;
+  private tiltAngle = 0.36;
   private cameraDistance = 3.4;
   private drag: { x: number; y: number; t: number; moved: number; lastX: number; lastY: number; lastT: number } | null = null;
   private hoverDirty = false;
@@ -195,63 +315,90 @@ export class EarthScene {
   private readonly resizeObserver: ResizeObserver;
   private readonly onVisibility = () => (document.hidden ? this.pause() : this.resume());
   private disposed = false;
+  private theme: SceneTheme;
   /** Where the planet sits: centre offset as a share of the viewport, radius as a share of the short side. */
   private frameSpec = { x: 0, y: 0, size: 0.8 };
   private baseDistance = 4.4;
-  /** 1 = framed beside the copy, 0 = centred (the dive slides it to the middle). */
   private offsetBlend = 1;
 
   constructor(host: HTMLElement, opts: EarthSceneOptions) {
     this.host = host;
     this.opts = opts;
+    this.theme = opts.theme;
     const low = opts.quality === 'low';
     this.renderer = new WebGLRenderer({ antialias: !low, alpha: true, powerPreference: low ? 'low-power' : 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, low ? 1.5 : 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, low ? 1.5 : 1.75));
     this.renderer.setClearColor(0x000000, 0);
-    this.renderer.domElement.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block';
+    // Vertical swipes scroll the page; horizontal drags spin the planet.
+    this.renderer.domElement.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;touch-action:pan-y;display:block';
     host.appendChild(this.renderer.domElement);
 
-    this.camera = new PerspectiveCamera(32, 1, 0.01, 100);
+    this.camera = new PerspectiveCamera(30, 1, 0.01, 100);
     this.camera.position.set(0, 0, this.cameraDistance);
 
     this.scene.add(this.tilt);
     this.tilt.add(this.spin);
     this.tilt.rotation.x = this.tiltAngle;
 
-    const segments = low ? [48, 32] : [96, 64];
-    this.texture = this.makeTexture(paintPlaceholder(low ? 1024 : 2048));
+    // Light for the satellite models (the Earth shader lights itself with the same sun direction).
+    const sun = new DirectionalLight('#fff6e8', 2.6);
+    sun.position.copy(SUN_DIR).multiplyScalar(10);
+    this.scene.add(sun, new AmbientLight('#c8d4ff', 0.35));
+    if (!low) {
+      const pmrem = new PMREMGenerator(this.renderer);
+      const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      this.scene.environment = env;
+      this.scene.environmentIntensity = 0.55;
+      this.textures.push(env);
+      pmrem.dispose();
+    }
+
+    const t = THEME[this.theme];
+    const segments = low ? [64, 48] : [128, 96];
+    const empty = new Texture();
     this.earth = new Mesh(
       new SphereGeometry(1, segments[0], segments[1]),
       new ShaderMaterial({
         vertexShader: earthVertex,
         fragmentShader: earthFragment,
         uniforms: {
-          uMap: { value: this.texture },
-          uSunDir: { value: new Vector3(-0.55, 0.45, 0.7).normalize() },
-          uRim: { value: new Color('#ff5a3a') },
+          uDay: { value: empty },
+          uNight: { value: empty },
+          uSpec: { value: empty },
+          uClouds: { value: empty },
+          uHasNight: { value: 0 },
+          uHasSpec: { value: 0 },
+          uHasClouds: { value: 0 },
+          uCloudShift: { value: 0 },
+          uSunDir: { value: SUN_DIR.clone() },
+          uAtmo: { value: t.atmoInner.clone() },
+          uAmbient: { value: t.ambient },
           uOpacity: { value: 1 },
         },
       }),
     );
+    this.earth.visible = false;
     this.spin.add(this.earth);
 
     this.atmosphere = new Mesh(
-      new SphereGeometry(1.1, segments[0], segments[1]),
+      new SphereGeometry(ATMO_RADIUS, segments[0], segments[1]),
       new ShaderMaterial({
         vertexShader: atmosphereVertex,
         fragmentShader: atmosphereFragment,
         uniforms: {
-          // “Kyzyl Aspan” — the red sky: a warm limb glow fading into night blue.
-          uInner: { value: new Color('#ff6a3d') },
-          uOuter: { value: new Color('#2b3f8f') },
-          uIntensity: { value: 0.75 },
+          uInner: { value: t.atmoInner.clone() },
+          uOuter: { value: t.atmoOuter.clone() },
+          uSunDir: { value: SUN_DIR.clone() },
+          uIntensity: { value: t.atmoIntensity },
+          uLimb: { value: Math.sqrt(1 - 1 / (ATMO_RADIUS * ATMO_RADIUS)) },
         },
         side: BackSide,
         transparent: true,
         depthWrite: false,
-        blending: AdditiveBlending,
+        blending: t.atmoBlending,
       }),
     );
+    this.atmosphere.visible = false;
     this.tilt.add(this.atmosphere);
 
     this.buildSatellites();
@@ -260,23 +407,124 @@ export class EarthScene {
     this.resizeObserver.observe(host);
     document.addEventListener('visibilitychange', this.onVisibility);
     this.resize();
+    void this.loadTextures();
   }
 
   /* ------------------------------------------------------------------ content */
 
-  private makeTexture(canvas: HTMLCanvasElement): Texture {
-    const t = new CanvasTexture(canvas);
-    t.colorSpace = SRGBColorSpace;
-    t.anisotropy = Math.min(4, this.renderer.capabilities.getMaxAnisotropy());
-    return t;
+  private loader = new ImageBitmapLoader().setOptions({ imageOrientation: 'flipY' });
+
+  /** Downscales a bitmap for the light profile (phones keep GPU memory in check). */
+  private toTexture(bitmap: ImageBitmap, maxWidth: number): Texture {
+    let tex: Texture;
+    if (bitmap.width > maxWidth) {
+      const c = document.createElement('canvas');
+      c.width = maxWidth;
+      c.height = Math.round((bitmap.height * maxWidth) / bitmap.width);
+      const ctx = c.getContext('2d')!;
+      // The bitmap is already flipped for WebGL; flip back for the canvas (CanvasTexture flips again).
+      ctx.translate(0, c.height);
+      ctx.scale(1, -1);
+      ctx.drawImage(bitmap, 0, 0, c.width, c.height);
+      bitmap.close();
+      tex = new CanvasTexture(c);
+    } else {
+      tex = new Texture(bitmap);
+      tex.flipY = false;
+    }
+    tex.colorSpace = SRGBColorSpace;
+    tex.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+    tex.needsUpdate = true;
+    this.textures.push(tex);
+    return tex;
   }
 
-  setCountries(countries: readonly CountryShape[]) {
+  private load(url: string): Promise<ImageBitmap> {
+    return new Promise((resolve, reject) => this.loader.load(url, resolve, undefined, reject));
+  }
+
+  private async loadTextures() {
+    const low = this.opts.quality === 'low';
+    const u = this.earth.material.uniforms;
+    try {
+      const day = await this.load(TEXTURES.day);
+      if (this.disposed) return day.close();
+      u.uDay!.value = this.toTexture(day, low ? 2048 : 4096);
+      this.hasPhoto = true;
+      this.showPlanet();
+    } catch (err) {
+      console.warn('[kyzyl-aspan] earth texture failed, using the drawn planet', err);
+      return; // setCountries() paints a fallback planet.
+    }
+    // The rest is decoration: load after the first frame, one at a time.
+    const extras: [keyof typeof TEXTURES, 'uNight' | 'uSpec' | 'uClouds', 'uHasNight' | 'uHasSpec' | 'uHasClouds', number][] = [
+      ['night', 'uNight', 'uHasNight', low ? 2048 : 4096],
+      ['clouds', 'uClouds', 'uHasClouds', 1024],
+      ['specular', 'uSpec', 'uHasSpec', 2048],
+    ];
+    for (const [key, uniform, flag, width] of extras) {
+      if (low && key === 'specular') continue;
+      try {
+        const bmp = await this.load(TEXTURES[key]);
+        if (this.disposed) return bmp.close();
+        const tex = this.toTexture(bmp, width);
+        // Clouds are a single channel; keep them linear so the alpha reads as authored.
+        if (key !== 'night') tex.colorSpace = NoColorSpace;
+        u[uniform]!.value = tex;
+        u[flag]!.value = 1;
+      } catch {
+        /* optional layer */
+      }
+    }
+  }
+
+  private showPlanet() {
+    if (this.earth.visible) return;
+    this.earth.visible = true;
+    this.atmosphere.visible = true;
+    for (const s of this.sats) {
+      s.model.visible = true;
+      s.trail.visible = true;
+    }
+    this.opts.onReady?.();
+    if (this.opts.quality === 'high') void this.loadSatelliteModels();
+  }
+
+  /** Swaps in NASA's models one by one once the planet is on screen; keeps the procedural ones on failure. */
+  private async loadSatelliteModels() {
+    const anisotropy = Math.min(4, this.renderer.capabilities.getMaxAnisotropy());
+    // The glTF loader is its own chunk: the planet never waits for it.
+    let loadNasaSatellite: typeof LoadNasaSatellite;
+    try {
+      ({ loadNasaSatellite } = await import('./nasaSatellites'));
+    } catch {
+      return;
+    }
     if (this.disposed) return;
-    const next = this.makeTexture(paintEarth(countries, this.opts.quality === 'low' ? 1024 : 2048));
-    this.earth.material.uniforms.uMap!.value = next;
-    this.texture.dispose();
-    this.texture = next;
+    for (const s of this.sats) {
+      try {
+        const pivot = await loadNasaSatellite(s.modelName, SAT_SIZE, anisotropy);
+        if (this.disposed) return;
+        const old = s.model.children[0];
+        if (old) s.model.remove(old);
+        s.model.add(pivot);
+      } catch (err) {
+        console.warn(`[kyzyl-aspan] satellite model ${s.modelName} unavailable, keeping the drawn one`, err);
+      }
+    }
+  }
+
+  /** Fallback planet drawn from country outlines, used only when the photo texture cannot load. */
+  setCountries(countries: readonly CountryShape[]) {
+    if (this.disposed || this.hasPhoto) return;
+    window.setTimeout(() => {
+      if (this.disposed || this.hasPhoto) return;
+      const tex = new CanvasTexture(paintEarth(countries, this.opts.quality === 'low' ? 1024 : 2048));
+      tex.colorSpace = SRGBColorSpace;
+      this.textures.push(tex);
+      this.earth.material.uniforms.uDay!.value = tex;
+      this.showPlanet();
+    }, 2500);
   }
 
   setFires(points: readonly [number, number, number][]) {
@@ -286,7 +534,7 @@ export class EarthScene {
     const weight = new Float32Array(n);
     const phase = new Float32Array(n);
     points.forEach(([lng, lat, w], i) => {
-      const [x, y, z] = latLngToXYZ(lat, lng, 1.004);
+      const [x, y, z] = latLngToXYZ(lat, lng, 1.003);
       pos.set([x, y, z], i * 3);
       weight[i] = w;
       phase[i] = ((i * 2654435761) % 1000) / 1000;
@@ -298,10 +546,17 @@ export class EarthScene {
     const mat = new ShaderMaterial({
       vertexShader: fireVertex,
       fragmentShader: fireFragment,
-      uniforms: { uTime: { value: 0 }, uScale: { value: 300 }, uFade: { value: 1 } },
+      uniforms: {
+        uTime: { value: 0 },
+        uScale: { value: 300 },
+        uFade: { value: 1 },
+        uHot: { value: new Color('#c23a14') },
+        uMid: { value: new Color('#ec6420') },
+        uCore: { value: new Color('#ffbf5a') },
+      },
       transparent: true,
       depthWrite: false,
-      blending: AdditiveBlending,
+      blending: THEME[this.theme].fireBlending,
     });
     if (this.fires) {
       this.spin.remove(this.fires);
@@ -314,61 +569,66 @@ export class EarthScene {
     this.resize();
   }
 
+  setTheme(theme: SceneTheme) {
+    if (this.disposed || theme === this.theme) return;
+    this.theme = theme;
+    const t = THEME[theme];
+    const a = this.atmosphere.material;
+    a.uniforms.uInner!.value.copy(t.atmoInner);
+    a.uniforms.uOuter!.value.copy(t.atmoOuter);
+    a.uniforms.uIntensity!.value = t.atmoIntensity;
+    a.blending = t.atmoBlending;
+    a.needsUpdate = true;
+    const e = this.earth.material.uniforms;
+    e.uAtmo!.value.copy(t.atmoInner);
+    e.uAmbient!.value = t.ambient;
+    if (this.fires) {
+      this.fires.material.blending = t.fireBlending;
+      this.fires.material.needsUpdate = true;
+    }
+    for (const s of this.sats) this.paintTrail(s);
+  }
+
+  private paintTrail(s: SatVisual) {
+    const t = THEME[this.theme];
+    const n = s.trailColors.length / 3;
+    for (let i = 0; i < n; i++) {
+      // Additive (dark) fades to black; normal blending (light) fades through vertex alpha.
+      const f = (1 - i / (n - 1)) ** 1.8;
+      const k = this.theme === 'dark' ? f : 1;
+      s.trailColors.set([t.trail.r * k, t.trail.g * k, t.trail.b * k], i * 3);
+    }
+    s.trail.material.blending = this.theme === 'dark' ? AdditiveBlending : NormalBlending;
+    s.trail.material.opacity = this.theme === 'dark' ? 0.55 : 0.28;
+    s.trail.material.needsUpdate = true;
+    (s.trail.geometry.getAttribute('color') as BufferAttribute).needsUpdate = true;
+  }
+
   private buildSatellites() {
-    const body = new BoxGeometry(0.028, 0.028, 0.044);
-    const panel = new PlaneGeometry(0.085, 0.026);
-    for (const sensor of ['MODIS', 'VIIRS'] as const) {
-      const sat = SHOWN[sensor];
-      const color = SENSOR_COLOR[sensor];
-      const group = new Group();
-      group.add(new Mesh(body, new MeshBasicMaterial({ color: '#e8ecf4' })));
-      const panelMat = new MeshBasicMaterial({ color, side: 2, transparent: true, opacity: 0.95 });
-      const left = new Mesh(panel, panelMat);
-      left.position.x = -0.062;
-      const right = new Mesh(panel, panelMat);
-      right.position.x = 0.062;
-      group.add(left, right);
+    for (const { id, kind, model: modelName } of SHOWN) {
+      const sat = FLEET.find((s) => s.id === id);
+      if (!sat) continue;
+      // A holder that rides the orbit; the procedural model is its first child until NASA's arrives.
+      const model = new Group();
+      const drawn = buildSatellite(kind);
+      drawn.scale.setScalar(SAT_SCALE);
+      model.add(drawn);
+      model.visible = false;
+      this.tilt.add(model);
 
-      // Swath cone: apex at the satellite, base on the ground, width = sensor swath.
-      const r = this.orbitRadius(sat);
-      const height = r - 0.995;
-      const swath = sat.swathKm / EARTH_RADIUS_KM / 2;
-      const cone = new Mesh(
-        new ConeGeometry(Math.sin(swath), height, 32, 1, true),
-        new MeshBasicMaterial({ color, transparent: true, opacity: 0.09, depthWrite: false, blending: AdditiveBlending, side: 2 }),
-      );
-      cone.position.y = -height / 2;
-      group.add(cone);
-      this.tilt.add(group);
-
-      // Orbit ring in the satellite's (inertial) plane.
-      const ringPts = new Float32Array(257 * 3);
-      const period = periodSec(sat);
-      for (let i = 0; i <= 256; i++) {
-        const p = fromEcef(positionEci(sat, (i / 256) * period), 1 / EARTH_RADIUS_KM);
-        const k = r / Math.hypot(p[0], p[1], p[2]);
-        ringPts.set([p[0] * k, p[1] * k, p[2] * k], i * 3);
-      }
-      const ringGeo = new BufferGeometry();
-      ringGeo.setAttribute('position', new BufferAttribute(ringPts, 3));
-      const orbit = new LineLoop(ringGeo, new LineBasicMaterial({ color, transparent: true, opacity: 0.22, depthWrite: false }));
-      this.tilt.add(orbit);
-
-      // Trail: a short bright arc behind the satellite (vertex colours fade to black under additive blending).
-      const TRAIL = 48;
+      const TRAIL = 36;
       const trailPositions = new Float32Array(TRAIL * 3);
-      const colors = new Float32Array(TRAIL * 3);
-      for (let i = 0; i < TRAIL; i++) {
-        const f = (1 - i / (TRAIL - 1)) ** 1.6;
-        colors.set([color.r * f, color.g * f, color.b * f], i * 3);
-      }
+      const trailColors = new Float32Array(TRAIL * 3);
       const trailGeo = new BufferGeometry();
       trailGeo.setAttribute('position', new BufferAttribute(trailPositions, 3));
-      trailGeo.setAttribute('color', new BufferAttribute(colors, 3));
-      const trail = new Line(trailGeo, new LineBasicMaterial({ vertexColors: true, transparent: true, blending: AdditiveBlending, depthWrite: false }));
+      trailGeo.setAttribute('color', new BufferAttribute(trailColors, 3));
+      const trail = new Line(trailGeo, new LineBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false }));
+      trail.visible = false;
       this.tilt.add(trail);
 
-      this.sats.push({ sat, group, trail, trailPositions, cone, orbit, label: this.opts.labels?.[sensor], sensor });
+      const visual: SatVisual = { sat, kind, modelName, model, trail, trailPositions, trailColors };
+      this.paintTrail(visual);
+      this.sats.push(visual);
     }
   }
 
@@ -399,6 +659,7 @@ export class EarthScene {
   }
 
   private hitEarth(): Vector3 | null {
+    if (!this.earth.visible) return null;
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hit = this.raycaster.intersectObject(this.earth, false)[0];
     return hit ? hit.point : null;
@@ -408,7 +669,8 @@ export class EarthScene {
     if (this.dive) return;
     this.setPointer(e);
     if (!this.hitEarth()) return;
-    this.renderer.domElement.setPointerCapture(e.pointerId);
+    // Touch: let the browser decide between page scroll (vertical) and a spin (horizontal).
+    if (e.pointerType !== 'touch') this.renderer.domElement.setPointerCapture(e.pointerId);
     const now = performance.now();
     this.drag = { x: e.clientX, y: e.clientY, t: now, moved: 0, lastX: e.clientX, lastY: e.clientY, lastT: now };
     this.spinVelocity = 0;
@@ -428,7 +690,7 @@ export class EarthScene {
     const size = Math.min(this.host.clientWidth, this.host.clientHeight) || 1;
     const k = 3.2 / size;
     this.spinAngle += dx * k;
-    this.tiltAngle = Math.max(-0.9, Math.min(0.9, this.tiltAngle + dy * k));
+    if (e.pointerType !== 'touch') this.tiltAngle = Math.max(-0.9, Math.min(0.9, this.tiltAngle + dy * k));
     const dt = Math.max(1, now - d.lastT);
     this.spinVelocity = ((dx * k) / dt) * 1000;
     d.lastX = e.clientX;
@@ -483,7 +745,7 @@ export class EarthScene {
 
   /**
    * Turns the target to face the camera and plunges towards it. The rotation eases in-out; the
-   * distance eases in hard (quartic), so the last frames rush at the ground before the white flash.
+   * distance eases in (cubic), so the plunge accelerates while the page-coloured veil rises over it.
    */
   diveTo(target: { lat: number; lng: number }, durationMs: number): Promise<void> {
     if (this.opts.reducedMotion) return Promise.resolve();
@@ -498,11 +760,11 @@ export class EarthScene {
         to: { spin: spinTarget, tilt: (target.lat * Math.PI) / 180, dist: 1.06 },
         resolve,
       };
+      this.visible = true;
       this.resume();
     });
   }
 
-  /** Rotation of the Earth since the epoch (sidereal), so the user's spin is an offset on top. */
   private earthSpin(): number {
     return EARTH_ROTATION * this.simTime;
   }
@@ -510,25 +772,51 @@ export class EarthScene {
   /* ------------------------------------------------------------------ loop */
 
   start() {
-    if (this.running || this.disposed) return;
+    if (this.running || this.disposed || !this.visible) return;
     this.running = true;
     this.last = performance.now();
     this.raf = requestAnimationFrame(this.frame);
   }
 
-  private pause() {
+  /** Stops rendering (off-screen or hidden tab). */
+  pause() {
     if (!this.running) return;
     this.running = false;
     cancelAnimationFrame(this.raf);
   }
 
-  private resume() {
+  resume() {
     if (document.hidden || this.disposed) return;
     this.start();
   }
 
+  /** The page scrolled the planet out of view: stop spending frames on it. */
+  setVisible(visible: boolean) {
+    this.visible = visible || this.dive !== null;
+    if (this.visible) this.resume();
+    else this.pause();
+  }
+
+  /**
+   * Draws one frame outside the rAF loop. Background tabs never tick rAF, so tests and dev tools use
+   * this to see the planet; it never leaves a second loop running.
+   */
+  debugStep(ms = 16) {
+    if (this.disposed) return;
+    cancelAnimationFrame(this.raf);
+    const wasRunning = this.running;
+    this.running = true;
+    this.last = performance.now() - ms;
+    this.frame(performance.now());
+    if (!wasRunning) {
+      this.running = false;
+      cancelAnimationFrame(this.raf);
+    }
+  }
+
   private readonly tmp = new Vector3();
   private readonly tmp2 = new Vector3();
+  private readonly tmp3 = new Vector3();
 
   private frame = (now: number) => {
     if (!this.running) return;
@@ -544,27 +832,24 @@ export class EarthScene {
       const r = easeInOutCubic(Math.min(1, t * 1.25));
       this.spinAngle = d.from.spin + (d.to.spin - d.from.spin) * r;
       this.tiltAngle = d.from.tilt + (d.to.tilt - d.from.tilt) * r;
-      this.cameraDistance = d.from.dist + (d.to.dist - d.from.dist) * easeInQuart(t);
+      this.cameraDistance = d.from.dist + (d.to.dist - d.from.dist) * easeInCubic(t);
       this.offsetBlend = 1 - easeInOutCubic(Math.min(1, t * 1.6));
       this.applyViewOffset();
       const fade = 1 - Math.min(1, t * 1.8);
       for (const s of this.sats) {
-        s.group.visible = fade > 0.02;
-        s.orbit.material.opacity = 0.22 * fade;
-        if (s.label) s.label.style.opacity = String(fade);
+        s.model.visible = fade > 0.02;
+        s.trail.visible = fade > 0.02;
       }
-      this.atmosphere.material.uniforms.uIntensity!.value = 0.75 * (1 - t * 0.6);
-      // Point sprites grow as 1/distance; shrink them so the last frames are not a wall of orange.
-      if (this.fires) this.fires.material.uniforms.uFade!.value = Math.max(0.15, 1 - easeInQuart(t) * 0.9) * (this.cameraDistance / 3.4);
+      this.atmosphere.material.uniforms.uIntensity!.value = THEME[this.theme].atmoIntensity * (1 - t * 0.6);
+      if (this.fires) this.fires.material.uniforms.uFade!.value = Math.max(0.15, 1 - easeInCubic(t) * 0.9) * (this.cameraDistance / 3.4);
       if (t >= 1) {
         this.dive = null;
         d.resolve();
       }
     } else if (!this.drag) {
       if (!reduced) this.spinAngle += (IDLE_SPIN + this.spinVelocity) * dt;
-      this.spinVelocity *= Math.pow(0.04, dt); // inertia decays to ~4% per second
-      // Ease the tilt back towards a pleasant default when the user lets go.
-      this.tiltAngle += (0.32 - this.tiltAngle) * Math.min(1, dt * 0.6);
+      this.spinVelocity *= Math.pow(0.04, dt);
+      this.tiltAngle += (0.36 - this.tiltAngle) * Math.min(1, dt * 0.6);
     }
 
     this.spin.rotation.y = this.spinAngle + this.earthSpin();
@@ -572,6 +857,8 @@ export class EarthScene {
     this.camera.position.set(0, 0, this.cameraDistance);
     this.camera.lookAt(0, 0, 0);
 
+    const u = this.earth.material.uniforms;
+    if (!reduced) u.uCloudShift!.value = (u.uCloudShift!.value + dt * 0.0016) % 1;
     if (this.fires) this.fires.material.uniforms.uTime!.value = now / 1000;
 
     this.updateSatellites();
@@ -591,43 +878,21 @@ export class EarthScene {
   };
 
   private updateSatellites() {
-    const w = this.host.clientWidth;
-    const h = this.host.clientHeight;
     this.tilt.updateMatrixWorld();
     for (const s of this.sats) {
       const pos = this.satPosition(s.sat, this.simTime, this.tmp);
-      s.group.position.copy(pos);
-      // Point the cone at the Earth's centre and keep the panels across-track.
-      s.group.up.set(0, 1, 0);
-      // lookAt works in world space: aim +Z away from the planet's centre.
-      s.group.lookAt(this.tmp2.copy(pos).multiplyScalar(2).applyMatrix4(this.tilt.matrixWorld));
-      s.group.rotateX(Math.PI / 2);
+      s.model.position.copy(pos);
+      // Nadir (−Z) at the Earth's centre, +Y along the track.
+      const ahead = this.satPosition(s.sat, this.simTime + 30, this.tmp3).sub(pos);
+      s.model.up.copy(ahead.transformDirection(this.tilt.matrixWorld));
+      s.model.lookAt(this.tmp2.copy(pos).multiplyScalar(2).applyMatrix4(this.tilt.matrixWorld));
 
-      // Trail: positions over the last few simulated minutes.
       const n = s.trailPositions.length / 3;
       for (let i = 0; i < n; i++) {
-        const p = this.satPosition(s.sat, this.simTime - i * 22, this.tmp2);
+        const p = this.satPosition(s.sat, this.simTime - i * 18, this.tmp2);
         s.trailPositions.set([p.x, p.y, p.z], i * 3);
       }
       (s.trail.geometry.getAttribute('position') as BufferAttribute).needsUpdate = true;
-
-      // Screen label, hidden when the satellite is behind the planet.
-      if (s.label) {
-        const world = this.tmp2.copy(pos).applyMatrix4(this.tilt.matrixWorld);
-        const toSat = world.clone().sub(this.camera.position);
-        const dist = toSat.length();
-        toSat.normalize();
-        // Ray-sphere test against the unit Earth.
-        const b = this.camera.position.dot(toSat);
-        const c = this.camera.position.lengthSq() - 1;
-        const disc = b * b - c;
-        const hidden = disc > 0 && -b - Math.sqrt(disc) < dist && -b - Math.sqrt(disc) > 0;
-        const ndc = world.project(this.camera);
-        const x = (ndc.x * 0.5 + 0.5) * w;
-        const y = (-ndc.y * 0.5 + 0.5) * h;
-        s.label.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
-        s.label.dataset.hidden = hidden ? 'true' : 'false';
-      }
     }
   }
 
@@ -635,7 +900,7 @@ export class EarthScene {
     const w = this.host.clientWidth || 1;
     const h = this.host.clientHeight || 1;
     const k = this.offsetBlend;
-    if (k <= 0.001) this.camera.clearViewOffset();
+    if (k <= 0.001 || (this.frameSpec.x === 0 && this.frameSpec.y === 0)) this.camera.clearViewOffset();
     else this.camera.setViewOffset(w, h, -this.frameSpec.x * w * k, -this.frameSpec.y * h * k, w, h);
   }
 
@@ -644,15 +909,15 @@ export class EarthScene {
     const h = this.host.clientHeight || 1;
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
-    this.camera.fov = 32;
-    // Distance at which the unit planet's radius spans frameSpec.size × half the short side:
-    // R_px = (h / 2) / (D · tan(fov / 2)).
+    // Distance at which the unit planet's radius spans frameSpec.size × half the short side.
     const tanHalf = Math.tan((this.camera.fov / 2) * (Math.PI / 180));
     this.baseDistance = h / (2 * tanHalf * this.frameSpec.size * 0.5 * Math.min(w, h));
     if (!this.dive) this.cameraDistance = this.baseDistance;
     this.applyViewOffset();
     this.camera.updateProjectionMatrix();
     if (this.fires) this.fires.material.uniforms.uScale!.value = h * this.renderer.getPixelRatio() * 0.005;
+    // Render one frame right away so a paused scene is never stretched after a resize.
+    if (!this.running && this.earth.visible) this.renderer.render(this.scene, this.camera);
   }
 
   dispose() {
@@ -670,10 +935,18 @@ export class EarthScene {
       const mesh = o as Mesh;
       mesh.geometry?.dispose();
       const mat = mesh.material as { dispose?: () => void } | { dispose?: () => void }[] | undefined;
-      if (Array.isArray(mat)) mat.forEach((m) => m.dispose?.());
-      else mat?.dispose?.();
+      const mats = Array.isArray(mat) ? mat : mat ? [mat] : [];
+      for (const m of mats) {
+        (m as { map?: Texture | null }).map?.dispose();
+        m.dispose?.();
+      }
     });
-    this.texture.dispose();
+    disposeSatelliteKit();
+    for (const t of this.textures) {
+      const img = t.image as ImageBitmap | undefined;
+      if (img && 'close' in img) img.close();
+      t.dispose();
+    }
     this.renderer.dispose();
     this.renderer.forceContextLoss();
     el.remove();

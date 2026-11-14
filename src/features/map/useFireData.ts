@@ -147,6 +147,23 @@ export function gridAt(archive: FireArchive, res: number): CellIndex {
 }
 
 /** Burning hexagons for the current window and filters, as polygons for the map. */
+/** Share of its size a drawn cell keeps: the rest becomes the dark seam between hexagons. */
+const HEX_INSET = 0.86;
+
+/** Pulls a closed ring towards its centroid (cells are small, so lng/lat space is fine). */
+function insetRing(ring: [number, number][], k: number): [number, number][] {
+  const n = ring.length > 1 && ring[0]![0] === ring[ring.length - 1]![0] && ring[0]![1] === ring[ring.length - 1]![1] ? ring.length - 1 : ring.length;
+  let cx = 0;
+  let cy = 0;
+  for (let i = 0; i < n; i++) {
+    cx += ring[i]![0];
+    cy += ring[i]![1];
+  }
+  cx /= n;
+  cy /= n;
+  return ring.map(([x, y]) => [cx + (x - cx) * k, cy + (y - cy) * k]);
+}
+
 export function hexFeatures(
   archive: FireArchive,
   res: number,
@@ -187,7 +204,7 @@ export function hexFeatures(
         frpMax: Math.round(agg.frpMax[c]! * 10) / 10,
         v: Math.sqrt(days / max),
       },
-      geometry: { type: 'Polygon' as const, coordinates: [hexRing(grid.ids[c]!)] },
+      geometry: { type: 'Polygon' as const, coordinates: [insetRing(hexRing(grid.ids[c]!), HEX_INSET)] },
     };
   });
   return { type: 'FeatureCollection', features };
