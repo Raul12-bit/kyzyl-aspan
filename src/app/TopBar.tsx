@@ -11,8 +11,8 @@ function NavItems({ onNavigate, vertical }: { onNavigate?: () => void; vertical?
   const { search } = useLocation();
   const items = [
     { to: '/', label: m.app.nav.map, icon: 'map' as const, end: true },
-    { to: '/analysis', label: m.app.nav.analysis, icon: 'chart' as const },
-    { to: '/how-it-works', label: m.app.nav.how, icon: 'help' as const },
+    { to: '/mission', label: m.app.nav.mission, icon: 'satellite' as const },
+    { to: '/method', label: m.app.nav.method, icon: 'help' as const },
   ];
   return (
     <ul className={cn('m-0 flex list-none gap-1 p-0', vertical && 'flex-col gap-0.5')}>

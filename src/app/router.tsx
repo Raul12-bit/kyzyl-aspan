@@ -1,7 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom';
-import { MapScreen } from '@/features/map/MapScreen';
 import { AppShell } from './AppShell';
-import { NotFound, RouteError } from './RouteStates';
+import { LazyMapScreen } from './LazyMapScreen';
+import { NotFound, Redirect, RouteError } from './RouteStates';
 
 export const router = createBrowserRouter(
   [
@@ -10,15 +10,17 @@ export const router = createBrowserRouter(
       element: <AppShell />,
       errorElement: <RouteError />,
       children: [
-        { index: true, element: <MapScreen /> },
+        { index: true, element: <LazyMapScreen /> },
         {
-          path: 'analysis',
-          lazy: async () => ({ Component: (await import('@/features/analysis/AnalysisPage')).AnalysisPage }),
+          path: 'mission',
+          lazy: async () => ({ Component: (await import('@/features/mission/MissionPage')).MissionPage }),
         },
         {
-          path: 'how-it-works',
-          lazy: async () => ({ Component: (await import('@/features/how-it-works/HowItWorksPage')).HowItWorksPage }),
+          path: 'method',
+          lazy: async () => ({ Component: (await import('@/features/method/MethodPage')).MethodPage }),
         },
+        { path: 'how-it-works', element: <Redirect to="/method" /> },
+        { path: 'analysis', element: <Redirect to="/" /> },
         { path: '*', element: <NotFound /> },
       ],
     },

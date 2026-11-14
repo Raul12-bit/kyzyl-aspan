@@ -18,18 +18,18 @@ export const WORLD: BBox = [-180, -85, 180, 85];
 export const CLUSTER = { radius: 44, maxZoom: 6 } as const;
 
 export const SOURCES = {
-  intro: 'el-intro',
   MODIS: 'el-fires-modis',
   VIIRS: 'el-fires-viirs',
   aoi: 'el-aoi',
+  hex: 'el-hex',
 } as const;
 
 export const LAYERS = {
-  introGlow: 'el-intro-glow',
-  introCore: 'el-intro-core',
   aoiFill: 'el-aoi-fill',
   aoiGlow: 'el-aoi-glow',
   aoiLine: 'el-aoi-line',
+  hexFill: 'el-hex-fill',
+  hexLine: 'el-hex-line',
   MODIS: {
     halo: 'el-modis-cluster-halo',
     cluster: 'el-modis-cluster',

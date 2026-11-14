@@ -80,11 +80,12 @@ describe('mock generator', () => {
     expect(n).toBeLessThanOrEqual(5);
   });
 
-  it('produces several thousand well-formed fire points clustered in the focus region', () => {
+  it('produces a well-formed sample, denser in the focus region', () => {
     const rows = data.fires.rows;
-    expect(rows.length).toBeGreaterThan(3000);
-    expect(rows.length).toBeLessThan(12000);
-    for (const [lng, lat, sensor, day, frp, conf] of rows) {
+    expect(rows.length).toBeGreaterThan(12000);
+    expect(rows.length).toBeLessThan(40000);
+    for (const [lng, lat, sensor, day, frp, conf, truth] of rows) {
+      expect([0, 1, 2]).toContain(truth);
       expect(lng).toBeGreaterThanOrEqual(-180);
       expect(lng).toBeLessThanOrEqual(180);
       expect(Math.abs(lat)).toBeLessThanOrEqual(90);
@@ -97,7 +98,19 @@ describe('mock generator', () => {
     expect(viirsBefore2012).toHaveLength(0);
     const [w, s, e, n] = DEMO_BBOX;
     const inDemo = rows.filter((r) => r[0] >= w && r[0] <= e && r[1] >= s && r[1] <= n).length;
-    expect(inDemo / rows.length).toBeGreaterThan(0.4);
+    // The world sample grew so that "fires in my country" has data on every continent; the focus box
+    // (≈0.4% of the Earth's surface) still holds a large share.
+    expect(inDemo / rows.length).toBeGreaterThan(0.25);
+  });
+
+  it('plants noise the filter can learn from: persistent sources and false alarms', () => {
+    const { staticRows, falseAlarmRows, fires } = data.manifest.counts;
+    expect(staticRows / fires).toBeGreaterThan(0.05);
+    expect(staticRows / fires).toBeLessThan(0.2);
+    expect(falseAlarmRows / fires).toBeGreaterThan(0.02);
+    const fa = data.fires.rows.filter((r) => r[6] === 2);
+    const lowShare = fa.filter((r) => r[5] === 0).length / fa.length;
+    expect(lowShare).toBeGreaterThan(0.7);
   });
 
   it('keeps the intro globe light: at most a few hundred aggregates', () => {

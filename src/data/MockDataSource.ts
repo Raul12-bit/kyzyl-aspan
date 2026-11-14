@@ -1,17 +1,21 @@
+import type { FireArchive } from '@/domain/archive';
+import type { CountriesFile } from '@/domain/countries';
+import type { OnboardModel } from '@/domain/onboard';
 import { dayOffsetToIso } from '@/lib/date';
 import { bboxContains } from '@/lib/geo';
 import type { ActivityOverview, DataSource, RequestOptions } from './DataSource';
-import { buildCalendar } from './mock/engine/calendar';
-import type { ZonesFile } from './mock/engine/zones';
 import { searchRegionList } from './regionSearch';
 import {
   DataSourceError,
-  type BBox,
+  type AreaQuery,
   type CalendarSeries,
   type Confidence,
   type DateRange,
+  type DetectionArchive,
+  type DetectionRow,
   type FireCollection,
   type FireFeature,
+  type BBox,
   type Region,
   type Sensor,
 } from './types';
@@ -32,9 +36,11 @@ export interface MockOptions {
 }
 
 interface FiresFile {
-  rows: [number, number, 0 | 1, number, number, 0 | 1 | 2][];
+  version: string;
+  rows: DetectionRow[];
   sensors: Sensor[];
   confidence: Confidence[];
+  truth?: ('fire' | 'static' | 'false-alarm')[];
 }
 
 interface IntroFile {
@@ -78,8 +84,8 @@ async function defaultLoad(path: string, signal?: AbortSignal): Promise<unknown>
 }
 
 /**
- * Simulates the future Emberline API on top of static JSON produced by `pnpm data:mock`.
- * The harmonization itself runs here (src/data/mock/engine), exactly where a server would run it.
+ * Simulates the future Kyzyl Aspan API on top of static JSON produced by `pnpm data:mock`.
+ * The harmonization itself runs here through src/domain — exactly the code a backend would run.
  */
 export class MockDataSource implements DataSource {
   readonly id = 'mock' as const;
@@ -87,7 +93,7 @@ export class MockDataSource implements DataSource {
   private readonly cache = new Map<string, Promise<unknown>>();
 
   constructor(options: MockOptions) {
-    this.opts = { latencyMs: 280, mode: 'normal', maxFeatures: 50_000, ...options };
+    this.opts = { latencyMs: 280, mode: 'normal', maxFeatures: 60_000, ...options };
   }
 
   private load<T>(file: string, signal?: AbortSignal): Promise<T> {
@@ -113,14 +119,31 @@ export class MockDataSource implements DataSource {
     if (mode === 'error') throw new DataSourceError('server', 'Simulated server error (mock=error)');
   }
 
-  private getZones(): Promise<ZonesFile> {
-    return this.memo('zones', () => this.load<ZonesFile>('zones.json'));
+  private getFiresFile(): Promise<FiresFile> {
+    return this.memo('fires-file', () => this.load<FiresFile>('fires.json'));
+  }
+
+  /** The H3 pipeline (and h3-js) is loaded on first use, keeping it off the intro's critical path. */
+  private getArchive(): Promise<FireArchive> {
+    return this.memo('archive', async () => {
+      const [file, { buildArchive }, { tableFromRows }] = await Promise.all([
+        this.getFiresFile(),
+        import('@/domain/archive'),
+        import('@/domain/detections'),
+      ]);
+      return buildArchive(tableFromRows(file.rows));
+    });
+  }
+
+  private getCountries(): Promise<CountriesFile> {
+    return this.memo('countries', () => this.load<CountriesFile>('countries.json'));
   }
 
   private getAllFires(): Promise<FireFeature[]> {
     return this.memo('fires', async () => {
-      const file = await this.load<FiresFile>('fires.json');
-      return file.rows.map(([lng, lat, s, day, frp, c], i): FireFeature => {
+      const file = await this.getFiresFile();
+      const truth = file.truth ?? ['fire', 'static', 'false-alarm'];
+      return file.rows.map(([lng, lat, s, day, frp, c, t], i): FireFeature => {
         const sensor = file.sensors[s]!;
         return {
           type: 'Feature',
@@ -132,6 +155,7 @@ export class MockDataSource implements DataSource {
             date: dayOffsetToIso(day),
             frp,
             confidence: file.confidence[c]!,
+            ...(t !== undefined ? { truth: truth[t] } : {}),
           },
         };
       });
@@ -157,13 +181,38 @@ export class MockDataSource implements DataSource {
     };
   }
 
-  async getCalendar(bbox: BBox, options?: RequestOptions): Promise<CalendarSeries> {
-    const [zones] = await Promise.all([this.getZones(), this.simulate(options?.signal)]);
-    if (this.opts.mode === 'empty') {
-      const { meta } = buildCalendar({ ...zones, coverage: [] }, bbox);
-      return { bbox, points: [], meta };
+  async getDetections(options?: RequestOptions): Promise<DetectionArchive> {
+    const [file] = await Promise.all([this.getFiresFile(), this.simulate(options?.signal)]);
+    return { version: file.version, rows: this.opts.mode === 'empty' ? [] : file.rows, synthetic: true };
+  }
+
+  async getCalendar(area: AreaQuery, options?: RequestOptions): Promise<CalendarSeries> {
+    const [archive, { bboxMask, polygonMask }, { buildHexCalendar }] = await Promise.all([
+      this.getArchive(),
+      import('@/domain/area'),
+      import('@/domain/hexCalendar'),
+      this.simulate(options?.signal),
+    ]);
+    const { bbox } = area;
+    let mask: Uint8Array;
+    const country = area.regionId && /^[A-Z]{2}$/.test(area.regionId) ? area.regionId : null;
+    if (country) {
+      const shape = (await this.getCountries()).countries.find((c) => c.id === country);
+      mask = shape ? polygonMask(archive.table, shape.polys, bbox) : bboxMask(archive.table, bbox);
+    } else {
+      mask = bboxMask(archive.table, bbox);
     }
-    return buildCalendar(zones, bbox);
+    if (this.opts.mode === 'empty') mask = new Uint8Array(archive.table.n);
+    return buildHexCalendar({
+      table: archive.table,
+      grid: archive.grid,
+      flags: archive.flags,
+      persistence: archive.persistence,
+      base: archive.base,
+      area: mask,
+      bbox,
+      synthetic: true,
+    });
   }
 
   async searchRegions(query: string, options?: RequestOptions): Promise<Region[]> {
@@ -175,10 +224,13 @@ export class MockDataSource implements DataSource {
   }
 
   async getOverview(options?: RequestOptions): Promise<ActivityOverview> {
-    const file = await this.memo('overview', async () => {
+    return this.memo('overview', async () => {
       const intro = await this.load<IntroFile>('intro.json', options?.signal);
       return { points: intro.rows, synthetic: true } satisfies ActivityOverview;
     });
-    return file;
+  }
+
+  async getOnboardModel(options?: RequestOptions): Promise<OnboardModel> {
+    return this.memo('model', () => this.load<OnboardModel>('model.json', options?.signal));
   }
 }

@@ -1,4 +1,5 @@
-import type { BBox, CalendarSeries, DateRange, FireCollection, Region } from './types';
+import type { OnboardModel } from '@/domain/onboard';
+import type { AreaQuery, BBox, CalendarSeries, DateRange, DetectionArchive, FireCollection, Region } from './types';
 
 export interface RequestOptions {
   signal?: AbortSignal;
@@ -14,13 +15,22 @@ export interface ActivityOverview {
 /**
  * The only door between the UI and fire data. Swap implementations in `src/data/index.ts`.
  * All methods must be safe to call concurrently and honour `signal` for cancellation.
+ * The HTTP contract for the backend is documented in HttpDataSource.ts and PROGRESS.md.
  */
 export interface DataSource {
   readonly id: 'mock' | 'http';
   getFirePoints(bbox: BBox, range: DateRange, options?: RequestOptions): Promise<FireCollection>;
-  getCalendar(bbox: BBox, options?: RequestOptions): Promise<CalendarSeries>;
+  /**
+   * Compact detection rows for the whole (sampled) archive. The client runs the noise filter and the
+   * H3 aggregation on them (src/domain), so the map can re-filter instantly while scrubbing time.
+   */
+  getDetections(options?: RequestOptions): Promise<DetectionArchive>;
+  /** Harmonized burn calendar of an area; `regionId` (ISO 3166-1 alpha-2) narrows a box to a country outline. */
+  getCalendar(area: AreaQuery, options?: RequestOptions): Promise<CalendarSeries>;
   /** Empty query returns featured regions. */
   searchRegions(query: string, options?: RequestOptions): Promise<Region[]>;
-  /** Not in the original brief: the intro globe needs a light, pre-aggregated overview. */
+  /** The intro globe needs a light, pre-aggregated overview. */
   getOverview(options?: RequestOptions): Promise<ActivityOverview>;
+  /** Weights of the tiny onboard triage classifier (see src/domain/onboard.ts). */
+  getOnboardModel(options?: RequestOptions): Promise<OnboardModel>;
 }

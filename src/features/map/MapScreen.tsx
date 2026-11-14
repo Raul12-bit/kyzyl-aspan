@@ -1,8 +1,11 @@
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useAppParams } from '@/app/useAppParams';
 import type { BBox } from '@/data/types';
+import type { FireArchive } from '@/domain/archive';
+import { nearestCountry } from '@/domain/countries';
+import { loadCountries } from '@/features/geo/countries';
 import { introSelectors } from '@/features/intro/introMachine';
-import { useIntroStore } from '@/features/intro/introStore';
+import { useIntroStore, WORLD_BOUNDS } from '@/features/intro/introStore';
 import { useReveal } from '@/features/intro/useReveal';
 import { Tour } from '@/features/onboarding/Tour';
 import { useI18n } from '@/i18n';
@@ -35,6 +38,7 @@ function MapControls({ vertical = true }: { vertical?: boolean }) {
       <IconButton icon="plus" label={m.map.controls.zoomIn} onClick={() => zoomBy(1)} />
       <IconButton icon="minus" label={m.map.controls.zoomOut} onClick={() => zoomBy(-1)} />
       <IconButton icon="reset" label={m.map.controls.reset} onClick={() => flyToArea(bbox)} />
+      <IconButton icon="globe" label={m.map.controls.world} onClick={() => flyToArea(WORLD_BOUNDS)} />
     </div>
   );
 }
@@ -73,7 +77,7 @@ function StatusStack({ loading, error, onRetry }: { loading: boolean; error: boo
 
 type MobileTab = 'area' | 'layers' | 'time';
 
-function MobileLayout({ index }: { index: ReturnType<typeof useFireIndex>['index'] }) {
+function MobileLayout({ index, archive }: { index: ReturnType<typeof useFireIndex>['index']; archive: FireArchive | null }) {
   const { m } = useI18n();
   const [snap, setSnap] = useState<SheetSnap>('peek');
   const [tab, setTab] = useState<MobileTab>('area');
@@ -111,10 +115,10 @@ function MobileLayout({ index }: { index: ReturnType<typeof useFireIndex>['index
             snap === 'peek' ? (
               <SelectionSummary compact />
             ) : (
-              <AreaPanelBody />
+              <AreaPanelBody archive={archive} />
             )
           ) : tab === 'layers' ? (
-            <LayersPanelBody index={index} />
+            <LayersPanelBody index={index} archive={archive} />
           ) : (
             <TimeBar index={index} compact />
           )}
@@ -137,12 +141,35 @@ export function MapScreen() {
   const onDrawn = useCallback((b: BBox) => setArea(b, null), [setArea]);
   useBoxDraw(onDrawn, bbox);
 
+  // Click on the map (not on a detection) → select the country under the pointer.
+  const onPickCountry = useCallback(
+    (lng: number, lat: number) => {
+      void loadCountries().then((file) => {
+        const c = nearestCountry(file.countries, lng, lat, 0.6);
+        if (!c) return;
+        setArea(c.bbox, c.id);
+        flyToArea(c.bbox);
+      });
+    },
+    [setArea],
+  );
+
+  // Landing from the intro on the visitor's country: make it the selected area (once).
+  const landed = useRef(false);
+  useEffect(() => {
+    if (landed.current) return;
+    const target = useIntroStore.getState().target;
+    if (!mounted || !target) return;
+    landed.current = true;
+    if (target.country && !bbox) setArea(target.bounds, target.country);
+  }, [mounted, bbox, setArea]);
+
   if (!mounted) return null;
 
   return (
     <>
-      <MapSync index={fires.index} />
-      <MapHover />
+      <MapSync index={fires.index} archive={fires.archive} />
+      <MapHover onPickCountry={onPickCountry} />
       <main id="main" className="pointer-events-none fixed inset-0" style={{ zIndex: 'var(--el-z-ui)' as unknown as number }}>
         <h1 className="sr-only">
           {m.app.name} — {m.app.nav.map}
@@ -156,13 +183,13 @@ export function MapScreen() {
             >
               <Reveal index={1} id="tour-area" className="min-h-0 flex-shrink overflow-y-auto rounded-panel">
                 <Panel as="section" title={m.map.area.title} aria-label={m.map.area.title}>
-                  <AreaPanelBody />
+                  <AreaPanelBody archive={fires.archive} />
                 </Panel>
               </Reveal>
               {!wide ? (
                 <Reveal index={2} id="tour-layers" className="flex-none">
                   <Panel as="section" title={m.map.layers.title} aria-label={m.map.layers.title}>
-                    <LayersPanelBody index={fires.index} />
+                    <LayersPanelBody index={fires.index} archive={fires.archive} />
                   </Panel>
                 </Reveal>
               ) : null}
@@ -175,7 +202,7 @@ export function MapScreen() {
                 className="absolute right-6 top-[calc(var(--el-header-h)+24px)] max-h-[calc(100vh-var(--el-header-h)-200px)] w-[var(--el-side-w)] overflow-y-auto rounded-panel"
               >
                 <Panel as="aside" title={m.map.layers.title} aria-label={m.map.layers.title}>
-                  <LayersPanelBody index={fires.index} />
+                  <LayersPanelBody index={fires.index} archive={fires.archive} />
                 </Panel>
               </Reveal>
             ) : null}
@@ -198,7 +225,7 @@ export function MapScreen() {
             </Reveal>
           </>
         ) : (
-          <MobileLayout index={fires.index} />
+          <MobileLayout index={fires.index} archive={fires.archive} />
         )}
       </main>
       {phase === 'done' ? <Tour /> : null}

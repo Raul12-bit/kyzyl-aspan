@@ -3,7 +3,22 @@ import { create } from 'zustand';
 import { initialIntroState, introReducer, type IntroEvent, type IntroMode, type IntroState } from './introMachine';
 import { TIMELINE } from './transition.config';
 
+/** Where the dive lands: a country (from geolocation) or the whole world, plus the point to dive at. */
+export interface IntroTarget {
+  /** ISO 3166-1 alpha-2, or null for the whole world. */
+  country: string | null;
+  /** Map bounds to land on: [west, south, east, north]; west > east crosses the antimeridian. */
+  bounds: [number, number, number, number];
+  /** Globe point the camera plunges towards. */
+  focus: { lat: number; lng: number };
+}
+
+/** Whole-world landing view for the mercator map. */
+export const WORLD_BOUNDS: [number, number, number, number] = [-170, -56, 190, 74];
+
 interface IntroStore extends IntroState {
+  target: IntroTarget | null;
+  setTarget: (target: IntroTarget) => void;
   dispatch: (event: IntroEvent) => void;
 }
 
@@ -28,8 +43,10 @@ function initialState(): IntroState {
 
 export const useIntroStore = create<IntroStore>((set, get) => ({
   ...initialState(),
+  target: null,
+  setTarget: (target) => set({ target }),
   dispatch: (event) => {
-    const { dispatch: _d, ...state } = get();
+    const { dispatch: _d, target: _t, setTarget: _s, ...state } = get();
     const next = introReducer(state, event);
     if (next !== state) set(next);
   },

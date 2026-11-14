@@ -7,21 +7,23 @@
     <meta name="color-scheme" content="dark" />
     <meta
       name="description"
-      content="Emberline puts MODIS and VIIRS fire detections on one comparable scale and shows a burn calendar with uncertainty for any area on Earth."
+      content="Kyzyl Aspan — 26 years of MODIS and VIIRS fire detections on one comparable H3 scale, with noise filtering, AI risk briefings and a concept space segment."
     />
+    <meta property="og:title" content="Kyzyl Aspan — fire from space, on one honest scale" />
+    <meta property="og:image" content="/brand/kyzyl-aspan-logo.webp" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Emberline — one scale for fire from space</title>
+    <title>Kyzyl Aspan — fire from space, on one honest scale</title>
     <script>
       // Apply the saved language before first paint (no flash of the wrong lang attribute).
       try {
-        var l = localStorage.getItem('emberline.locale');
-        if (l === 'ru' || l === 'en') document.documentElement.lang = l;
+        var s = JSON.parse(localStorage.getItem('kyzylaspan.locale') || 'null');
+        if (s && /^(en|ru|kk|es|fr|de|pt|zh)$/.test(s.locale)) document.documentElement.lang = s.locale;
       } catch (e) {}
     </script>
   </head>
   <body>
     <div id="root"></div>
-    <noscript>Emberline needs JavaScript to draw maps and charts.</noscript>
+    <noscript>Kyzyl Aspan needs JavaScript to draw the globe, maps and charts.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
