@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#05070d" />
+    <meta name="color-scheme" content="dark" />
+    <meta
+      name="description"
+      content="Emberline puts MODIS and VIIRS fire detections on one comparable scale and shows a burn calendar with uncertainty for any area on Earth."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Emberline — one scale for fire from space</title>
+    <script>
+      // Apply the saved language before first paint (no flash of the wrong lang attribute).
+      try {
+        var l = localStorage.getItem('emberline.locale');
+        if (l === 'ru' || l === 'en') document.documentElement.lang = l;
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>Emberline needs JavaScript to draw maps and charts.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

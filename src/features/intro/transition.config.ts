@@ -44,7 +44,7 @@ export const TIMELINE: Record<'full' | 'fallback' | 'reduced', PhaseTimeline> = 
   full: {
     zoom: { duration: 820, easing: EASE_DIVE },
     flash: { rise: 90, easing: EASE_FLASH, color: '#ffffff' },
-    swap: { minHold: 200, maxWait: 1100 },
+    swap: { minHold: 200, maxWait: 520 },
     reveal: { duration: 1400, easing: EASE_REVEAL, panelsDelay: 220, panelsStagger: 110, panelsDuration: 760, panelsShift: 14 },
   },
   fallback: {
@@ -66,12 +66,31 @@ export const TIMELINE: Record<'full' | 'fallback' | 'reduced', PhaseTimeline> = 
 export const GLOBE = {
   /** Longitude degrees per second; 0 in reduced motion. */
   rotationSpeed: 3.2,
-  center: [58, 28] as [number, number],
-  zoomDesktop: 1.55,
-  zoomMobile: 0.75,
-  /** The dive ends this many zoom levels above the start, aimed at the target view. */
-  diveZoom: 4.2,
+  center: [64, 30] as [number, number],
+  /** Globe diameter as a share of the free area next to (desktop) or above (mobile) the copy. */
+  sizeShare: 0.8,
+  /**
+   * The dive overshoots the landing zoom by this much; the swap under white settles it.
+   * Kept small so the dive ends inside the same tile zoom as the landing view: the tiles the
+   * map needs after the swap are already being fetched during the last frames of the dive.
+   */
+  overshoot: 0.3,
 };
+
+/** Keeps the globe clear of the intro copy (copy left on desktop, bottom on mobile). */
+export function introPadding(width: number, height: number) {
+  if (width >= 1024) return { top: 0, bottom: 0, left: Math.min(620, width * 0.44), right: 0 };
+  // Mobile: the copy takes the lower ~58% of the screen; the globe lives above it.
+  return { top: 64, bottom: Math.round(height * 0.58), left: 0, right: 0 };
+}
+
+/** Zoom at which the globe's diameter fills `sizeShare` of the free area (globe radius ≈ 512·2^z / 2π px). */
+export function introZoom(width: number, height: number): number {
+  const p = introPadding(width, height);
+  const free = Math.min(width - p.left - p.right, height - p.top - p.bottom);
+  const diameter = Math.max(220, free * GLOBE.sizeShare);
+  return Math.log2((diameter * Math.PI) / 512);
+}
 
 /** Where the map lands (Kazakhstan & Central Asia). */
 export const TARGET_BOUNDS: [number, number, number, number] = [46, 37, 88, 56];

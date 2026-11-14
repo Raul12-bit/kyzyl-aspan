@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 @import './tokens.css';
+/* Component styles sit in the components layer, so Tailwind utilities can still override them. */
+@import '../ui/ui.css' layer(components);
 
 /* Tailwind utilities read the tokens directly (no duplicated values). */
 @theme inline {
