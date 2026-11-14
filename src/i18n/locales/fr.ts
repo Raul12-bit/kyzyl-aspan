@@ -106,7 +106,7 @@ export const fr: Messages = {
     skip: 'Passer',
     skipHint: 'Passer la transition',
     globeLabel:
-      'Terre 3D en rotation avec des foyers lumineux et deux satellites, MODIS et VIIRS, sur leurs orbites',
+      'Terre 3D en rotation avec des marques hexagonales d’activité des feux et le satellite Terra (MODIS) sur son orbite',
     noGlobe: 'Vue simplifiée : ce navigateur ne peut pas afficher le globe 3D.',
   },
   geo: {

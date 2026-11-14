@@ -96,7 +96,8 @@ export const zh: Messages = {
     satViirsDesc: 'Suomi NPP 与 NOAA-20 · 375 米像元 · 2012 年起',
     skip: '跳过',
     skipHint: '跳过过渡动画',
-    globeLabel: '旋转的 3D 地球，带有发光的火点以及在轨道上运行的两颗卫星 MODIS 和 VIIRS',
+    globeLabel:
+      '旋转的三维地球，带有六边形火情标记和在轨的 Terra 卫星（MODIS）',
     noGlobe: '简化视图：此浏览器无法渲染 3D 地球。',
   },
   geo: {

@@ -147,10 +147,11 @@ Backend tasks, in order:
   fewer segments, DPR ≤ 1.5, no MSAA). Rendering pauses in background tabs.
 - **Bundle**: first-screen JS ~110 kB gzip: `h3-js` (64 kB) loads with the map, dictionaries per
   language. Globe chunk 156 kB gzip; the glTF loader is a separate 15 kB chunk loaded after the planet shows.
-- **Satellite models**: NASA 3D Resources (public domain) — Terra, Aqua, Suomi NPP. Originals 6.4 MB
+- **Satellite model**: one satellite on its orbit — Terra (MODIS), where the 26-year record starts —
+  from NASA 3D Resources (public domain). Original 2.1 MB
   (117k-triangle CAD meshes, Draco, PNG duplicates). `pnpm models:build <dir>` (script
   `scripts/build-satellite-models.mjs`, uses only libraries bundled with three) decodes, welds, simplifies
-  to 4–10k triangles and drops normals → **487 kB total** in `public/models/`, no Draco decoder at runtime.
+  to ~9k triangles and drops normals → **131 kB** in `public/models/terra.glb`, no Draco decoder at runtime.
   Normals are rebuilt in the browser with a 35° crease. Phones / low profile keep procedural models (0 bytes).
 - **Design** (2026-11-14 redesign, v2): one accent per theme — fire orange `#f37021` on warm obsidian
   `#0a0a0b`, burnt orange `#b84a12` on porcelain `#f6f4ef`. Heat ramp embers → orange → amber (no cream).
@@ -163,6 +164,11 @@ Backend tasks, in order:
   transforms/opacity only). Map: same header as the site, one toolbar opens one panel at a time (area or
   layers), min zoom = one world width. The map re-tints live on theme change (basemap + data layers).
   Theme switch cross-fades via the View Transitions API.
+- **Globe smoothness**: rendering capped at ~72 fps (120–165 Hz screens no longer redraw 2–3× more than
+  needed); render resolution steps down 1.75 → 1.4 → 1.05 → 1 when the machine cannot hold ~40 fps;
+  satellite trails rebuilt every 4th frame without per-vertex allocations; night texture 2048 px everywhere
+  (smaller GPU upload hitch). The cloud layer drifts in longitude, so its texture repeats (`RepeatWrapping`):
+  the default clamp smeared the edge column into a striped band over the Pacific.
 - **Dive transition**: no white flash. A veil in the page colour starts rising 0.55 s before the camera
   reaches the surface (1.2 s cubic plunge), holds while the map lands, then lifts over 1.1 s while the
   map settles from a 6% zoom with a 4 px blur. Pinned by `introMachine.test.ts`.
@@ -197,6 +203,11 @@ Backend tasks, in order:
       all visuals are code (SVG, three.js) and NASA imagery/models.
 
 ## 7. Change log
+
+- **2026-11-15 · Globe fixes** — one satellite only (Terra; Aqua and Suomi NPP removed, screen-reader label
+  updated in 8 locales); fixed the striped cloud band at
+  the date line (cloud texture now repeats); quieter sun glint; ~72 fps cap and adaptive resolution;
+  cheaper trail updates; night texture 2048 px.
 
 - **2026-11-14 · Redesign v2** — hexagons everywhere (map H3 view by default with seams, SDF hexagon
   detections, hexagonal fires on the globe, legends, illustrations); orange accent and amber heat ramp

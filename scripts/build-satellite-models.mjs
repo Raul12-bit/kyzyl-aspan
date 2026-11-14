@@ -3,9 +3,6 @@
  *
  * Source (public domain, NASA media usage guidelines): https://github.com/nasa/NASA-3D-Resources
  *   3D Models/Terra/Terra.glb                                       → public/models/terra.glb   (MODIS)
- *   3D Models/Aqua (A)/Aqua (A).glb                                 → public/models/aqua.glb    (MODIS)
- *   3D Models/Suomi National Polar-orbiting Partnership (Suomi NPP)/
- *     Suomi National Polar-orbiting Partnership (Suomi NPP).glb     → public/models/snpp.glb    (VIIRS)
  *
  * The originals are 2–2.3 MB each (117k-triangle CAD meshes, Draco, PNG duplicates of WebP textures,
  * broken links to .tga files). On screen a satellite is 40–80 px wide, so this script:
@@ -16,7 +13,7 @@
  *   5. keeps only the WebP textures, fixes impossible material values (negative roughness),
  *   6. writes a plain, uncompressed GLB that needs no decoder at runtime.
  *
- * Usage: node scripts/build-satellite-models.mjs <dir with terra.glb, aqua.glb, snpp.glb> [outDir]
+ * Usage: node scripts/build-satellite-models.mjs <dir with terra.glb> [outDir]
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -39,8 +36,6 @@ const DracoDecoderModule = dracoModule.exports;
 
 const MODELS = [
   { file: 'terra.glb', budget: 9000 },
-  { file: 'aqua.glb', budget: 9000 },
-  { file: 'snpp.glb', budget: 6000 },
 ];
 
 /* ------------------------------------------------------------------ GLB io */
@@ -412,7 +407,7 @@ async function build(draco, inDir, outDir, { file, budget }) {
 const [inDir, outDir = 'public/models'] = process.argv.slice(2);
 if (!inDir) {
   console.error(
-    'usage: node scripts/build-satellite-models.mjs <dir with terra.glb, aqua.glb, snpp.glb> [outDir]',
+    'usage: node scripts/build-satellite-models.mjs <dir with terra.glb> [outDir]',
   );
   process.exit(1);
 }
