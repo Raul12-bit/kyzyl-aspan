@@ -12,7 +12,6 @@ export const fr: Messages = {
     nav: { map: 'Carte des feux', mission: 'Mission', method: 'Méthode', label: 'Principal' },
     language: 'Langue',
     useLocation: 'Utiliser ma position',
-    theme: { toLight: 'Passer au thème clair', toDark: 'Passer au thème sombre' },
   },
   landing: {
     title: 'Kyzyl Aspan — le feu vu de l’espace, sur une échelle honnête',

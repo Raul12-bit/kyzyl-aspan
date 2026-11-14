@@ -22,7 +22,7 @@ Last update: 2026-11-14.
 | 5 | **Link prediction** (orbits + stations + weather → Ka/X/other station) | ✅ concept | ⛔ not started | `src/domain/orbit.ts`, `downlink.ts`; synthetic weather |
 | 6 | **Satellite-to-satellite cueing** | ✅ concept | ⛔ not applicable to MODIS/VIIRS | `src/domain/crosscue.ts`; clearly labelled as a concept |
 | 7 | 3D Earth intro with MODIS + VIIRS satellites, dive → white flash → map | ✅ | — | three.js, lazy chunk, `src/features/globe/`; real NASA models (Terra, Aqua, Suomi NPP) since the redesign |
-| 7a | **Landing page** (header + centred Earth, story on scroll) and minimal-luxury redesign, light/dark | ✅ | — | `src/features/landing/`; see §5 “Design” |
+| 7a | **Landing page** (header + centred Earth, story on scroll) and minimal-luxury redesign, dark only | ✅ | — | `src/features/landing/`; see §5 “Design” |
 | 8 | Geolocation → language + landing country | ✅ | — | offline point-in-polygon, nothing sent to a server |
 | 9 | i18n: en, ru, kk, es, fr, de, pt, zh | ✅ | — | every dictionary type-checked + tested |
 | 10 | Real data (FIRMS MCD14ML / VNP14IMGML / VJ114IMGML) | — | ⛔ **main backend task** | see §4 |
@@ -153,8 +153,9 @@ Backend tasks, in order:
   `scripts/build-satellite-models.mjs`, uses only libraries bundled with three) decodes, welds, simplifies
   to ~9k triangles and drops normals → **131 kB** in `public/models/terra.glb`, no Draco decoder at runtime.
   Normals are rebuilt in the browser with a 35° crease. Phones / low profile keep procedural models (0 bytes).
-- **Design** (2026-11-14 redesign, v2): one accent per theme — fire orange `#f37021` on warm obsidian
-  `#0a0a0b`, burnt orange `#b84a12` on porcelain `#f6f4ef`. Heat ramp embers → orange → amber (no cream).
+- **Design** (2026-11-14 redesign, v2; dark-only since 2026-11-15): one theme — fire orange `#f37021` on
+  warm obsidian `#0a0a0b`. Heat ramp embers → orange → amber (no cream). There is no light theme and no
+  theme switch; `index.html` clears the old `kyzylaspan.theme` key.
   Instruments: MODIS = steel, outline hexagons; VIIRS = amber, filled hexagons; harmonized = ink.
   **One shape everywhere: the pointy-top hexagon** — H3 cells on the map (default view, with real seams
   between cells), detection marks (SDF icon), fires on the 3D globe, legends, landing illustrations,
@@ -162,8 +163,7 @@ Backend tasks, in order:
   only for numbers. Landing:
   `/` shows only the header and the Earth; sections reveal on scroll (one shared IntersectionObserver,
   transforms/opacity only). Map: same header as the site, one toolbar opens one panel at a time (area or
-  layers), min zoom = one world width. The map re-tints live on theme change (basemap + data layers).
-  Theme switch cross-fades via the View Transitions API.
+  layers), min zoom = one world width.
 - **Globe smoothness**: rendering capped at ~72 fps (120–165 Hz screens no longer redraw 2–3× more than
   needed); render resolution steps down 1.75 → 1.4 → 1.05 → 1 when the machine cannot hold ~40 fps;
   satellite trails rebuilt every 4th frame without per-vertex allocations; night texture 2048 px everywhere
@@ -203,6 +203,9 @@ Backend tasks, in order:
       all visuals are code (SVG, three.js) and NASA imagery/models.
 
 ## 7. Change log
+
+- **2026-11-15 · Dark only** — light theme removed: no theme toggle, single token set, globe and map tinted
+  once; theme store, live map re-tint, View Transitions cross-fade and the toggle labels (8 locales) deleted.
 
 - **2026-11-15 · Globe fixes** — one satellite only (Terra; Aqua and Suomi NPP removed, screen-reader label
   updated in 8 locales); fixed the striped cloud band at

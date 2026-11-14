@@ -12,7 +12,6 @@ export const pt: Messages = {
     nav: { map: 'Mapa de queimadas', mission: 'Missão', method: 'Método', label: 'Principal' },
     language: 'Idioma',
     useLocation: 'Usar minha localização',
-    theme: { toLight: 'Mudar para tema claro', toDark: 'Mudar para tema escuro' },
   },
   landing: {
     title: 'Kyzyl Aspan — o fogo visto do espaço, em uma escala honesta',

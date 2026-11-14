@@ -12,7 +12,6 @@ export const kk: Messages = {
     nav: { map: 'Өрт картасы', mission: 'Миссия', method: 'Әдіс', label: 'Негізгі мәзір' },
     language: 'Тіл',
     useLocation: 'Орналасқан жерім бойынша',
-    theme: { toLight: 'Ашық тақырып', toDark: 'Күңгірт тақырып' },
   },
   landing: {
     title: 'Kyzyl Aspan — ғарыштан көрінген өрттер бір әділ шкалада',

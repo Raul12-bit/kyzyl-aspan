@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { useThemeStore } from '@/app/theme';
 import { useOverview } from '@/data/queries';
 import { useCountries } from '@/features/geo/countries';
 import { prefersReducedMotion, useIntroStore } from '@/features/intro/introStore';
@@ -41,7 +40,6 @@ export default function GlobeCanvas({ onPick, onHover, facingRef, onReady, onErr
   const [ready, setReady] = useState(false);
   const countries = useCountries();
   const overview = useOverview();
-  const theme = useThemeStore((s) => s.theme);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -51,7 +49,6 @@ export default function GlobeCanvas({ onPick, onHover, facingRef, onReady, onErr
       scene = new EarthScene(host, {
         quality: pickQuality(),
         reducedMotion: prefersReducedMotion(),
-        theme: useThemeStore.getState().theme,
         onPick: (lat, lng, screen) => handlers.current.onPick(lat, lng, screen),
         onHoverEarth: (over) => handlers.current.onHover?.(over),
         onReady: () => {
@@ -92,9 +89,6 @@ export default function GlobeCanvas({ onPick, onHover, facingRef, onReady, onErr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    sceneRef.current?.setTheme(theme);
-  }, [theme]);
 
   useEffect(() => {
     if (countries.data) sceneRef.current?.setCountries(countries.data.countries);

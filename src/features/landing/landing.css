@@ -1,6 +1,6 @@
 /*
  * Landing page: one planet, then a quiet editorial scroll.
- * Everything here reads tokens from tokens.css, so both themes come for free.
+ * Everything here reads tokens from tokens.css.
  */
 
 .lp {
@@ -48,25 +48,10 @@
   pointer-events: none;
 }
 
-/* Light theme: the planet rests on the page with a soft contact shadow. */
-.lp-hero__shadow {
-  position: absolute;
-  left: 50%;
-  top: calc(50% + min(34vmin, 330px));
-  width: min(54vmin, 520px);
-  height: min(7vmin, 64px);
-  transform: translate(-50%, 0);
-  border-radius: 50%;
-  background: radial-gradient(50% 50% at 50% 50%, var(--el-globe-shadow), transparent 72%);
-  filter: blur(14px);
-  pointer-events: none;
-}
 
 .lp-hero__stars {
   position: absolute;
   inset: 0;
-  opacity: var(--el-stars);
-  transition: opacity 600ms var(--el-ease-standard);
   pointer-events: none;
 }
 

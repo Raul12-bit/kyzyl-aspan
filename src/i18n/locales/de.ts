@@ -12,7 +12,6 @@ export const de: Messages = {
     nav: { map: 'Feuerkarte', mission: 'Mission', method: 'Methode', label: 'Hauptnavigation' },
     language: 'Sprache',
     useLocation: 'Meinen Standort verwenden',
-    theme: { toLight: 'Zum hellen Design wechseln', toDark: 'Zum dunklen Design wechseln' },
   },
   landing: {
     title: 'Kyzyl Aspan — Feuer aus dem All, auf einer ehrlichen Skala',

@@ -11,7 +11,6 @@ export const zh: Messages = {
     nav: { map: '火点地图', mission: '任务', method: '方法', label: '主导航' },
     language: '语言',
     useLocation: '使用我的位置',
-    theme: { toLight: '切换到浅色主题', toDark: '切换到深色主题' },
   },
   landing: {
     title: 'Kyzyl Aspan —— 从太空看火，用同一把诚实的尺子',
