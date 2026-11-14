@@ -1,0 +1,863 @@
+[
+  {
+    "id": "KZ",
+    "kind": "country",
+    "iso2": "KZ",
+    "name": {
+      "en": "Kazakhstan",
+      "ru": "Казахстан"
+    },
+    "bbox": [
+      46.47,
+      40.66,
+      87.36,
+      55.39
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "Qazaqstan",
+      "Kazakstan",
+      "Қазақстан"
+    ],
+    "featured": true
+  },
+  {
+    "id": "UZ",
+    "kind": "country",
+    "iso2": "UZ",
+    "name": {
+      "en": "Uzbekistan",
+      "ru": "Узбекистан"
+    },
+    "bbox": [
+      55.93,
+      37.14,
+      73.06,
+      45.59
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "Ozbekiston",
+      "O'zbekiston"
+    ],
+    "featured": true
+  },
+  {
+    "id": "KG",
+    "kind": "country",
+    "iso2": "KG",
+    "name": {
+      "en": "Kyrgyzstan",
+      "ru": "Киргизия"
+    },
+    "bbox": [
+      69.46,
+      39.28,
+      80.26,
+      43.3
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "Kyrgyz Republic",
+      "Кыргызстан"
+    ],
+    "featured": true
+  },
+  {
+    "id": "TJ",
+    "kind": "country",
+    "iso2": "TJ",
+    "name": {
+      "en": "Tajikistan",
+      "ru": "Таджикистан"
+    },
+    "bbox": [
+      67.44,
+      36.74,
+      74.98,
+      40.96
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "Тоҷикистон"
+    ]
+  },
+  {
+    "id": "TM",
+    "kind": "country",
+    "iso2": "TM",
+    "name": {
+      "en": "Turkmenistan",
+      "ru": "Туркменистан"
+    },
+    "bbox": [
+      52.5,
+      35.27,
+      66.55,
+      42.75
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "Türkmenistan"
+    ]
+  },
+  {
+    "id": "AF",
+    "kind": "country",
+    "iso2": "AF",
+    "name": {
+      "en": "Afghanistan",
+      "ru": "Афганистан"
+    },
+    "bbox": [
+      60.53,
+      29.32,
+      75.16,
+      38.49
+    ],
+    "group": "central-asia"
+  },
+  {
+    "id": "MN",
+    "kind": "country",
+    "iso2": "MN",
+    "name": {
+      "en": "Mongolia",
+      "ru": "Монголия"
+    },
+    "bbox": [
+      87.75,
+      41.6,
+      119.77,
+      52.05
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "Монгол Улс"
+    ]
+  },
+  {
+    "id": "RU",
+    "kind": "country",
+    "iso2": "RU",
+    "name": {
+      "en": "Russia",
+      "ru": "Россия"
+    },
+    "bbox": [
+      19.64,
+      41.15,
+      180,
+      81.25
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "Russian Federation",
+      "Российская Федерация"
+    ]
+  },
+  {
+    "id": "CN",
+    "kind": "country",
+    "iso2": "CN",
+    "name": {
+      "en": "China",
+      "ru": "Китай"
+    },
+    "bbox": [
+      73.68,
+      18.2,
+      134.77,
+      53.46
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "PRC"
+    ]
+  },
+  {
+    "id": "IR",
+    "kind": "country",
+    "iso2": "IR",
+    "name": {
+      "en": "Iran",
+      "ru": "Иран"
+    },
+    "bbox": [
+      44.11,
+      25.08,
+      63.32,
+      39.71
+    ],
+    "group": "central-asia"
+  },
+  {
+    "id": "AZ",
+    "kind": "country",
+    "iso2": "AZ",
+    "name": {
+      "en": "Azerbaijan",
+      "ru": "Азербайджан"
+    },
+    "bbox": [
+      44.79,
+      38.27,
+      50.39,
+      41.86
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "Azərbaycan"
+    ]
+  },
+  {
+    "id": "GE",
+    "kind": "country",
+    "iso2": "GE",
+    "name": {
+      "en": "Georgia",
+      "ru": "Грузия"
+    },
+    "bbox": [
+      39.96,
+      41.06,
+      46.64,
+      43.55
+    ],
+    "group": "world",
+    "aliases": [
+      "Sakartvelo"
+    ]
+  },
+  {
+    "id": "AM",
+    "kind": "country",
+    "iso2": "AM",
+    "name": {
+      "en": "Armenia",
+      "ru": "Армения"
+    },
+    "bbox": [
+      43.58,
+      38.74,
+      46.51,
+      41.25
+    ],
+    "group": "world",
+    "aliases": [
+      "Hayastan"
+    ]
+  },
+  {
+    "id": "TR",
+    "kind": "country",
+    "iso2": "TR",
+    "name": {
+      "en": "Türkiye",
+      "ru": "Турция"
+    },
+    "bbox": [
+      26.04,
+      35.82,
+      44.79,
+      42.14
+    ],
+    "group": "world",
+    "aliases": [
+      "Turkey",
+      "Turkiye"
+    ]
+  },
+  {
+    "id": "UA",
+    "kind": "country",
+    "iso2": "UA",
+    "name": {
+      "en": "Ukraine",
+      "ru": "Украина"
+    },
+    "bbox": [
+      22.09,
+      44.36,
+      40.08,
+      52.34
+    ],
+    "group": "world",
+    "aliases": [
+      "Україна"
+    ]
+  },
+  {
+    "id": "PK",
+    "kind": "country",
+    "iso2": "PK",
+    "name": {
+      "en": "Pakistan",
+      "ru": "Пакистан"
+    },
+    "bbox": [
+      60.87,
+      23.69,
+      77.84,
+      37.13
+    ],
+    "group": "world"
+  },
+  {
+    "id": "IN",
+    "kind": "country",
+    "iso2": "IN",
+    "name": {
+      "en": "India",
+      "ru": "Индия"
+    },
+    "bbox": [
+      68.18,
+      7.97,
+      97.4,
+      35.49
+    ],
+    "group": "world",
+    "aliases": [
+      "Bharat"
+    ]
+  },
+  {
+    "id": "US",
+    "kind": "country",
+    "iso2": "US",
+    "name": {
+      "en": "United States (contiguous)",
+      "ru": "США (континентальные)"
+    },
+    "bbox": [
+      -124.73,
+      24.52,
+      -66.95,
+      49.38
+    ],
+    "group": "world",
+    "aliases": [
+      "USA",
+      "America",
+      "США"
+    ]
+  },
+  {
+    "id": "CA",
+    "kind": "country",
+    "iso2": "CA",
+    "name": {
+      "en": "Canada",
+      "ru": "Канада"
+    },
+    "bbox": [
+      -141,
+      41.68,
+      -52.65,
+      73.23
+    ],
+    "group": "world"
+  },
+  {
+    "id": "MX",
+    "kind": "country",
+    "iso2": "MX",
+    "name": {
+      "en": "Mexico",
+      "ru": "Мексика"
+    },
+    "bbox": [
+      -117.13,
+      14.54,
+      -86.81,
+      32.72
+    ],
+    "group": "world",
+    "aliases": [
+      "México"
+    ]
+  },
+  {
+    "id": "BR",
+    "kind": "country",
+    "iso2": "BR",
+    "name": {
+      "en": "Brazil",
+      "ru": "Бразилия"
+    },
+    "bbox": [
+      -73.99,
+      -33.77,
+      -34.73,
+      5.24
+    ],
+    "group": "world",
+    "aliases": [
+      "Brasil"
+    ]
+  },
+  {
+    "id": "BO",
+    "kind": "country",
+    "iso2": "BO",
+    "name": {
+      "en": "Bolivia",
+      "ru": "Боливия"
+    },
+    "bbox": [
+      -69.59,
+      -22.9,
+      -57.5,
+      -9.68
+    ],
+    "group": "world"
+  },
+  {
+    "id": "AR",
+    "kind": "country",
+    "iso2": "AR",
+    "name": {
+      "en": "Argentina",
+      "ru": "Аргентина"
+    },
+    "bbox": [
+      -73.42,
+      -55.25,
+      -53.63,
+      -21.83
+    ],
+    "group": "world"
+  },
+  {
+    "id": "AU",
+    "kind": "country",
+    "iso2": "AU",
+    "name": {
+      "en": "Australia",
+      "ru": "Австралия"
+    },
+    "bbox": [
+      113.34,
+      -43.63,
+      153.57,
+      -10.67
+    ],
+    "group": "world"
+  },
+  {
+    "id": "ID",
+    "kind": "country",
+    "iso2": "ID",
+    "name": {
+      "en": "Indonesia",
+      "ru": "Индонезия"
+    },
+    "bbox": [
+      95.29,
+      -10.36,
+      141.03,
+      5.48
+    ],
+    "group": "world"
+  },
+  {
+    "id": "CD",
+    "kind": "country",
+    "iso2": "CD",
+    "name": {
+      "en": "DR Congo",
+      "ru": "ДР Конго"
+    },
+    "bbox": [
+      12.18,
+      -13.26,
+      31.17,
+      5.26
+    ],
+    "group": "world",
+    "aliases": [
+      "Democratic Republic of the Congo",
+      "Congo-Kinshasa"
+    ]
+  },
+  {
+    "id": "AO",
+    "kind": "country",
+    "iso2": "AO",
+    "name": {
+      "en": "Angola",
+      "ru": "Ангола"
+    },
+    "bbox": [
+      11.64,
+      -17.93,
+      24.08,
+      -4.44
+    ],
+    "group": "world"
+  },
+  {
+    "id": "ZM",
+    "kind": "country",
+    "iso2": "ZM",
+    "name": {
+      "en": "Zambia",
+      "ru": "Замбия"
+    },
+    "bbox": [
+      21.89,
+      -17.96,
+      33.49,
+      -8.24
+    ],
+    "group": "world"
+  },
+  {
+    "id": "NG",
+    "kind": "country",
+    "iso2": "NG",
+    "name": {
+      "en": "Nigeria",
+      "ru": "Нигерия"
+    },
+    "bbox": [
+      2.69,
+      4.24,
+      14.58,
+      13.87
+    ],
+    "group": "world"
+  },
+  {
+    "id": "TD",
+    "kind": "country",
+    "iso2": "TD",
+    "name": {
+      "en": "Chad",
+      "ru": "Чад"
+    },
+    "bbox": [
+      13.54,
+      7.42,
+      23.89,
+      23.41
+    ],
+    "group": "world",
+    "aliases": [
+      "Tchad"
+    ]
+  },
+  {
+    "id": "SD",
+    "kind": "country",
+    "iso2": "SD",
+    "name": {
+      "en": "Sudan",
+      "ru": "Судан"
+    },
+    "bbox": [
+      21.94,
+      8.62,
+      38.41,
+      22
+    ],
+    "group": "world"
+  },
+  {
+    "id": "SS",
+    "kind": "country",
+    "iso2": "SS",
+    "name": {
+      "en": "South Sudan",
+      "ru": "Южный Судан"
+    },
+    "bbox": [
+      23.89,
+      3.51,
+      35.3,
+      12.25
+    ],
+    "group": "world"
+  },
+  {
+    "id": "ZA",
+    "kind": "country",
+    "iso2": "ZA",
+    "name": {
+      "en": "South Africa",
+      "ru": "ЮАР"
+    },
+    "bbox": [
+      16.34,
+      -34.82,
+      32.83,
+      -22.09
+    ],
+    "group": "world",
+    "aliases": [
+      "RSA",
+      "Южно-Африканская Республика"
+    ]
+  },
+  {
+    "id": "ES",
+    "kind": "country",
+    "iso2": "ES",
+    "name": {
+      "en": "Spain",
+      "ru": "Испания"
+    },
+    "bbox": [
+      -9.39,
+      35.95,
+      3.04,
+      43.75
+    ],
+    "group": "world",
+    "aliases": [
+      "España"
+    ]
+  },
+  {
+    "id": "PT",
+    "kind": "country",
+    "iso2": "PT",
+    "name": {
+      "en": "Portugal",
+      "ru": "Португалия"
+    },
+    "bbox": [
+      -9.53,
+      36.84,
+      -6.39,
+      42.28
+    ],
+    "group": "world"
+  },
+  {
+    "id": "GR",
+    "kind": "country",
+    "iso2": "GR",
+    "name": {
+      "en": "Greece",
+      "ru": "Греция"
+    },
+    "bbox": [
+      20.15,
+      34.92,
+      26.6,
+      41.83
+    ],
+    "group": "world",
+    "aliases": [
+      "Hellas",
+      "Ελλάδα"
+    ]
+  },
+  {
+    "id": "KZ-KUS",
+    "kind": "province",
+    "parentId": "KZ",
+    "name": {
+      "en": "Kostanay Region",
+      "ru": "Костанайская область"
+    },
+    "bbox": [
+      59.5,
+      48.9,
+      66.9,
+      54
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "Qostanai",
+      "Kostanai"
+    ],
+    "featured": true
+  },
+  {
+    "id": "KZ-SEV",
+    "kind": "province",
+    "parentId": "KZ",
+    "name": {
+      "en": "North Kazakhstan Region",
+      "ru": "Северо-Казахстанская область"
+    },
+    "bbox": [
+      65.4,
+      52.6,
+      72.1,
+      55.4
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "Soltüstik Qazaqstan",
+      "Petropavl"
+    ]
+  },
+  {
+    "id": "KZ-AKM",
+    "kind": "province",
+    "parentId": "KZ",
+    "name": {
+      "en": "Akmola Region",
+      "ru": "Акмолинская область"
+    },
+    "bbox": [
+      65.4,
+      50.3,
+      73.4,
+      53.8
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "Aqmola",
+      "Kokshetau"
+    ]
+  },
+  {
+    "id": "KZ-PAV",
+    "kind": "province",
+    "parentId": "KZ",
+    "name": {
+      "en": "Pavlodar Region",
+      "ru": "Павлодарская область"
+    },
+    "bbox": [
+      72.8,
+      50.3,
+      79.2,
+      54.1
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "Pavlodar"
+    ]
+  },
+  {
+    "id": "KZ-VOS",
+    "kind": "province",
+    "parentId": "KZ",
+    "name": {
+      "en": "East Kazakhstan Region",
+      "ru": "Восточно-Казахстанская область"
+    },
+    "bbox": [
+      79,
+      47,
+      87.3,
+      51.7
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "Shygys Qazaqstan",
+      "Oskemen",
+      "Ust-Kamenogorsk"
+    ],
+    "featured": true
+  },
+  {
+    "id": "KZ-ALM",
+    "kind": "province",
+    "parentId": "KZ",
+    "name": {
+      "en": "Almaty Region",
+      "ru": "Алматинская область"
+    },
+    "bbox": [
+      73.8,
+      42.3,
+      80.3,
+      46.6
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "Almaty oblysy",
+      "Balkhash",
+      "Ili"
+    ],
+    "featured": true
+  },
+  {
+    "id": "KZ-KZY",
+    "kind": "province",
+    "parentId": "KZ",
+    "name": {
+      "en": "Kyzylorda Region",
+      "ru": "Кызылординская область"
+    },
+    "bbox": [
+      58.5,
+      42.6,
+      68.4,
+      47.3
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "Qyzylorda",
+      "Syr Darya"
+    ]
+  },
+  {
+    "id": "KZ-ZAP",
+    "kind": "province",
+    "parentId": "KZ",
+    "name": {
+      "en": "West Kazakhstan Region",
+      "ru": "Западно-Казахстанская область"
+    },
+    "bbox": [
+      46.6,
+      48,
+      54.8,
+      51.8
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "Batys Qazaqstan",
+      "Oral",
+      "Uralsk"
+    ]
+  },
+  {
+    "id": "KZ-AKT",
+    "kind": "province",
+    "parentId": "KZ",
+    "name": {
+      "en": "Aktobe Region",
+      "ru": "Актюбинская область"
+    },
+    "bbox": [
+      53.2,
+      45.4,
+      63.3,
+      51.2
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "Aqtöbe",
+      "Aktobe"
+    ]
+  },
+  {
+    "id": "KZ-KAR",
+    "kind": "province",
+    "parentId": "KZ",
+    "name": {
+      "en": "Karaganda Region",
+      "ru": "Карагандинская область"
+    },
+    "bbox": [
+      64.7,
+      45,
+      76,
+      51.5
+    ],
+    "group": "central-asia",
+    "aliases": [
+      "Qaraghandy",
+      "Karagandy"
+    ]
+  }
+]

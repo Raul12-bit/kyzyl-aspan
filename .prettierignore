@@ -1,0 +1,6 @@
+dist
+node_modules
+public/data
+pnpm-lock.yaml
+figma-plugin
+coverage

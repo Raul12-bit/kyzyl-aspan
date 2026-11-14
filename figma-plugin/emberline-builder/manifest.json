@@ -1,0 +1,21 @@
+{
+  "name": "Emberline Builder",
+  "id": "emberline-builder-local-dev",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": { "allowedDomains": ["none"] },
+  "menu": [
+    { "name": "Run all (recommended)", "command": "all" },
+    { "separator": true },
+    { "name": "1 · Fix semi-transparent fills", "command": "alpha" },
+    { "name": "2 · Tidy Screens page layout", "command": "layout" },
+    { "name": "3 · Build 04 Analysis", "command": "analysis" },
+    { "name": "4 · Build 05 How it works", "command": "how" },
+    { "name": "5 · Build mobile screens", "command": "mobile" },
+    { "name": "6 · Build motion storyboard", "command": "motion" },
+    { "name": "7 · Build Ideas", "command": "ideas" },
+    { "name": "8 · Wire prototype", "command": "prototype" }
+  ]
+}
