@@ -14,15 +14,8 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Kyzyl Aspan — fire from space, on one honest scale</title>
     <script>
-      // Apply the saved theme and language before first paint (no flash of the wrong theme or lang).
-      try {
-        var t = localStorage.getItem("kyzylaspan.theme");
-        if (t !== "light" && t !== "dark") t = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-        document.documentElement.dataset.theme = t;
-        document.querySelector("meta[name=theme-color]").setAttribute("content", t === "light" ? "#f6f4ef" : "#0a0a0b");
-      } catch (e) {
-        document.documentElement.dataset.theme = "dark";
-      }
+      // The site has one theme: dark (space, fire, satellites). Set before first paint.
+      document.documentElement.dataset.theme = "dark";
       // The landing page opens on the Earth: start fetching its daylight texture right away.
       if (location.pathname === "/") {
         var l = document.createElement("link");

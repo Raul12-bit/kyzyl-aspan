@@ -1,8 +1,10 @@
+import { AutoDataSource, setDataMode } from './AutoDataSource';
 import type { DataSource } from './DataSource';
 import { HttpDataSource } from './HttpDataSource';
 import { MockDataSource, type MockMode } from './MockDataSource';
 
 export type { DataSource, ActivityOverview, RequestOptions } from './DataSource';
+export { dataMode, onDataMode, type DataMode } from './AutoDataSource';
 export * from './types';
 
 const MOCK_MODES: readonly MockMode[] = ['normal', 'slow', 'error', 'empty'];
@@ -13,17 +15,25 @@ function readMockMode(): MockMode {
   return MOCK_MODES.includes(value as MockMode) ? (value as MockMode) : 'normal';
 }
 
+/** Default HELIOS data API path (proxied to the Python backend by Vite in dev and by server/ in production). */
+export const DEFAULT_API_URL = '/v1';
+
 /**
  * THE place where the data source is chosen.
- * VITE_DATA_SOURCE=http + VITE_API_URL → real API; anything else → static mock files.
+ *  - VITE_DATA_SOURCE=auto (default): real HELIOS API (VITE_API_URL, default /v1) if it answers, else the mock;
+ *  - VITE_DATA_SOURCE=http: always the real API;
+ *  - VITE_DATA_SOURCE=mock (or ?mock=… in the URL): static demo files.
  */
 export function createDataSource(env: ImportMetaEnv = import.meta.env): DataSource {
-  if (env.VITE_DATA_SOURCE === 'http') {
-    if (!env.VITE_API_URL) {
-      console.warn('VITE_DATA_SOURCE=http but VITE_API_URL is empty — falling back to mock data.');
-    } else {
-      return new HttpDataSource(env.VITE_API_URL);
-    }
+  const mockBase = `${env.BASE_URL}data`;
+  const forcedMock = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('mock');
+  const mode = forcedMock ? 'mock' : (env.VITE_DATA_SOURCE ?? 'auto');
+  const apiUrl = env.VITE_API_URL || DEFAULT_API_URL;
+  if (mode === 'http') {
+    setDataMode('http');
+    return new HttpDataSource(apiUrl);
   }
-  return new MockDataSource({ baseUrl: `${env.BASE_URL}data`, mode: readMockMode() });
+  if (mode === 'auto' && typeof fetch === 'function') return new AutoDataSource(apiUrl, mockBase);
+  setDataMode('mock');
+  return new MockDataSource({ baseUrl: mockBase, mode: readMockMode() });
 }

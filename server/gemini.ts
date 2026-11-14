@@ -26,6 +26,12 @@ function systemPrompt(language: string): string {
     '- Use ONLY the numbers in the brief. Never invent figures, places, dates or events.',
     '- Month numbers are 1–12; write month names.',
     '- If "synthetic" is true, say in one short line that the figures are a synthetic demo.',
+    '- The brief may contain "helios": results of the HELIOS-SHIELD server pipeline on real NASA data.',
+    '  helios.forecast.by_horizon["1"].max / .mean = AI-predicted probability (0–1) of any fire next week in the area,',
+    '  .climatology_mean = the typical probability for this week; fire_dna = counts of burn-type classes',
+    '  (industrial, agricultural, wildfire, sporadic); season_shift = shift of the fire season in days per decade;',
+    '  blind_cells > 0 = cells cloudy during satellite overpasses where fires may have been missed; alerts = live',
+    '  onboard-AI alerts by priority. Use these numbers too, and say so when blind spots are present.',
     '- Do not give evacuation or emergency orders; point to local authorities for warnings.',
     `- Write in ${language}. Plain language, at most 170 words.`,
     'Format exactly (markdown, translate the headings):',
@@ -45,7 +51,11 @@ interface GeminiResponse {
   promptFeedback?: { blockReason?: string };
 }
 
-export async function analyzeWithGemini(summary: AreaSummary, locale: keyof typeof LOCALE_LANGUAGE): Promise<{ text: string; model: string }> {
+export async function analyzeWithGemini(
+  summary: AreaSummary,
+  locale: keyof typeof LOCALE_LANGUAGE,
+  helios: Record<string, unknown> | null = null,
+): Promise<{ text: string; model: string }> {
   if (!config.geminiKey) throw new GeminiError('GEMINI_API_KEY is not configured', null);
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(config.geminiModel)}:generateContent`;
   let res: Response;
@@ -55,7 +65,7 @@ export async function analyzeWithGemini(summary: AreaSummary, locale: keyof type
       headers: { 'content-type': 'application/json', 'x-goog-api-key': config.geminiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt(LOCALE_LANGUAGE[locale] ?? 'English') }] },
-        contents: [{ role: 'user', parts: [{ text: JSON.stringify(summary) }] }],
+        contents: [{ role: 'user', parts: [{ text: JSON.stringify(helios ? { ...summary, helios } : summary) }] }],
         generationConfig: { temperature: 0.3, maxOutputTokens: 900 },
       }),
       signal: AbortSignal.timeout(config.geminiTimeoutMs),

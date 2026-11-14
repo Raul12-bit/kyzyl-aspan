@@ -7,7 +7,6 @@ import { useI18n } from '@/i18n';
 import { ButtonLink, cn, Icon } from '@/ui';
 import { LanguageSwitch } from './LanguageSwitch';
 import { Logo } from './Logo';
-import { useThemeStore } from './theme';
 
 export type TopBarVariant = 'landing' | 'page' | 'map';
 
@@ -43,20 +42,6 @@ function NavItems({ onNavigate, vertical }: { onNavigate?: () => void; vertical?
         </li>
       ))}
     </ul>
-  );
-}
-
-export function ThemeToggle({ className }: { className?: string }) {
-  const { m } = useI18n();
-  const theme = useThemeStore((s) => s.theme);
-  const toggle = useThemeStore((s) => s.toggle);
-  const label = theme === 'dark' ? m.app.theme.toLight : m.app.theme.toDark;
-  return (
-    <button type="button" className={cn('icon-btn icon-btn--ghost theme-toggle', className)} aria-label={label} title={label} onClick={toggle}>
-      <span className="theme-toggle__icon" data-theme-icon={theme}>
-        <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={18} />
-      </span>
-    </button>
   );
 }
 
@@ -102,7 +87,6 @@ function MobileMenu({ showCta, onCta }: { showCta: boolean; onCta: (e: React.Mou
           <NavItems vertical onNavigate={() => setOpen(false)} />
           <div className="mt-2 flex items-center justify-between gap-2 border-t border-line px-2 pt-3">
             <LanguageSwitch />
-            <ThemeToggle />
           </div>
           {showCta ? (
             <ButtonLink to="/map" variant="primary" className="mt-3 w-full" iconRight="arrowRight" onClick={(e) => {
@@ -191,7 +175,6 @@ export function TopBar({ variant }: { variant: TopBarVariant }) {
         <div className="flex flex-1 items-center justify-end gap-1.5">
           <div className="hidden items-center gap-1 md:flex">
             <LanguageSwitch />
-            <ThemeToggle />
           </div>
           {!onMap ? (
             <ButtonLink to="/map" variant="primary" size="sm" className="ml-1.5 hidden md:inline-flex" onClick={onCta}>

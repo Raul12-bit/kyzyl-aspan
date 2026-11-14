@@ -4,8 +4,8 @@ import type { Sensor } from '@/data/types';
 import { DEFAULT_NOISE, type NoiseSettings } from '@/domain/noiseSettings';
 
 export type MapStatus = 'idle' | 'loading' | 'ready' | 'unsupported' | 'error';
-/** Raw detections (squares/dots) or burning H3 hexagons. */
-export type MapView = 'points' | 'hex';
+/** Raw detections, burning H3 hexagons, or countries / regions shaded by activity (real data only). */
+export type MapView = 'points' | 'hex' | 'regions';
 
 interface MapStore {
   map: MLMap | null;

@@ -81,7 +81,9 @@ function findingText(f: Finding, m: Messages, fmt: Formatters): string {
     case 'sensors':
       return t.sensors(f.raw === null ? '—' : fmt.dec(f.raw, 1), fmt.dec(f.hex, 1));
     case 'uncertainty':
-      return t.uncertainty(fmt.pct(f.relative / 2, 0));
+      return t.uncertainty(fmt.pct(f.relative / 2, 0), fmt.pct(f.interval ?? 0.9, 0));
+    case 'forecast':
+      return t.forecast(fmt.pct(f.max, f.max < 0.1 ? 1 : 0), fmt.pct(f.mean, 1), fmt.pct(f.typical, 1));
   }
 }
 
