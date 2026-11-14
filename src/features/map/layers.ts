@@ -4,7 +4,7 @@ import type { BBox, FireProperties, Sensor } from '@/data/types';
 import type { FlatPolygons } from '@/domain/area';
 import { bboxToPolygon } from '@/lib/geo';
 import { rampColors, token, withAlpha } from '@/styles/tokens';
-import { CLUSTER, LAYERS, MODIS_SQUARE_IMAGE, SOURCES } from './map.config';
+import { CLUSTER, HEX_IMAGE, LAYERS, SOURCES } from './map.config';
 
 const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] };
 
@@ -14,58 +14,77 @@ function firstSymbolLayer(map: MLMap): string | undefined {
 
 /* ------------------------------------------------------------------ fire detections */
 
-/** MODIS is drawn as small squares (shape + colour survive colour blindness). */
-function ensureSquareImage(map: MLMap) {
-  if (map.hasImage(MODIS_SQUARE_IMAGE)) return;
-  const size = 14; // device px at pixelRatio 2 → 7 css px
+/**
+ * One hexagon icon, as a signed-distance field, so MapLibre can colour it per sensor (icon-color)
+ * and outline it (icon-halo) without extra images. Pointy-top, like every hexagon in the product.
+ */
+function ensureHexImage(map: MLMap) {
+  if (map.hasImage(HEX_IMAGE)) return;
+  const size = 64;
+  const c = size / 2;
+  const inradius = 22;
+  const spread = 8; // SDF spread in px (MapLibre convention: the edge sits at alpha 0.75)
   const data = new Uint8ClampedArray(size * size * 4);
-  const hex = token('--el-modis').replace('#', '');
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      const i = (y * size + x) * 4;
-      const edge = x < 2 || y < 2 || x >= size - 2 || y >= size - 2;
-      // dark 1px outline keeps squares legible over glows; premultiplied-safe opaque pixels
-      data[i] = edge ? 5 : r;
-      data[i + 1] = edge ? 7 : g;
-      data[i + 2] = edge ? 13 : b;
-      data[i + 3] = edge ? 200 : 255;
+      const px = Math.abs(x + 0.5 - c);
+      const py = Math.abs(y + 0.5 - c);
+      // Pointy-top hexagon: flat sides left/right, edge normals at 0° and ±60°.
+      const d = Math.max(px, px * 0.5 + py * 0.8660254) - inradius;
+      const a = Math.max(0, Math.min(255, Math.round(255 * (1 - (d / spread + 0.25)))));
+      const k = (y * size + x) * 4;
+      data[k] = 255;
+      data[k + 1] = 255;
+      data[k + 2] = 255;
+      data[k + 3] = a;
     }
   }
-  map.addImage(MODIS_SQUARE_IMAGE, { width: size, height: size, data }, { pixelRatio: 2 });
+  map.addImage(HEX_IMAGE, { width: size, height: size, data }, { sdf: true, pixelRatio: 2 });
 }
 
-const frpScale = (lo: number, hi: number): ExpressionSpecification => [
-  '+',
-  lo,
-  ['*', hi, ['ln', ['+', 1, ['coalesce', ['get', 'frp'], 1]]]],
-];
-
-const clusterRadius = (k: number): ExpressionSpecification => [
+/** Cluster hexagon size grows with √count. */
+const clusterSize = (k: number): ExpressionSpecification => [
   'interpolate',
   ['linear'],
   ['sqrt', ['get', 'point_count']],
   1,
-  9 * k,
+  0.42 * k,
   6,
-  18 * k,
+  0.8 * k,
   20,
-  34 * k,
+  1.35 * k,
   45,
-  52 * k,
+  1.9 * k,
 ];
 
+/** Paint for one sensor's layers with the current theme tokens (used on creation and on theme change). */
+function firePaint(sensor: Sensor) {
+  const color = token(sensor === 'MODIS' ? '--el-modis' : '--el-viirs');
+  const filled = sensor === 'VIIRS';
+  // MODIS = outline hexagons (steel), VIIRS = filled hexagons (amber): shape + colour.
+  return {
+    cluster: {
+      'icon-color': filled ? withAlpha(color, 0.78) : withAlpha(color, 0),
+      'icon-halo-color': filled ? withAlpha(token('--el-bg'), 0.6) : color,
+      'icon-halo-width': filled ? 0.6 : 1.3,
+    },
+    point: {
+      'icon-color': filled ? color : withAlpha(color, 0),
+      'icon-halo-color': filled ? withAlpha(token('--el-bg'), 0.7) : color,
+      'icon-halo-width': filled ? 0.4 : 1.1,
+    },
+  };
+}
+
 export function addFireLayers(map: MLMap) {
-  ensureSquareImage(map);
+  ensureHexImage(map);
   const before = firstSymbolLayer(map);
-  const order: Sensor[] = ['VIIRS', 'MODIS']; // MODIS (sparser, squares) on top
+  const order: Sensor[] = ['VIIRS', 'MODIS']; // MODIS outlines on top of VIIRS fills
   for (const sensor of order) {
     const src = SOURCES[sensor];
     if (map.getSource(src)) continue;
-    const color = token(sensor === 'MODIS' ? '--el-modis' : '--el-viirs');
     const ids = LAYERS[sensor];
+    const paint = firePaint(sensor);
     map.addSource(src, {
       type: 'geojson',
       data: EMPTY,
@@ -74,88 +93,38 @@ export function addFireLayers(map: MLMap) {
       clusterMaxZoom: CLUSTER.maxZoom,
       clusterProperties: { frp: ['+', ['coalesce', ['get', 'frp'], 0]] },
     });
-    // Aggregates: a soft halo + (MODIS) hollow ring / (VIIRS) filled disc.
-    map.addLayer(
-      {
-        id: ids.halo,
-        type: 'circle',
-        source: src,
-        filter: ['has', 'point_count'],
-        paint: {
-          'circle-radius': clusterRadius(1.35),
-          'circle-color': color,
-          'circle-opacity': 0.14,
-          'circle-blur': 0.9,
-        },
-      },
-      before,
-    );
     map.addLayer(
       {
         id: ids.cluster,
-        type: 'circle',
+        type: 'symbol',
         source: src,
         filter: ['has', 'point_count'],
-        paint: {
-          'circle-radius': clusterRadius(sensor === 'MODIS' ? 0.62 : 0.5),
-          'circle-color': sensor === 'MODIS' ? withAlpha(color, 0.06) : withAlpha(color, 0.38),
-          'circle-stroke-color': color,
-          'circle-stroke-width': sensor === 'MODIS' ? 1.4 : 0,
-          'circle-stroke-opacity': 0.95,
+        layout: {
+          'icon-image': HEX_IMAGE,
+          'icon-size': clusterSize(sensor === 'MODIS' ? 1.08 : 1),
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
         },
+        paint: paint.cluster,
       },
       before,
     );
-    // Individual detections: glow underneath, crisp mark on top.
     map.addLayer(
       {
-        id: ids.glow,
-        type: 'circle',
+        id: ids.point,
+        type: 'symbol',
         source: src,
         filter: ['!', ['has', 'point_count']],
-        paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, frpScale(3, 1.4), 9, frpScale(7, 3.2)],
-          'circle-color': color,
-          'circle-opacity': 0.32,
-          'circle-blur': 1,
+        layout: {
+          'icon-image': HEX_IMAGE,
+          'icon-size': ['interpolate', ['linear'], ['zoom'], 3, 0.24, 7, 0.34, 11, 0.5],
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
         },
+        paint: paint.point,
       },
       before,
     );
-    if (sensor === 'MODIS') {
-      map.addLayer(
-        {
-          id: ids.point,
-          type: 'symbol',
-          source: src,
-          filter: ['!', ['has', 'point_count']],
-          layout: {
-            'icon-image': MODIS_SQUARE_IMAGE,
-            'icon-size': ['interpolate', ['linear'], ['zoom'], 3, 0.75, 7, 1.15, 11, 1.7],
-            'icon-allow-overlap': true,
-            'icon-ignore-placement': true,
-          },
-        },
-        before,
-      );
-    } else {
-      map.addLayer(
-        {
-          id: ids.point,
-          type: 'circle',
-          source: src,
-          filter: ['!', ['has', 'point_count']],
-          paint: {
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 1.8, 7, 2.6, 11, 4],
-            'circle-color': color,
-            'circle-stroke-color': token('--el-bg'),
-            'circle-stroke-width': 0.6,
-            'circle-stroke-opacity': 0.8,
-          },
-        },
-        before,
-      );
-    }
   }
 }
 
@@ -190,50 +159,25 @@ export interface HexProperties {
   v: number;
 }
 
+/** Heat ramp for H3 cells: embers for a few burning days, amber for the hottest cells. */
+function hexPaint() {
+  const ramp = rampColors();
+  return {
+    'fill-color': ['interpolate', ['linear'], ['get', 'v'], 0, ramp[2]!, 0.25, ramp[3]!, 0.5, ramp[4]!, 0.75, ramp[5]!, 1, ramp[6]!] as ExpressionSpecification,
+    'fill-opacity': ['interpolate', ['linear'], ['get', 'v'], 0, 0.62, 1, 0.96] as ExpressionSpecification,
+  };
+}
+
+/**
+ * Burning hexagons. Cells arrive already shrunk towards their centres (see hexFeatures), so the gaps
+ * between them are real geometry — crisp at every zoom, no outline layer needed.
+ */
 export function addHexLayers(map: MLMap) {
   if (map.getSource(SOURCES.hex)) return;
-  const ramp = rampColors();
   map.addSource(SOURCES.hex, { type: 'geojson', data: EMPTY });
-  const before = firstSymbolLayer(map);
   map.addLayer(
-    {
-      id: LAYERS.hexFill,
-      type: 'fill',
-      source: SOURCES.hex,
-      layout: { visibility: 'none' },
-      paint: {
-        'fill-color': [
-          'interpolate',
-          ['linear'],
-          ['get', 'v'],
-          0,
-          ramp[2]!,
-          0.25,
-          ramp[3]!,
-          0.5,
-          ramp[4]!,
-          0.75,
-          ramp[5]!,
-          1,
-          ramp[6]!,
-        ],
-        'fill-opacity': ['interpolate', ['linear'], ['get', 'v'], 0, 0.42, 1, 0.86],
-      },
-    },
-    before,
-  );
-  map.addLayer(
-    {
-      id: LAYERS.hexLine,
-      type: 'line',
-      source: SOURCES.hex,
-      layout: { visibility: 'none' },
-      paint: {
-        'line-color': withAlpha(token('--el-bg'), 0.9),
-        'line-width': ['interpolate', ['linear'], ['zoom'], 2, 0.3, 8, 1.1],
-      },
-    },
-    before,
+    { id: LAYERS.hexFill, type: 'fill', source: SOURCES.hex, layout: { visibility: 'none' }, paint: hexPaint() },
+    firstSymbolLayer(map),
   );
 }
 
@@ -242,34 +186,44 @@ export function setHexData(map: MLMap, fc: FeatureCollection<Polygon, HexPropert
 }
 
 export function setHexVisible(map: MLMap, visible: boolean) {
-  for (const id of [LAYERS.hexFill, LAYERS.hexLine]) {
+  for (const id of [LAYERS.hexFill]) {
     if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
   }
 }
 
 /* ------------------------------------------------------------------ area of interest */
 
+function selectionPaint() {
+  const accent = token('--el-orange');
+  return {
+    fill: { 'fill-color': accent, 'fill-opacity': 0.045 },
+    line: { 'line-color': accent, 'line-width': 1.4, 'line-opacity': 0.95 },
+  };
+}
+
 export function addSelectionLayers(map: MLMap) {
   if (map.getSource(SOURCES.aoi)) return;
-  const red = token('--el-kyzyl');
+  const paint = selectionPaint();
   map.addSource(SOURCES.aoi, { type: 'geojson', data: EMPTY });
-  const before = firstSymbolLayer(map);
-  map.addLayer(
-    { id: LAYERS.aoiFill, type: 'fill', source: SOURCES.aoi, paint: { 'fill-color': red, 'fill-opacity': 0.05 } },
-    before,
-  );
-  map.addLayer({
-    id: LAYERS.aoiGlow,
-    type: 'line',
-    source: SOURCES.aoi,
-    paint: { 'line-color': red, 'line-width': 8, 'line-blur': 7, 'line-opacity': 0.3 },
-  });
-  map.addLayer({
-    id: LAYERS.aoiLine,
-    type: 'line',
-    source: SOURCES.aoi,
-    paint: { 'line-color': token('--el-amber-soft'), 'line-width': 1.4, 'line-dasharray': [3, 2] },
-  });
+  map.addLayer({ id: LAYERS.aoiFill, type: 'fill', source: SOURCES.aoi, paint: paint.fill }, firstSymbolLayer(map));
+  map.addLayer({ id: LAYERS.aoiLine, type: 'line', source: SOURCES.aoi, paint: paint.line });
+}
+
+/** Theme switch: repaint our own layers from the fresh tokens. */
+export function retintDataLayers(map: MLMap) {
+  const set = (id: string, paint: Record<string, unknown>) => {
+    if (!map.getLayer(id)) return;
+    for (const [prop, value] of Object.entries(paint)) map.setPaintProperty(id, prop, value);
+  };
+  for (const sensor of ['MODIS', 'VIIRS'] as const) {
+    const paint = firePaint(sensor);
+    set(LAYERS[sensor].cluster, paint.cluster);
+    set(LAYERS[sensor].point, paint.point);
+  }
+  set(LAYERS.hexFill, hexPaint());
+  const sel = selectionPaint();
+  set(LAYERS.aoiFill, sel.fill);
+  set(LAYERS.aoiLine, sel.line);
 }
 
 /** Draws the selected area: the country outline when one is known, else the box. */

@@ -112,7 +112,7 @@ export function Sheet({ label, snap, onSnapChange, header, children, className, 
           }
         }}
       >
-        <span aria-hidden className="block h-1 w-10 rounded-pill bg-[rgb(160_180_220/0.4)]" />
+        <span aria-hidden className="block h-1 w-10 rounded-pill bg-[var(--el-line-hover)]" />
       </button>
       {header ? <div className="flex-none px-4 pb-3">{header}</div> : null}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6">{children}</div>

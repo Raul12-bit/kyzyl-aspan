@@ -6,9 +6,9 @@ import { Icon, type IconName } from './Icon';
 type Tone = 'error' | 'warning' | 'info';
 
 const TONE: Record<Tone, { icon: IconName; color: string; bg: string; border: string }> = {
-  error: { icon: 'alert', color: 'var(--el-danger)', bg: 'var(--el-danger-bg)', border: 'rgb(255 143 122 / 0.35)' },
-  warning: { icon: 'alert', color: 'var(--el-trust-medium)', bg: 'var(--el-warning-bg)', border: 'rgb(255 196 107 / 0.3)' },
-  info: { icon: 'info', color: 'var(--el-teal)', bg: 'var(--el-info-bg)', border: 'rgb(61 219 217 / 0.28)' },
+  error: { icon: 'alert', color: 'var(--el-danger)', bg: 'var(--el-danger-bg)', border: 'color-mix(in srgb, var(--el-danger) 35%, transparent)' },
+  warning: { icon: 'alert', color: 'var(--el-trust-medium)', bg: 'var(--el-warning-bg)', border: 'color-mix(in srgb, var(--el-trust-medium) 30%, transparent)' },
+  info: { icon: 'info', color: 'var(--el-teal)', bg: 'var(--el-info-bg)', border: 'color-mix(in srgb, var(--el-teal) 30%, transparent)' },
 };
 
 interface BannerProps {

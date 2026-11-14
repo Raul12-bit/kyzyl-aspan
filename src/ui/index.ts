@@ -1,7 +1,7 @@
 export { Banner } from './Banner';
 export { Button, ButtonLink, IconButton } from './Button';
 export { buttonClass, type ButtonSize, type ButtonVariant } from './buttonClass';
-export { Chip, Segmented, SensorMark, Skeleton, Spinner, Switch } from './controls';
+export { Chip, Hex, Segmented, SensorMark, Skeleton, Spinner, Switch } from './controls';
 export { cn } from './cn';
 export { Icon, type IconName } from './Icon';
 export { Card, Panel } from './Panel';

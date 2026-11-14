@@ -8,6 +8,9 @@ import { aggregateHex } from '@/domain/hexStats';
 import { buildAreaSummary, type AreaSummary } from '@/domain/summary';
 import { AiPanel } from '@/features/ai/AiPanel';
 import { findCountry, useCountries } from '@/features/geo/countries';
+import { useHeliosAvailable } from '@/features/helios/api';
+import { HeliosAreaCard } from '@/features/helios/HeliosAreaCard';
+import { useAreaStats } from '@/features/world/api';
 import { useI18n } from '@/i18n';
 import { fromMonthIndex, VIIRS_START_INDEX, VIIRS_START_YEAR } from '@/lib/date';
 import { Skeleton, Tooltip } from '@/ui';
@@ -20,7 +23,7 @@ const WORLD: BBox = [-180, -85, 180, 85];
 
 function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: string }) {
   const body = (
-    <div className="min-w-0 rounded-[12px] border border-line bg-[rgb(255_255_255/0.02)] px-3 py-2.5">
+    <div className="min-w-0 rounded-[12px] border border-line bg-[var(--el-tint-1)] px-3 py-2.5">
       <p className="m-0 line-clamp-2 min-h-[2lh] text-[11.5px] leading-tight text-ink-dim">{label}</p>
       <p className="stat-value m-0 mt-0.5 truncate !text-[18px]" style={tone ? { color: tone } : undefined}>
         {value}
@@ -92,6 +95,8 @@ export function AreaInsights({ archive }: { archive: FireArchive | null }) {
   const range = useEffectiveRange();
   const sensors = useMapStore((s) => s.sensors);
   const noise = useMapStore((s) => s.noise);
+  // Real data: totals come from the server, over EVERY detection of the archive (not the browser sample).
+  const world = useHeliosAvailable();
   const countries = useCountries();
   const areaName = useAreaName(regionId);
   const country = regionId && /^[A-Z]{2}$/.test(regionId) ? findCountry(countries.data, regionId) : null;
@@ -105,7 +110,7 @@ export function AreaInsights({ archive }: { archive: FireArchive | null }) {
   }, [archive, bbox, country]);
 
   const agg = useMemo(() => {
-    if (!archive) return null;
+    if (!archive || world) return null;
     const months = archive.table.month;
     const lb = (mo: number) => {
       let lo = 0;
@@ -125,9 +130,16 @@ export function AreaInsights({ archive }: { archive: FireArchive | null }) {
     const overlap =
       overlapFrom <= range[1] ? aggregateHex(archive.table, grid, { ...opts, from: lb(overlapFrom), to: lb(range[1] + 1) }).totals : null;
     return { totals, overlap };
-  }, [archive, range, noise, sensors, mask]);
-  const totals = agg?.totals ?? null;
-  const overlap = agg?.overlap ?? null;
+  }, [archive, range, noise, sensors, mask, world]);
+  const sensorKey = sensors.MODIS && sensors.VIIRS ? 'MV' : sensors.MODIS ? 'M' : 'V';
+  const server = useAreaStats(
+    world
+      ? { bbox: box, regionId: bbox ? regionId : 'WORLD', range, lowconf: noise.lowConfidence, static: noise.staticSources, sensors: sensorKey }
+      : null,
+    world,
+  );
+  const totals = world ? (server.data?.totals ?? null) : (agg?.totals ?? null);
+  const overlap = world ? (server.data?.overlap ?? null) : (agg?.overlap ?? null);
 
   const calendar = useCalendar({ bbox: box, regionId: bbox ? regionId : null });
   const summary = useMemo(
@@ -206,6 +218,8 @@ export function AreaInsights({ archive }: { archive: FireArchive | null }) {
           <p className="m-0 text-[13px] text-ink-dim">{m.map.stats.empty}</p>
         )}
       </div>
+
+      <HeliosAreaCard />
 
       <AiPanel summary={summary} />
     </div>

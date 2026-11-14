@@ -7,6 +7,14 @@
 @theme inline {
   --color-bg: var(--el-bg);
   --color-bg-2: var(--el-bg-2);
+  --color-bg-3: var(--el-bg-3);
+  --color-tint-1: var(--el-tint-1);
+  --color-tint-2: var(--el-tint-2);
+  --color-tint-3: var(--el-tint-3);
+  --color-gold: var(--el-gold);
+  --color-gold-soft: var(--el-gold-soft);
+  --color-gold-bg: var(--el-gold-bg);
+  --color-ink-inverse: var(--el-ink-inverse);
   --color-panel: var(--el-panel);
   --color-panel-solid: var(--el-panel-solid);
   --color-panel-raised: var(--el-panel-raised);
@@ -41,6 +49,7 @@
   --font-sans: var(--el-font-sans);
   --font-mono: var(--el-font-mono);
   --font-display: var(--el-font-display);
+  --font-serif: var(--el-font-serif);
 
   --text-display: var(--el-text-display);
   --text-h1: var(--el-text-h1);
@@ -82,18 +91,21 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    transition: background-color 400ms var(--el-ease-standard), color 400ms var(--el-ease-standard);
     -webkit-tap-highlight-color: transparent;
   }
 
   body {
     margin: 0;
+    background: var(--el-bg);
+    color: var(--el-ink);
     font-size: var(--el-text-base);
     line-height: var(--el-leading-body);
     overflow-x: hidden;
   }
 
   ::selection {
-    background: rgb(255 82 54 / 0.38);
+    background: color-mix(in srgb, var(--el-gold) 35%, transparent);
     color: var(--el-ink);
   }
 
@@ -123,19 +135,20 @@
   /* Scrollbars that belong to a dark scientific UI. */
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgb(160 180 220 / 0.25) transparent;
+    scrollbar-color: var(--el-line-strong) transparent;
   }
 }
 
 @layer components {
   /* Glass surface: translucent panel, 1px hairline, soft depth. */
+  /* Floating surface over the map: the landing's card surface, frosted, with one hairline. */
   .glass {
-    background: var(--el-panel);
+    background: color-mix(in srgb, var(--el-surface) 84%, transparent);
     border: 1px solid var(--el-line);
-    border-radius: var(--el-radius-panel);
-    box-shadow: var(--el-shadow-panel);
-    backdrop-filter: blur(var(--el-blur-glass)) saturate(1.2);
-    -webkit-backdrop-filter: blur(var(--el-blur-glass)) saturate(1.2);
+    border-radius: 22px;
+    box-shadow: 0 30px 60px -36px rgb(0 0 0 / 0.45);
+    backdrop-filter: blur(24px) saturate(1.15);
+    -webkit-backdrop-filter: blur(24px) saturate(1.15);
   }
 
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -144,13 +157,13 @@
     }
   }
 
+  /* Section label: plain sentence case, not shouted. Monospace is kept for numbers and data only. */
   .eyebrow {
-    font-family: var(--el-font-mono);
-    font-size: var(--el-text-xs);
+    font-family: var(--el-font-sans);
+    font-size: 12.5px;
     font-weight: 500;
     line-height: 1.3;
-    letter-spacing: var(--el-tracking-eyebrow);
-    text-transform: uppercase;
+    letter-spacing: 0;
     color: var(--el-ink-dim);
   }
 
@@ -262,10 +275,10 @@
 @layer components {
   /* Wordmark: wide capitals with generous tracking, KYZYL in ink and ASPAN in signal red. */
   .wordmark {
-    font-family: var(--el-font-display);
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.16em;
+    font-family: var(--el-font-sans);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.24em;
     text-transform: uppercase;
     white-space: nowrap;
     line-height: 1;
@@ -274,39 +287,35 @@
   /* Display headlines: the wordmark's voice at size. */
   .display {
     font-family: var(--el-font-display);
-    font-weight: 500;
-    letter-spacing: -0.02em;
+    font-weight: var(--el-display-weight);
+    letter-spacing: var(--el-tracking-display);
     line-height: 1.04;
   }
 
+
   /* Hairline under a section title that burns from red into ink, like the orbit in the logo. */
   .orbit-rule {
-    height: 2px;
-    border-radius: 2px;
+    height: 1px;
     background: var(--el-grad-orbit);
-    opacity: 0.85;
   }
 
   /* Page shell for the non-map routes. */
   .page {
     min-height: 100%;
-    padding: calc(var(--el-header-h) + 40px) var(--el-gutter) 96px;
-    background:
-      radial-gradient(1200px 520px at 85% -10%, rgb(255 82 54 / 0.12), transparent 60%),
-      radial-gradient(900px 480px at -10% 10%, rgb(61 219 217 / 0.05), transparent 60%),
-      var(--el-bg);
+    padding: calc(var(--el-header-h) + clamp(48px, 9vh, 112px)) clamp(20px, 4vw, 56px) 128px;
+    background: var(--el-bg);
   }
 
   .page-inner {
-    max-width: 1120px;
+    max-width: var(--el-content-w);
     margin: 0 auto;
   }
 
   .card {
-    background: var(--el-panel-solid);
+    background: var(--el-surface);
     border: 1px solid var(--el-line);
-    border-radius: var(--el-radius-panel);
-    box-shadow: var(--el-shadow-panel);
+    border-radius: 24px;
+    box-shadow: 0 30px 60px -44px rgb(0 0 0 / 0.35);
   }
 
   .stat-value {
@@ -350,10 +359,20 @@
   }
 }
 
+@keyframes el-veil-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* The map surfaces from a slightly closer, softly blurred frame while the veil lifts. */
 @keyframes el-map-land {
   from {
-    transform: scale(1.14);
-    filter: blur(6px) saturate(1.6);
+    transform: scale(1.06);
+    filter: blur(4px);
   }
   to {
     transform: none;
@@ -381,41 +400,91 @@
   }
 }
 
-/* Satellite labels that ride the 3D globe (positioned every frame by EarthScene). */
-.sat-label {
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: -34px 0 0 14px;
-  padding: 4px 9px 4px 7px;
-  border-radius: 999px;
-  border: 1px solid var(--el-line-strong);
-  background: rgb(5 7 13 / 0.62);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  font-size: 11px;
-  line-height: 1;
-  white-space: nowrap;
-  transition: opacity 220ms var(--el-ease-standard);
-  will-change: transform;
+
+/* ------------------------------------------------------------------ site header */
+@layer components {
+  .site-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--el-bg) 74%, transparent);
+    border-bottom: 1px solid var(--el-line);
+    backdrop-filter: blur(18px) saturate(1.3);
+    -webkit-backdrop-filter: blur(18px) saturate(1.3);
+    opacity: 0;
+    transition: opacity 320ms var(--el-ease-standard);
+    pointer-events: none;
+  }
+  .site-header[data-solid='true']::before {
+    opacity: 1;
+  }
+  .site-header__inner {
+    max-width: calc(1240px + 2 * clamp(20px, 4vw, 56px));
+    padding: 0 clamp(20px, 4vw, 56px);
+  }
+  .site-header__inner--wide {
+    max-width: none;
+    padding: 0 24px;
+  }
 }
-.sat-label[data-hidden='true'] {
-  opacity: 0 !important;
+
+/* Theme switch: one quick cross-fade of the whole page (View Transitions API). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
-.sat-label__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  box-shadow: 0 0 10px currentColor;
-}
-.sat-label__name {
-  font-family: var(--el-font-mono);
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  color: var(--el-ink);
-}
-.sat-label__desc {
-  font-family: var(--el-font-mono);
-  color: var(--el-ink-dim);
+
+/* ------------------------------------------------------------------ map dock */
+@layer components {
+  .map-dock {
+    display: inline-flex;
+    gap: 2px;
+    padding: 4px;
+    border: 1px solid var(--el-line);
+    border-radius: var(--el-radius-pill);
+    background: var(--el-panel);
+    box-shadow: var(--el-shadow-panel);
+    backdrop-filter: blur(var(--el-blur-glass)) saturate(1.2);
+    -webkit-backdrop-filter: blur(var(--el-blur-glass)) saturate(1.2);
+  }
+  .map-dock__btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: var(--el-radius-pill);
+    background: transparent;
+    color: var(--el-ink-muted);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background-color var(--el-dur-base) var(--el-ease-standard),
+      color var(--el-dur-base) var(--el-ease-standard);
+  }
+  .map-dock__btn:hover {
+    color: var(--el-ink);
+    background: var(--el-hover);
+  }
+  .map-dock__btn[aria-pressed='true'] {
+    color: var(--el-ink-inverse);
+    background: var(--el-ink);
+  }
+  .map-dock__btn:focus-visible {
+    outline: none;
+    box-shadow: var(--el-focus-ring);
+  }
+  .map-dock__dot {
+    width: 7px;
+    height: 8px;
+    background: var(--el-gold);
+    clip-path: var(--el-hex-clip);
+  }
+  .map-panel {
+    animation: el-rise-in 260ms var(--el-ease-emphasized) both;
+  }
 }

@@ -162,42 +162,39 @@ export function Spinner({ size = 16, label }: { size?: number; label?: string })
   );
 }
 
-/* ------------------------------------------------------------------ Sensor marks (legend glyphs) */
+/* ------------------------------------------------------------------ Hexagon glyph + sensor marks */
 
-/** MODIS = square, VIIRS = dot, harmonized = line. Shape + colour so the encoding survives colour blindness. */
+/** Pointy-top hexagon — the product's one shape (H3 cells, markers, legends). */
+export function Hex({ size = 10, fill = 'currentColor', stroke, strokeWidth = 1.5, className }: { size?: number; fill?: string; stroke?: string; strokeWidth?: number; className?: string }) {
+  const h = size * 1.1547;
+  return (
+    <svg aria-hidden width={size} height={h} viewBox="0 0 100 115.47" className={cn('inline-block flex-none', className)}>
+      <polygon
+        points="50,4 96,30.7 96,84.8 50,111.5 4,84.8 4,30.7"
+        fill={fill}
+        stroke={stroke}
+        strokeWidth={stroke ? (strokeWidth * 100) / size : 0}
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/**
+ * Legend glyphs. MODIS = outline hexagon (steel), VIIRS = filled hexagon (amber), harmonized = ink line.
+ * Shape + colour, so the encoding survives colour blindness.
+ */
 export function SensorMark({ kind, size = 10 }: { kind: 'MODIS' | 'VIIRS' | 'harmonized' | 'band'; size?: number }) {
-  if (kind === 'MODIS') {
-    return (
-      <span
-        aria-hidden
-        className="inline-block flex-none"
-        style={{ width: size, height: size, borderRadius: 2, background: 'var(--el-modis)', boxShadow: '0 0 8px rgb(61 219 217 / 0.6)' }}
-      />
-    );
-  }
-  if (kind === 'VIIRS') {
-    return (
-      <span
-        aria-hidden
-        className="inline-block flex-none rounded-full"
-        style={{ width: size, height: size, background: 'var(--el-viirs)', boxShadow: '0 0 8px rgb(154 166 255 / 0.6)' }}
-      />
-    );
-  }
+  if (kind === 'MODIS') return <Hex size={size} fill="transparent" stroke="var(--el-modis)" strokeWidth={1.6} />;
+  if (kind === 'VIIRS') return <Hex size={size} fill="var(--el-viirs)" />;
   if (kind === 'band') {
     return (
       <span
         aria-hidden
         className="inline-block flex-none"
-        style={{ width: size * 1.8, height: size, borderRadius: 2, background: 'var(--el-band)', border: '1px solid rgb(255 181 71 / 0.35)' }}
+        style={{ width: size * 1.8, height: size, borderRadius: 2, background: 'var(--el-band)', border: '1px solid var(--el-line-strong)' }}
       />
     );
   }
-  return (
-    <span
-      aria-hidden
-      className="inline-block flex-none"
-      style={{ width: size * 1.8, height: 3, borderRadius: 2, background: 'var(--el-harmonized)', boxShadow: '0 0 8px rgb(255 181 71 / 0.7)' }}
-    />
-  );
+  return <span aria-hidden className="inline-block flex-none" style={{ width: size * 1.8, height: 2, borderRadius: 2, background: 'var(--el-harmonized)' }} />;
 }

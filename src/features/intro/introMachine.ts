@@ -15,6 +15,8 @@ export type IntroEvent =
   | { type: 'SKIP' }
   /** Deep link or returning visitor: no intro at all. */
   | { type: 'BYPASS' }
+  /** Back on the landing page after the dive: the planet is ready to be dived into again. */
+  | { type: 'RESET' }
   | { type: 'SET_MODE'; mode: IntroMode };
 
 export interface IntroState {
@@ -40,6 +42,8 @@ export function introReducer(state: IntroState, event: IntroEvent): IntroState {
   switch (event.type) {
     case 'SET_MODE':
       return state.phase === 'intro' ? { ...state, mode: event.mode } : state;
+    case 'RESET':
+      return state.phase === 'done' ? { ...initialIntroState(state.mode) } : state;
     case 'BYPASS':
       return state.phase === 'intro' ? { ...state, phase: 'done', instant: true } : state;
     case 'SKIP':

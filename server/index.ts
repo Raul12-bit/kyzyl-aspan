@@ -3,6 +3,7 @@
  *
  *   GET  /api/health       → { ok, gemini: { configured, model } }
  *   POST /api/ai/analyze   → { source: 'gemini', model, text } | { source: 'rules', findings, reason? }
+ *   GET  /v1/*             → proxied to the HELIOS data API (HELIOS_API_URL, default http://127.0.0.1:8000/v1)
  *
  * Node built-ins only. Its one job today is to keep the Gemini key off the client and to put a
  * validated, rate-limited, size-limited door in front of the model. With SERVE_STATIC (default on)
@@ -12,10 +13,56 @@
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
-import { ruleFindings } from '../src/domain/summary';
+import { ruleFindings, type AreaSummary, type Finding } from '../src/domain/summary';
 import { config } from './config';
 import { analyzeWithGemini, GeminiError } from './gemini';
 import { parseAnalyzeRequest } from './validate';
+
+/* ------------------------------------------------------------------ HELIOS data API (Python) */
+
+/** HELIOS context for an area (AI #3 forecast, Fire DNA, blind spots, alerts). Null if the API is down. */
+async function heliosContext(summary: AreaSummary): Promise<Record<string, unknown> | null> {
+  const params = new URLSearchParams({ bbox: summary.area.bbox.join(',') });
+  if (summary.area.iso2) params.set('region', summary.area.iso2);
+  try {
+    const res = await fetch(`${config.heliosUrl}/helios/context?${params}`, { signal: AbortSignal.timeout(config.heliosTimeoutMs) });
+    if (!res.ok) return null;
+    return (await res.json()) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/** Rule-based findings + the HELIOS forecast line (right after the risk level), when available. */
+function findingsWithHelios(summary: AreaSummary, ctx: Record<string, unknown> | null): Finding[] {
+  const out = ruleFindings(summary);
+  const f = (ctx?.forecast as { by_horizon?: Record<string, { max: number; mean: number; climatology_mean: number }> } | undefined)?.by_horizon?.['1'];
+  if (f && Number.isFinite(f.max)) out.splice(1, 0, { kind: 'forecast', max: f.max, mean: f.mean, typical: f.climatology_mean });
+  return out;
+}
+
+/** Same-origin access to the HELIOS data API in production (`pnpm build && pnpm start`). GET only. */
+async function proxyHelios(req: IncomingMessage, res: ServerResponse) {
+  if (req.method !== 'GET') {
+    send(res, 405, { error: 'Method not allowed' }, { allow: 'GET' });
+    return;
+  }
+  try {
+    const upstream = await fetch(`${new URL(config.heliosUrl).origin}${req.url ?? '/v1/'}`, {
+      headers: { accept: 'application/json' },
+      signal: AbortSignal.timeout(30_000),
+    });
+    const body = Buffer.from(await upstream.arrayBuffer());
+    res.writeHead(upstream.status, {
+      'content-type': upstream.headers.get('content-type') ?? 'application/json; charset=utf-8',
+      'cache-control': 'no-store',
+      'x-content-type-options': 'nosniff',
+    });
+    res.end(body);
+  } catch {
+    send(res, 502, { error: 'HELIOS data API is not reachable' });
+  }
+}
 
 const MAX_BODY = 32 * 1024;
 
@@ -107,18 +154,19 @@ async function analyze(req: IncomingMessage, res: ServerResponse) {
     return;
   }
   const { summary, locale } = parsed.value;
+  const helios = await heliosContext(summary);
   if (!config.geminiKey) {
-    send(res, 200, { source: 'rules', findings: ruleFindings(summary), reason: 'not-configured' });
+    send(res, 200, { source: 'rules', findings: findingsWithHelios(summary, helios), reason: 'not-configured' });
     return;
   }
   try {
-    const out = await analyzeWithGemini(summary, locale);
+    const out = await analyzeWithGemini(summary, locale, helios);
     send(res, 200, { source: 'gemini', model: out.model, text: out.text });
   } catch (err) {
     const status = err instanceof GeminiError ? err.status : null;
     console.warn(`[api] gemini failed (${status ?? 'network'}): ${(err as Error).message}`);
     // Degrade, don't fail: the visitor still gets the transparent rule-based summary.
-    send(res, 200, { source: 'rules', findings: ruleFindings(summary), reason: 'model-error' });
+    send(res, 200, { source: 'rules', findings: findingsWithHelios(summary, helios), reason: 'model-error' });
   }
 }
 
@@ -180,6 +228,10 @@ const server = createServer((req, res) => {
       console.error('[api] unexpected error', err);
       if (!res.headersSent) send(res, 500, { error: 'Internal error' });
     });
+    return;
+  }
+  if (path?.startsWith('/v1/')) {
+    void proxyHelios(req, res);
     return;
   }
   if (path?.startsWith('/api/')) {

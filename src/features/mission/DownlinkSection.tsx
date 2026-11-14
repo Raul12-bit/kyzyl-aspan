@@ -8,10 +8,10 @@ import { LabeledSlider, Meter, Section } from './Section';
 const HORIZON = 12 * 3600;
 
 const DECISION_STYLE: Record<Decision, { bg: string; fg: string }> = {
-  ka: { bg: 'rgb(126 230 196 / 0.16)', fg: 'var(--el-trust-high)' },
-  'x-fallback': { bg: 'rgb(255 196 107 / 0.16)', fg: 'var(--el-trust-medium)' },
-  'x-only': { bg: 'rgb(154 166 255 / 0.14)', fg: 'var(--el-viirs)' },
-  skip: { bg: 'rgb(255 82 54 / 0.14)', fg: 'var(--el-kyzyl)' },
+  ka: { bg: 'color-mix(in srgb, var(--el-trust-high) 16%, transparent)', fg: 'var(--el-trust-high)' },
+  'x-fallback': { bg: 'color-mix(in srgb, var(--el-trust-medium) 16%, transparent)', fg: 'var(--el-trust-medium)' },
+  'x-only': { bg: 'color-mix(in srgb, var(--el-viirs) 14%, transparent)', fg: 'var(--el-viirs)' },
+  skip: { bg: 'color-mix(in srgb, var(--el-kyzyl) 14%, transparent)', fg: 'var(--el-kyzyl)' },
 };
 
 /** Idea 5 — weather-aware downlink planning over a real-shaped ground network. */
@@ -54,7 +54,7 @@ export function DownlinkSection() {
           {STATIONS.map((st) => (
             <div key={st.id} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
               <span className="truncate text-[11px] text-ink-dim">{st.name}</span>
-              <span className="relative h-3 rounded-full bg-[rgb(255_255_255/0.04)]">
+              <span className="relative h-3 rounded-full bg-[var(--el-tint-2)]">
                 {plan.passes
                   .filter((p) => p.station.id === st.id)
                   .map((p) => (
@@ -84,7 +84,7 @@ export function DownlinkSection() {
           </div>
         </div>
 
-        <div className="grid gap-2 rounded-[14px] border border-line bg-[rgb(255_255_255/0.02)] px-4 py-3 text-[13px]" aria-live="polite">
+        <div className="grid gap-2 rounded-[14px] border border-line bg-[var(--el-tint-1)] px-4 py-3 text-[13px]" aria-live="polite">
           <p className="m-0 font-semibold text-ink">
             {plan.doneAt !== null ? m.mission.downlink.done(fmt.duration(plan.doneAt)) : m.mission.downlink.notDone}
           </p>

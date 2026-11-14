@@ -36,7 +36,7 @@ export function Section({
 export function Meter({ value, color = 'var(--el-amber)', label }: { value: number; color?: string; label?: string }) {
   return (
     <span className="inline-flex items-center gap-2" aria-label={label}>
-      <span className="relative h-1.5 w-16 overflow-hidden rounded-full bg-[rgb(255_255_255/0.08)]">
+      <span className="relative h-1.5 w-16 overflow-hidden rounded-full bg-[var(--el-tint-3)]">
         <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${Math.round(value * 100)}%`, background: color }} />
       </span>
     </span>

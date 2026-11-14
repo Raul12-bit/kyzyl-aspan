@@ -3,13 +3,17 @@ import type { Sensor } from '@/data/types';
 import type { FireArchive } from '@/domain/archive';
 import { gridInfo } from '@/domain/hexgrid';
 import { FLAG_LOW_CONFIDENCE, FLAG_STATIC } from '@/domain/noise';
+import { useAppParams } from '@/app/useAppParams';
+import { useHeliosAvailable, useHeliosStatus } from '@/features/helios/api';
+import { useAreaStats } from '@/features/world/api';
+import { HeliosLayersSection } from '@/features/helios/HeliosPanel';
 import { useI18n } from '@/i18n';
 import { VIIRS_START_INDEX } from '@/lib/date';
 import { rampColors } from '@/styles/tokens';
-import { Icon, Segmented, SensorMark, Skeleton, Switch } from '@/ui';
+import { Hex, Icon, Segmented, SensorMark, Skeleton, Switch } from '@/ui';
 import { useMapStore, type MapView } from './mapStore';
 import { useEffectiveRange } from './timeStore';
-import { countRange, useFilterScore, type FireIndex } from './useFireData';
+import { countRange, useArchive, useFilterScore, type FireIndex } from './useFireData';
 
 function SensorRow({ sensor, index }: { sensor: Sensor; index: FireIndex | null }) {
   const { m, fmt } = useI18n();
@@ -23,7 +27,7 @@ function SensorRow({ sensor, index }: { sensor: Sensor; index: FireIndex | null 
 
   return (
     <div className="flex items-center gap-3 py-2.5">
-      <span className="grid h-8 w-8 flex-none place-items-center rounded-[10px] border border-line bg-[rgb(255_255_255/0.03)]">
+      <span className="grid h-8 w-8 flex-none place-items-center rounded-[10px] border border-line bg-[var(--el-tint-1)]">
         <SensorMark kind={sensor} size={10} />
       </span>
       <div className="min-w-0 flex-1">
@@ -51,7 +55,7 @@ function NoiseRow({ kind, removed }: { kind: 'lowConfidence' | 'staticSources'; 
   const desc = kind === 'lowConfidence' ? m.map.noise.lowConfDesc : m.map.noise.staticDesc;
   return (
     <div className="flex items-start gap-3 py-2.5">
-      <span className="mt-0.5 grid h-8 w-8 flex-none place-items-center rounded-[10px] border border-line bg-[rgb(255_255_255/0.03)] text-trust-low">
+      <span className="mt-0.5 grid h-8 w-8 flex-none place-items-center rounded-[10px] border border-line bg-[var(--el-tint-1)] text-trust-low">
         <Icon name={kind === 'lowConfidence' ? 'alert' : 'flame'} size={16} />
       </span>
       <div className="min-w-0 flex-1">
@@ -77,10 +81,34 @@ export function LayersPanelBody({ index, archive }: { index: FireIndex | null; a
   const hexRes = useMapStore((s) => s.hexRes);
   const range = useEffectiveRange();
   const score = useFilterScore(archive);
+  // On real data the "truth" labels come from the HELIOS server filter, not from a synthetic generator.
+  const synthetic = useArchive().data?.synthetic ?? true;
+  const world = useHeliosAvailable();
+  const { bbox, regionId } = useAppParams();
+  const status = useHeliosStatus(world);
+  const sensorsSel = useMapStore((s) => s.sensors);
+  // Real data: what the filter removed in the selected area and window, over every detection (server)
+  const server = useAreaStats(
+    world
+      ? {
+          bbox: bbox ?? [-180, -85, 180, 85],
+          regionId: bbox ? regionId : 'WORLD',
+          range,
+          lowconf: true,
+          static: true,
+          sensors: sensorsSel.MODIS && sensorsSel.VIIRS ? 'MV' : sensorsSel.MODIS ? 'M' : 'V',
+        }
+      : null,
+    world,
+  );
   const ramp = rampColors();
 
   // Noise in the current window, per class (static wins when both flags are set).
   const removed = useMemo(() => {
+    if (world) {
+      const tt = server.data?.totals;
+      return tt ? { low: tt.removedLowConfidence, stat: tt.removedStatic } : null;
+    }
     if (!archive) return null;
     let low = 0;
     let stat = 0;
@@ -93,7 +121,7 @@ export function LayersPanelBody({ index, archive }: { index: FireIndex | null; a
       else if (f & FLAG_STATIC) stat += 1;
     }
     return { low, stat };
-  }, [archive, range]);
+  }, [archive, range, world, server.data]);
 
   const info = gridInfo(hexRes);
 
@@ -107,11 +135,15 @@ export function LayersPanelBody({ index, archive }: { index: FireIndex | null; a
         options={[
           { value: 'points', label: m.map.view.points },
           { value: 'hex', label: m.map.view.hex },
+          ...(world ? [{ value: 'regions' as const, label: m.world.view.regions }] : []),
         ]}
       />
       {view === 'hex' ? (
         <p className="num m-0 mt-2 text-[11.5px] text-ink-dim">{m.map.view.hexHint(String(hexRes), fmt.int(info.areaKm2))}</p>
       ) : null}
+      {world && view === 'hex' ? <p className="m-0 mt-1 text-[11.5px] leading-snug text-ink-dim">{m.world.view.hexAll}</p> : null}
+      {world && view === 'points' ? <p className="m-0 mt-2 text-[11.5px] leading-snug text-ink-dim">{m.world.view.pointsHint}</p> : null}
+      {view === 'regions' ? <p className="m-0 mt-2 text-[11.5px] leading-snug text-ink-dim">{m.world.view.regionsHint}</p> : null}
 
       <div className="mt-3 divide-y divide-[var(--el-line)]">
         <SensorRow sensor="MODIS" index={index} />
@@ -127,12 +159,18 @@ export function LayersPanelBody({ index, archive }: { index: FireIndex | null; a
         <NoiseRow kind="lowConfidence" removed={removed?.low ?? null} />
         <NoiseRow kind="staticSources" removed={removed?.stat ?? null} />
       </div>
-      {archive ? (
+      {world && status.data?.world ? (
+        <p className="m-0 mt-1 text-[11.5px] leading-snug text-ink-dim">{m.map.noise.staticCells(fmt.int(status.data.world.static_cells))}</p>
+      ) : archive ? (
         <p className="m-0 mt-1 text-[11.5px] leading-snug text-ink-dim">
           {m.map.noise.staticCells(fmt.int(archive.persistence.staticCells))}
-          {score ? ` ${m.map.noise.score(fmt.pct(score.precision), fmt.pct(score.firesKept))}` : ''}
+          {score
+            ? ` ${(synthetic ? m.map.noise.score : m.map.noise.scoreServer)(fmt.pct(score.precision), fmt.pct(score.firesKept))}`
+            : ''}
         </p>
       ) : null}
+
+      <HeliosLayersSection />
 
       <div className="mt-5 rounded-[14px] border border-[rgb(61_219_217/0.22)] bg-info-bg px-3.5 py-3">
         <p className="m-0 flex items-start gap-2 text-[12.5px] leading-snug text-ink-muted">
@@ -142,7 +180,20 @@ export function LayersPanelBody({ index, archive }: { index: FireIndex | null; a
       </div>
 
       <h3 className="eyebrow mb-3 mt-5">{m.map.legend.title}</h3>
-      {view === 'hex' ? (
+      {view === 'regions' ? (
+        <div>
+          <div className="h-2.5 w-full rounded-full" style={{ background: `linear-gradient(90deg, ${ramp[1]}, ${ramp[3]}, ${ramp[4]}, ${ramp[5]}, ${ramp[6]})` }} />
+          <div className="mt-1.5 flex justify-between text-[11.5px] text-ink-dim">
+            <span>{m.map.legend.less}</span>
+            <span>{m.world.legend.density}</span>
+            <span>{m.map.legend.more}</span>
+          </div>
+          <p className="m-0 mt-2 flex items-center gap-3 text-[12.5px] text-ink-muted">
+            <span className="h-3.5 w-5 rounded-[2px] border border-[var(--el-line-strong,var(--el-line))]" aria-hidden />
+            {m.world.legend.noFires}
+          </p>
+        </div>
+      ) : view === 'hex' ? (
         <div>
           <div className="h-2.5 w-full rounded-full" style={{ background: `linear-gradient(90deg, ${ramp[2]}, ${ramp[3]}, ${ramp[4]}, ${ramp[5]}, ${ramp[6]})` }} />
           <div className="mt-1.5 flex justify-between text-[11.5px] text-ink-dim">
@@ -166,16 +217,8 @@ export function LayersPanelBody({ index, archive }: { index: FireIndex | null; a
             {m.map.legend.dot}
           </li>
           <li className="flex items-center gap-3">
-            <span className="flex w-6 items-end justify-center gap-0.5" aria-hidden>
-              <span className="h-1 w-1 rounded-full bg-ink-dim" />
-              <span className="h-1.5 w-1.5 rounded-full bg-ink-dim" />
-              <span className="h-2.5 w-2.5 rounded-full bg-ink-dim" />
-            </span>
-            {m.map.legend.size}
-          </li>
-          <li className="flex items-center gap-3">
             <span className="grid w-6 place-items-center" aria-hidden>
-              <span className="h-4 w-4 rounded-full border border-ink-dim" />
+              <Hex size={15} fill="transparent" stroke="var(--el-ink-dim)" strokeWidth={1.2} />
             </span>
             {m.map.legend.cluster}
           </li>
@@ -183,7 +226,7 @@ export function LayersPanelBody({ index, archive }: { index: FireIndex | null; a
       )}
       <p className="m-0 mt-3 flex items-center gap-3 text-[12.5px] text-ink-muted">
         <span className="grid w-6 place-items-center" aria-hidden>
-          <span className="h-3.5 w-5 rounded-[2px] border border-dashed border-amber-soft" style={{ boxShadow: '0 0 8px rgb(255 82 54 / 0.6)' }} />
+          <span className="h-3.5 w-5 rounded-[2px] border border-orange" style={{ background: 'color-mix(in srgb, var(--el-orange) 8%, transparent)' }} />
         </span>
         {m.map.legend.selection}
       </p>
