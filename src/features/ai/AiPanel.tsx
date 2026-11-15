@@ -63,13 +63,19 @@ function ymText(ym: string, fmt: Formatters) {
 function findingText(f: Finding, m: Messages, fmt: Formatters): string {
   const t = m.map.ai.findings;
   switch (f.kind) {
+    case 'demo':
+      return t.demo;
     case 'risk':
       return t.risk(m.map.ai.levels[f.level], monthsText(f.months, fmt));
     case 'season':
       return t.season(monthsText(f.months, fmt));
-    case 'trend':
-      if (Math.abs(f.pctPerYear) < 0.5) return t.trendFlat;
-      return f.pctPerYear > 0 ? t.trendUp(fmt.pct(f.pctPerYear / 100, 1)) : t.trendDown(fmt.pct(-f.pctPerYear / 100, 1));
+    case 'trend': {
+      const years = f.fromYear === f.toYear ? String(f.fromYear) : `${f.fromYear}–${f.toYear}`;
+      if (Math.abs(f.pctPerYear) < 0.5) return t.trendFlat(years);
+      return f.pctPerYear > 0 ? t.trendUp(fmt.pct(f.pctPerYear / 100, 1), years) : t.trendDown(fmt.pct(-f.pctPerYear / 100, 1), years);
+    }
+    case 'limits':
+      return f.noSeason ? t.noSeason(fmt.int(f.months)) : t.noTrend;
     case 'recent':
       if (f.ratio >= 1.15) return t.recentHigh(`×${fmt.dec(f.ratio, 1)}`);
       if (f.ratio <= 0.85) return t.recentLow(`×${fmt.dec(f.ratio, 1)}`);
@@ -81,7 +87,7 @@ function findingText(f: Finding, m: Messages, fmt: Formatters): string {
     case 'sensors':
       return t.sensors(f.raw === null ? '—' : fmt.dec(f.raw, 1), fmt.dec(f.hex, 1));
     case 'uncertainty':
-      return t.uncertainty(fmt.pct(f.relative / 2, 0), fmt.pct(f.interval ?? 0.9, 0));
+      return t.uncertainty(fmt.dec(f.value, 1), fmt.dec(f.lo, 1), fmt.dec(f.hi, 1), fmt.pct(f.interval ?? 0.9, 0));
     case 'forecast':
       return t.forecast(fmt.pct(f.max, f.max < 0.1 ? 1 : 0), fmt.pct(f.mean, 1), fmt.pct(f.typical, 1));
   }
@@ -91,23 +97,25 @@ const LEVEL_COLOR = { low: 'var(--el-trust-high)', moderate: 'var(--el-trust-med
 
 function Findings({ findings }: { findings: Finding[] }) {
   const { m, fmt } = useI18n();
-  const risk = findings.find((f): f is Extract<Finding, { kind: 'risk' }> => f.kind === 'risk');
+  // The lead line: the risk level on real data, or the "synthetic demo — not a forecast" line on the demo.
+  const lead = findings.find((f): f is Extract<Finding, { kind: 'risk' | 'demo' }> => f.kind === 'risk' || f.kind === 'demo');
+  const pill = lead?.kind === 'risk' ? { text: m.map.ai.levels[lead.level], color: LEVEL_COLOR[lead.level] } : { text: m.map.ai.demoPill, color: 'var(--el-amber)' };
   return (
     <div className="text-[13.5px] leading-relaxed text-ink-muted">
-      {risk ? (
+      {lead ? (
         <p className="m-0 mb-3 flex items-start gap-2.5 text-ink">
           <span
             className="mt-0.5 inline-flex flex-none items-center rounded-pill px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em]"
-            style={{ color: LEVEL_COLOR[risk.level], background: 'var(--el-tint-2)', border: '1px solid currentColor' }}
+            style={{ color: pill.color, background: 'var(--el-tint-2)', border: '1px solid currentColor' }}
           >
-            {m.map.ai.levels[risk.level]}
+            {pill.text}
           </span>
-          <span>{findingText(risk, m, fmt)}</span>
+          <span>{findingText(lead, m, fmt)}</span>
         </p>
       ) : null}
       <ul className="m-0 grid list-none gap-1.5 p-0">
         {findings
-          .filter((f) => f.kind !== 'risk')
+          .filter((f) => f.kind !== 'risk' && f.kind !== 'demo')
           .map((f, i) => (
             <li key={i} className="flex gap-2">
               <span aria-hidden className="mt-[9px] h-1 w-1 flex-none rounded-full bg-ink-dim" />
@@ -127,19 +135,31 @@ type State =
   | { kind: 'done'; result: AnalysisResult }
   | { kind: 'error'; message: string };
 
-/** “AI risk analysis” — sends the area's statistics (not the map) to Gemini through the backend. */
+/**
+ * The AI brief — sends the statistics of the selected area AND period (not the map) to Gemini through the
+ * backend. On synthetic data it is a "Demo briefing" that explains the numbers and never forecasts; on real
+ * data it is the risk analysis.
+ */
 export function AiPanel({ summary }: { summary: AreaSummary | null }) {
-  const { m, locale } = useI18n();
+  const { m, locale, fmt } = useI18n();
   const [state, setState] = useState<State>({ kind: 'idle' });
   const [showPayload, setShowPayload] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
-  const key = summary ? `${summary.area.name}|${summary.area.bbox.join(',')}|${locale}` : '';
+  const key = summary
+    ? `${summary.area.name}|${summary.area.bbox.join(',')}|${summary.period.from}|${summary.period.to}|${locale}`
+    : '';
 
-  // A new area or language invalidates the previous briefing.
+  // A new area, period or language invalidates the previous briefing.
   useEffect(() => {
     abortRef.current?.abort();
     setState({ kind: 'idle' });
   }, [key]);
+
+  // The server's verdict wins once it answered (it forces the demo where only demo data exists).
+  const answered = state.kind === 'done' ? state.result : null;
+  const demo = answered?.mode ? answered.mode === 'demo' : (summary?.synthetic ?? false);
+  const period = answered?.period ?? summary?.period ?? null;
+  const periodText = period ? m.map.stats.period(ymText(period.from, fmt), ymText(period.to, fmt)) : null;
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -156,7 +176,10 @@ export function AiPanel({ summary }: { summary: AreaSummary | null }) {
       if (ctrl.signal.aborted) return;
       if (err instanceof AiOfflineError) {
         // No backend (e.g. a static deployment): still useful, clearly labelled.
-        setState({ kind: 'done', result: { source: 'rules', findings: ruleFindings(summary), reason: 'offline' } });
+        setState({
+          kind: 'done',
+          result: { source: 'rules', mode: summary.synthetic ? 'demo' : 'risk', period: summary.period, findings: ruleFindings(summary), reason: 'offline' },
+        });
       } else {
         setState({ kind: 'error', message: (err as Error).message });
       }
@@ -171,11 +194,20 @@ export function AiPanel({ summary }: { summary: AreaSummary | null }) {
         </span>
         <div className="min-w-0">
           <h3 id="ai-title" className="m-0 text-[15px] font-semibold text-ink">
-            {m.map.ai.title}
+            {demo ? m.map.ai.demoTitle : m.map.ai.title}
           </h3>
-          <p className="m-0 mt-0.5 text-[12.5px] leading-snug text-ink-dim">{m.map.ai.subtitle}</p>
+          <p className="m-0 mt-0.5 text-[12.5px] leading-snug text-ink-dim">{demo ? m.map.ai.demoSubtitle : m.map.ai.subtitle}</p>
         </div>
       </div>
+
+      {periodText ? (
+        <p className="m-0 mt-3 flex items-center gap-2 text-[12px] text-ink-muted" data-ai-period>
+          <Icon name="calendar" size={14} className="flex-none text-ink-dim" />
+          <span>
+            {m.map.ai.periodLabel} <span className="num text-ink">{periodText}</span>
+          </span>
+        </p>
+      ) : null}
 
       <div className="mt-3.5" aria-live="polite">
         {state.kind === 'loading' ? (
@@ -206,7 +238,9 @@ export function AiPanel({ summary }: { summary: AreaSummary | null }) {
                 ? m.map.ai.sourceGemini(state.result.model)
                 : state.result.reason === 'offline'
                   ? m.map.ai.offline
-                  : m.map.ai.sourceRules}
+                  : state.result.reason === 'model-error'
+                    ? m.map.ai.sourceRulesError
+                    : m.map.ai.sourceRules}
             </p>
           </div>
         ) : state.kind === 'error' ? (
@@ -242,7 +276,7 @@ export function AiPanel({ summary }: { summary: AreaSummary | null }) {
           {JSON.stringify(summary, null, 1)}
         </pre>
       ) : null}
-      <p className="m-0 mt-3 text-[11px] leading-snug text-ink-dim">{m.map.ai.disclaimer}</p>
+      <p className="m-0 mt-3 text-[11px] leading-snug text-ink-dim">{demo ? m.map.ai.demoDisclaimer : m.map.ai.disclaimer}</p>
     </section>
   );
 }

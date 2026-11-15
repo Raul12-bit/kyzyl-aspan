@@ -334,8 +334,11 @@ function Statement() {
 }
 
 const VISUALS = [HexVisual, NoiseVisual, BriefVisual];
-/** Language-neutral captions (instrument and product names only). */
-const TAGS = ['H3 · res 6', 'MODIS × VIIRS', 'Gemini · rules'];
+/**
+ * Language-neutral captions (instrument and product names only). The H3 tag names the ANALYSIS grid
+ * (statistics, harmonization, AI brief: res 5 ≈ 253 km²); the map's display grid changes with zoom.
+ */
+const TAGS = ['H3 res 5 · ≈253 km²', 'MODIS × VIIRS', 'Gemini · rules'];
 
 function What() {
   const { m } = useI18n();

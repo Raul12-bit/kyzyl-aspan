@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { DataBadge } from '@/app/DataBadge';
 import type { BBox, CalendarSeries } from '@/data/types';
 import { useCalendar } from '@/data/queries';
 import { fuseArchive } from '@/domain/ai/fusion';
@@ -55,7 +56,10 @@ function AnnualChart({ calendar, name }: { calendar: CalendarSeries; name: strin
   const ticks = [0, 0.5, 1].map((f) => f * maxY);
   return (
     <figure className="m-0 grid gap-2">
-      <figcaption className="text-[13px] text-ink">{t.title}</figcaption>
+      <figcaption className="flex flex-wrap items-center justify-between gap-2 text-[13px] text-ink">
+        {t.title}
+        <DataBadge />
+      </figcaption>
       <svg viewBox={`0 0 ${W} ${H}`} className="lab-chart" role="img" aria-label={t.title}>
         {ticks.map((v) => (
           <g key={v}>

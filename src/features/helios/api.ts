@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type { FeatureCollection, Polygon } from 'geojson';
 import { useSyncExternalStore } from 'react';
-import { dataMode, DEFAULT_API_URL, heliosLive, onDataMode, onHeliosLive, type BBox } from '@/data';
+import { dataMode, DEFAULT_API_URL, heliosLive, onDataMode, onHeliosLive, type BBox, type DataMode } from '@/data';
 import { bboxToParam } from '@/lib/geo';
 
 /**
@@ -229,6 +229,11 @@ export interface LinkResponse {
 /** True once the start-up probe has picked the real HELIOS API (an external store, so no update is missed). */
 export function useHeliosAvailable(): boolean {
   return useSyncExternalStore(onDataMode, dataMode) === 'http';
+}
+
+/** Where the fire numbers on screen come from: 'http' = real NASA FIRMS via HELIOS, 'mock' = synthetic demo. */
+export function useDataMode(): DataMode {
+  return useSyncExternalStore(onDataMode, dataMode);
 }
 
 /** The HELIOS server answers (possibly without the fire archive): enough for the live satellites. */

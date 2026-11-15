@@ -52,10 +52,22 @@ const MIME: Record<string, string> = {
   '.svg': 'image/svg+xml',
   '.webp': 'image/webp',
   '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.glb': 'model/gltf-binary',
   '.woff2': 'font/woff2',
   '.ico': 'image/x-icon',
+  '.txt': 'text/plain; charset=utf-8',
+  '.xml': 'application/xml; charset=utf-8',
 };
 
+/** Client-side routes of src/app/router.tsx — same list as scripts/build-vercel.mjs. */
+const SPA_ROUTE = /^\/(?:map|ai|method|mission|how-it-works|analysis)?\/?$/;
+
+/**
+ * Same rules as the Vercel deployment: existing files as they are; the app's pages → index.html (200); a
+ * missing file (anything with an extension) → 404; any other path → index.html with status 404, so the
+ * app shows its "not found" page and crawlers get a real 404.
+ */
 function serveStatic(req: IncomingMessage, res: ServerResponse) {
   const urlPath = decodeURIComponent((req.url ?? '/').split('?')[0]!);
   const safe = normalize(urlPath).replace(/^(\.\.[/\\])+/, '');
@@ -64,13 +76,21 @@ function serveStatic(req: IncomingMessage, res: ServerResponse) {
     send(res, 403, { error: 'Forbidden' });
     return;
   }
-  if (!existsSync(file) || statSync(file).isDirectory()) file = join(DIST, 'index.html'); // SPA fallback
+  let status = 200;
+  if (!existsSync(file) || statSync(file).isDirectory()) {
+    if (!SPA_ROUTE.test(urlPath) && /\.[A-Za-z0-9]{1,8}$/.test(urlPath)) {
+      send(res, 404, { error: 'Not found' });
+      return;
+    }
+    if (!SPA_ROUTE.test(urlPath)) status = 404;
+    file = join(DIST, 'index.html');
+  }
   if (!existsSync(file)) {
     send(res, 404, { error: 'Not found — run "pnpm build" first, or use the Vite dev server.' });
     return;
   }
   const ext = extname(file);
-  res.writeHead(200, {
+  res.writeHead(status, {
     'content-type': MIME[ext] ?? 'application/octet-stream',
     'cache-control': file.includes(`${join('dist', 'assets')}`) ? 'public, max-age=31536000, immutable' : 'no-cache',
     'x-content-type-options': 'nosniff',

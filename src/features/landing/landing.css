@@ -790,6 +790,41 @@
 
 /* ------------------------------------------------------------------ AI system (three AIs + fusion) */
 
+/* What runs where on THIS site, live: simulations in the browser, the ground server, the HELIOS data mode. */
+.lp-ai__status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.lp-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 10px;
+  border: 1px solid var(--el-line);
+  border-radius: var(--el-radius-pill);
+  background: var(--el-tint-1);
+  color: var(--el-ink-muted);
+  font-size: 12.5px;
+  line-height: 1.3;
+}
+.lp-status__dot {
+  flex: none;
+  width: 7px;
+  height: 8px;
+  clip-path: var(--el-hex-clip);
+  background: var(--el-ink-dim);
+}
+.lp-status[data-tone='on'] .lp-status__dot {
+  background: var(--el-trust-high);
+}
+.lp-status[data-tone='off'] .lp-status__dot {
+  background: var(--el-amber);
+}
+
 .lp-ai__diagram {
   margin: 0 0 clamp(40px, 6vh, 72px);
   padding: clamp(18px, 3vw, 40px);

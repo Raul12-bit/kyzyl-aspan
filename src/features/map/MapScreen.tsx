@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { DataBadge } from '@/app/DataBadge';
 import { useAppParams } from '@/app/useAppParams';
 import type { BBox } from '@/data/types';
 import type { FireArchive } from '@/domain/archive';
@@ -52,6 +53,8 @@ function StatusStack({ loading, error, onRetry }: { loading: boolean; error: boo
   const [basemapDismissed, setBasemapDismissed] = useState(false);
   return (
     <div className="pointer-events-none absolute inset-x-0 top-[calc(var(--el-header-h)+12px)] flex flex-col items-center gap-2 px-[var(--el-gutter)]">
+      {/* Always on screen: where the numbers on the map come from (synthetic demo vs real NASA FIRMS). */}
+      <DataBadge variant="overlay" />
       {loading ? (
         <div className="chip pointer-events-auto !bg-[var(--el-panel)] backdrop-blur-md">
           <Spinner size={14} label={m.map.status.loading} />
@@ -96,6 +99,8 @@ function MobileLayout({ index, archive }: { index: ReturnType<typeof useFireInde
           snap={snap}
           onSnapChange={setSnap}
           peek={176}
+          expandLabel={m.common.expand}
+          collapseLabel={m.common.collapse}
           header={
             <Segmented<MobileTab>
               label={m.app.nav.map}

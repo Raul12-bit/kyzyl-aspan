@@ -7,7 +7,8 @@
  *                                 ← server/heliosLite.ts: the five real satellites computed in TypeScript
  *                                   (SGP4, ITU-R link margins, Open-Meteo, AI #2) — the landing globe's live part
  *   config.json                   ← routing: cached assets, files and functions first, 404 for other /api and /v1,
- *                                   then the single-page-app fallback to index.html
+ *                                   the app's pages → index.html (200), missing files → 404, any other path →
+ *                                   index.html with status 404 (the app shows its "not found" page)
  *
  * Why prebuilt: the repository also holds the HELIOS Python backend in api/ (Vercel would try to deploy those
  * files as Python functions) and the browser app needs nothing but static files. The Python data API (fire
@@ -97,6 +98,11 @@ ENDPOINTS.push('v1/helios/status', 'v1/helios/constellation');
 rmSync(join(out, '.tmp'), { recursive: true, force: true });
 
 const security = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin' };
+/** Client-side routes of src/app/router.tsx (keep in sync; server/index.ts uses the same list). */
+const SPA_ROUTES = ['map', 'ai', 'method', 'mission', 'how-it-works', 'analysis'];
+for (const file of ['robots.txt', 'sitemap.xml']) {
+  if (!existsSync(join(dist, file))) throw new Error(`dist/${file} is missing (public/${file})`);
+}
 writeFileSync(
   join(out, 'config.json'),
   JSON.stringify(
@@ -108,7 +114,12 @@ writeFileSync(
         { handle: 'filesystem' },
         // No HELIOS data API here: /v1 must answer 404 (not the app's HTML), so the site picks its demo data.
         { src: '^/(?:api|v1)(?:/.*)?$', status: 404 },
-        { src: '^/(.*)$', dest: '/index.html' },
+        // The app's pages (and the old paths it redirects on the client) → the app, 200.
+        { src: `^/(?:${SPA_ROUTES.join('|')})?/?$`, dest: '/index.html' },
+        // A missing FILE (robots.txt before it existed, an old asset…) is a plain 404, never the app's HTML.
+        { src: '^/.*\\.[A-Za-z0-9]{1,8}$', status: 404 },
+        // Any other path: the app renders its "page not found" view, with a real 404 status for crawlers.
+        { src: '^/(.*)$', dest: '/index.html', status: 404 },
       ],
     },
     null,

@@ -17,10 +17,7 @@ import {
 
 export type ComputedOn = 'server' | 'browser';
 
-export interface ServerStatus {
-  online: boolean;
-  helios: boolean;
-}
+export { useAiServerStatus, type ServerStatus } from './serverStatus';
 
 async function getJson<T>(
   url: string,
@@ -41,23 +38,6 @@ async function getJson<T>(
     if (signal?.aborted) throw err;
     return null;
   }
-}
-
-export function useAiServerStatus() {
-  return useQuery({
-    queryKey: ['ai', 'server-status'],
-    queryFn: async ({ signal }): Promise<ServerStatus> => {
-      const r = await getJson<{ ok: boolean; helios?: { reachable?: boolean } }>(
-        '/api/ai/status',
-        {},
-        signal,
-        3000,
-      );
-      return { online: Boolean(r?.ok), helios: Boolean(r?.helios?.reachable) };
-    },
-    staleTime: 60_000,
-    retry: false,
-  });
 }
 
 export type WeatherOverrides = Partial<Pick<Weather, 'windKmh' | 'windFromDeg' | 'tempC' | 'rh' | 'drought'>>;

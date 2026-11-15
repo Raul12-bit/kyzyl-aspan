@@ -26,7 +26,8 @@
     "data:geo": "tsx scripts/generate-geo-data.ts",
     "models:build": "node scripts/build-satellite-models.mjs",
     "build:vercel": "pnpm build && node scripts/build-vercel.mjs",
-    "deploy:vercel": "pnpm build:vercel && vercel deploy --prebuilt --prod"
+    "deploy:vercel": "pnpm build:vercel && vercel deploy --prebuilt --prod",
+    "verify:ai": "tsx --tsconfig tsconfig.node.json scripts/verify-ai.ts"
   },
   "dependencies": {
     "@fontsource-variable/cormorant-garamond": "5.3.0",

@@ -1,0 +1,7 @@
+# Kyzyl Aspan — NASA Space Apps Challenge 2026
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /v1/
+
+Sitemap: https://kyzyl-aspan.vercel.app/sitemap.xml

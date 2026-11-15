@@ -3,7 +3,8 @@
  * Vercel functions (scripts/build-vercel.mjs bundles this file into each function of .vercel/output).
  *
  *   GET  /api/health              → { ok, gemini: { configured, model } }
- *   POST /api/ai/analyze          → { source: 'gemini', model, text } | { source: 'rules', findings, reason? }
+ *   POST /api/ai/analyze          → { source: 'gemini', mode, period, model, text } | { source: 'rules', mode, period, findings, reason? }
+ *                                   mode 'demo' (synthetic numbers: explained, never forecast) or 'risk' (real data)
  *   GET  /api/ai/status           → the three AIs (registry), where each runs, Gemini / HELIOS availability
  *   POST /api/ai/ground/forecast  → AI #3: weather overlay + fire-spread forecast for one ignition point
  *   GET  /api/ai/ground/delays    → AI #3: age of each satellite stream's data on arrival (?storm=&kp=)
@@ -17,7 +18,7 @@ import { AI_FLOWS, AI_SYSTEMS } from '../src/domain/ai/registry';
 import { STATIONS } from '../src/domain/downlink';
 import { ruleFindings, type AreaSummary, type Finding } from '../src/domain/summary';
 import { config } from './config';
-import { analyzeWithGemini, GeminiError } from './gemini';
+import { analyzeWithGemini, GeminiError, type BriefMode } from './gemini';
 import { parseAnalyzeRequest, parseGroundRequest } from './validate';
 
 const MAX_BODY = 32 * 1024;
@@ -77,11 +78,21 @@ async function heliosContext(summary: AreaSummary): Promise<Record<string, unkno
 }
 
 /** Rule-based findings + the HELIOS forecast line (right after the risk level), when available. */
-function findingsWithHelios(summary: AreaSummary, ctx: Record<string, unknown> | null): Finding[] {
-  const out = ruleFindings(summary);
+function findingsWithHelios(summary: AreaSummary, ctx: Record<string, unknown> | null, mode: BriefMode): Finding[] {
+  const out = ruleFindings(summary, { demo: mode === 'demo' });
+  if (mode === 'demo') return out;
   const f = (ctx?.forecast as { by_horizon?: Record<string, { max: number; mean: number; climatology_mean: number }> } | undefined)?.by_horizon?.['1'];
   if (f && Number.isFinite(f.max)) out.splice(1, 0, { kind: 'forecast', max: f.max, mean: f.mean, typical: f.climatology_mean });
   return out;
+}
+
+/**
+ * Demo or risk brief. Synthetic numbers always get the demo brief; so does any request to a server that has
+ * no real fire archive behind it (the Vercel site serves only the demo archive), whatever the request claims.
+ */
+export async function briefMode(summary: AreaSummary): Promise<BriefMode> {
+  if (summary.synthetic) return 'demo';
+  return (await probeHelios()).dataReady ? 'risk' : 'demo';
 }
 
 /* ------------------------------------------------------------------ rate limit (fixed window per IP) */
@@ -171,36 +182,51 @@ async function analyze(req: IncomingMessage, res: ServerResponse) {
     return;
   }
   const { summary, locale } = parsed.value;
-  const helios = await heliosContext(summary);
+  const mode = await briefMode(summary);
+  // The HELIOS forecast is real-data context: never fetched for (or mixed into) a demo brief.
+  const helios = mode === 'risk' ? await heliosContext(summary) : null;
+  const period = { from: summary.period.from, to: summary.period.to };
   if (!config.geminiKey) {
-    send(res, 200, { source: 'rules', findings: findingsWithHelios(summary, helios), reason: 'not-configured' });
+    send(res, 200, { source: 'rules', mode, period, findings: findingsWithHelios(summary, helios, mode), reason: 'not-configured' });
     return;
   }
   try {
-    const out = await analyzeWithGemini(summary, locale, helios);
-    send(res, 200, { source: 'gemini', model: out.model, text: out.text });
+    const out = await analyzeWithGemini(summary, locale, helios, mode);
+    send(res, 200, { source: 'gemini', mode, period, model: out.model, text: out.text });
   } catch (err) {
     const status = err instanceof GeminiError ? err.status : null;
     console.warn(`[api] gemini failed (${status ?? 'network'}): ${(err as Error).message}`);
     // Degrade, don't fail: the visitor still gets the transparent rule-based summary.
-    send(res, 200, { source: 'rules', findings: findingsWithHelios(summary, helios), reason: 'model-error' });
+    send(res, 200, { source: 'rules', mode, period, findings: findingsWithHelios(summary, helios, mode), reason: 'model-error' });
   }
 }
 
-/** HELIOS reachability, cached for a minute so /api/ai/status stays fast. */
-let heliosProbe: { at: number; ok: boolean } | null = null;
-async function heliosReachable(): Promise<boolean> {
-  if (!heliosEnabled) return false;
-  if (heliosProbe && Date.now() - heliosProbe.at < 60_000) return heliosProbe.ok;
-  let ok = false;
+/**
+ * HELIOS reachability and whether it holds the real fire archive (`data_ready`), cached for a minute so
+ * /api/ai/status and the brief stay fast. On Vercel there is no HELIOS data API: both false, no waiting.
+ */
+let heliosProbe: { at: number; reachable: boolean; dataReady: boolean } | null = null;
+async function probeHelios(): Promise<{ reachable: boolean; dataReady: boolean }> {
+  if (!heliosEnabled) return { reachable: false, dataReady: false };
+  if (heliosProbe && Date.now() - heliosProbe.at < 60_000) return heliosProbe;
+  let reachable = false;
+  let dataReady = false;
   try {
     const res = await fetch(`${config.heliosUrl}/helios/status`, { signal: AbortSignal.timeout(1500) });
-    ok = res.ok;
+    reachable = res.ok;
+    if (res.ok) {
+      const body = (await res.json().catch(() => null)) as { data_ready?: unknown } | null;
+      // Servers that predate the flag do not send it and count as ready (same rule as the browser's probe).
+      dataReady = body !== null && body.data_ready !== false;
+    }
   } catch {
-    ok = false;
+    reachable = false;
   }
-  heliosProbe = { at: Date.now(), ok };
-  return ok;
+  heliosProbe = { at: Date.now(), reachable, dataReady };
+  return heliosProbe;
+}
+async function heliosReachable(): Promise<boolean> {
+  return (await probeHelios()).reachable;
 }
 
 async function aiStatus(res: ServerResponse) {

@@ -1,10 +1,12 @@
-import { useEffect, useId, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useEffect, useId, useMemo, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useAppParams } from '@/app/useAppParams';
 import { useRegionSearch } from '@/data/queries';
 import type { BBox, Region } from '@/data/types';
 import type { FireArchive } from '@/domain/archive';
+import { findCountry, useCountries } from '@/features/geo/countries';
+import { useHeliosAvailable } from '@/features/helios/api';
 import { useI18n, type Messages } from '@/i18n';
-import { bboxAreaKm2 } from '@/lib/geo';
+import { bboxAreaKm2, polygonsAreaKm2 } from '@/lib/geo';
 import { useDebounced } from '@/lib/useDebounced';
 import { Button, Chip, cn, Icon, IconButton, Segmented, Spinner } from '@/ui';
 import { AreaInsights } from './AreaInsights';
@@ -271,8 +273,20 @@ export function SelectionSummary({ compact = false }: { compact?: boolean }) {
   const { m, fmt } = useI18n();
   const { bbox, regionId, setArea } = useAppParams();
   const name = useAreaName(regionId);
+  const world = useHeliosAvailable();
+  const countries = useCountries();
+  const country = regionId && /^[A-Z]{2}$/.test(regionId) ? findCountry(countries.data, regionId) : null;
+  // A country's statistics are counted inside its outline (AreaInsights' polygon mask), so its area is the
+  // outline's, not the box's — Kazakhstan's box is ≈5 M km², the country ≈2.7 M km².
+  const outlineKm2 = useMemo(() => (country ? polygonsAreaKm2(country.polys) : null), [country]);
 
   if (!bbox) return <p className="m-0 text-sm leading-relaxed text-ink-dim">{m.map.area.none}</p>;
+  const areaLine =
+    outlineKm2 !== null
+      ? m.map.area.areaOutline(fmt.compact(outlineKm2))
+      : regionId && world
+        ? m.map.area.areaRegion(fmt.compact(bboxAreaKm2(bbox)))
+        : m.map.area.areaBox(fmt.compact(bboxAreaKm2(bbox)));
 
   return (
     <div>
@@ -308,7 +322,7 @@ export function SelectionSummary({ compact = false }: { compact?: boolean }) {
               {formatLng(bbox[2])} {formatLat(bbox[3])}
             </dd>
           </div>
-          <div className="col-span-2 text-ink-dim">{m.map.area.areaKm2(fmt.compact(bboxAreaKm2(bbox)))}</div>
+          <div className="col-span-2 font-sans leading-snug text-ink-dim">{areaLine}</div>
         </dl>
       ) : null}
     </div>

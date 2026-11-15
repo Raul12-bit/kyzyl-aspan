@@ -172,11 +172,16 @@ paths:
     post:
       tags: [AI]
       operationId: analyzeArea
-      summary: Risk briefing for an area from its statistics (never the map, never the visitor's location)
+      summary: Briefing for an area AND a period from their statistics (never the map, never the visitor's location)
       description: |
-        Validation: `server/validate.ts` (strict; unknown shapes are rejected). Limits: 32 kB body,
-        10 requests/min/IP, 20 s model timeout. Without `GEMINI_API_KEY`, or when the model fails, the
-        endpoint still answers 200 with rule-based findings that the client renders in its own language.
+        Validation: `server/validate.ts` (strict; unknown shapes are rejected, and the summary is rebuilt from
+        the known fields, so an extra key never reaches the model). Limits: 32 kB body, 10 requests/min/IP,
+        26 s overall model deadline. Without `GEMINI_API_KEY`, or when the model fails, the endpoint still
+        answers 200 with rule-based findings that the client renders in its own language.
+
+        `mode`: `demo` when the summary is synthetic OR the server has no real fire archive behind it
+        (`/helios/status` with `data_ready` true) — the model then explains the numbers and is forbidden to
+        give a risk level or forecast; `risk` only on real data. `period` echoes the analysed period.
       requestBody:
         required: true
         content:
@@ -195,19 +200,23 @@ paths:
               schema:
                 oneOf:
                   - type: object
-                    required: [source, model, text]
+                    required: [source, mode, period, model, text]
                     properties:
                       source: { const: gemini }
+                      mode: { type: string, enum: [demo, risk] }
+                      period: { $ref: '#/components/schemas/YearMonthPeriod' }
                       model: { type: string }
                       text:
                         {
                           type: string,
-                          description: 'Markdown-lite: paragraphs, "#### " headings, "- " bullets.',
+                          description: 'Markdown-lite: paragraphs, "## " headings, "- " bullets. Demo mode starts with "## Demo briefing" (translated).',
                         }
                   - type: object
-                    required: [source, findings]
+                    required: [source, mode, period, findings]
                     properties:
                       source: { const: rules }
+                      mode: { type: string, enum: [demo, risk] }
+                      period: { $ref: '#/components/schemas/YearMonthPeriod' }
                       findings: { type: array, items: { $ref: '#/components/schemas/Finding' } }
                       reason: { type: string, enum: [not-configured, model-error] }
         '400': { $ref: '#/components/responses/Error' }
@@ -460,9 +469,20 @@ components:
             synthetic: { type: boolean }
             note: { type: string }
 
+    YearMonthPeriod:
+      type: object
+      required: [from, to]
+      properties:
+        from: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$' }
+        to: { type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$' }
+
     AreaSummary:
       type: object
-      description: Aggregates only (src/domain/summary.ts). Built by the client from a CalendarSeries.
+      description: |
+        Aggregates only (src/domain/summary.ts). Built by the client from a CalendarSeries for the SELECTED
+        period: every period-dependent field describes it. Fields a short period cannot support are empty or
+        null (climatology under 12 months, trend under 5 complete years, recentVsTypical under 24 months),
+        never faked. seasonAhead is null on synthetic data and when the period does not end with the latest data.
       required:
         [
           area,
@@ -492,9 +512,11 @@ components:
           type: object
           required: [from, to]
           properties:
-            from: { type: string, description: 'YYYY-MM' }
-            to: { type: string, description: 'YYYY-MM' }
-        unit: { type: string }
+            from: { type: string, description: 'YYYY-MM, inclusive' }
+            to: { type: string, description: 'YYYY-MM, inclusive' }
+            months: { type: integer, minimum: 1 }
+        record: { $ref: '#/components/schemas/YearMonthPeriod' }
+        unit: { type: string, maxLength: 120 }
         synthetic: { type: boolean }
         totals:
           type: object
@@ -524,7 +546,7 @@ components:
               hi: { type: number }
         climatology: { type: array, items: { type: number }, maxItems: 12 }
         peakMonths: { type: array, items: { type: integer }, maxItems: 12 }
-        trendPctPerYear: { type: number }
+        trendPctPerYear: { type: [number, 'null'] }
         anomalies:
           type: array
           maxItems: 12
@@ -535,9 +557,17 @@ components:
               month: { type: string, description: 'YYYY-MM' }
               z: { type: number }
         recentVsTypical: { type: [number, 'null'] }
-        relativeUncertainty: { type: number }
-        seasonAhead:
+        relativeUncertainty: { type: [number, 'null'] }
+        periodTotal:
           type: object
+          required: [value, lo, hi]
+          properties:
+            value: { type: number }
+            lo: { type: number }
+            hi: { type: number }
+        interval: { type: number, exclusiveMinimum: 0, exclusiveMaximum: 1 }
+        seasonAhead:
+          type: [object, 'null']
           required: [months, share]
           properties:
             months: { type: array, items: { type: integer }, maxItems: 3 }
@@ -546,6 +576,18 @@ components:
     Finding:
       description: Rule-based finding; the client renders it in the interface language.
       oneOf:
+        - { type: object, required: [kind], properties: { kind: { const: demo } } }
+        - {
+            type: object,
+            required: [kind, months, noSeason, noTrend],
+            properties:
+              {
+                kind: { const: limits },
+                months: { type: integer },
+                noSeason: { type: boolean },
+                noTrend: { type: boolean },
+              },
+          }
         - {
             type: object,
             required: [kind, level, months, share],
@@ -564,8 +606,14 @@ components:
           }
         - {
             type: object,
-            required: [kind, pctPerYear],
-            properties: { kind: { const: trend }, pctPerYear: { type: number } },
+            required: [kind, pctPerYear, fromYear, toYear],
+            properties:
+              {
+                kind: { const: trend },
+                pctPerYear: { type: number },
+                fromYear: { type: integer },
+                toYear: { type: integer },
+              },
           }
         - {
             type: object,
@@ -590,6 +638,13 @@ components:
           }
         - {
             type: object,
-            required: [kind, relative],
-            properties: { kind: { const: uncertainty }, relative: { type: number } },
+            required: [kind, value, lo, hi],
+            properties:
+              {
+                kind: { const: uncertainty },
+                value: { type: number },
+                lo: { type: number },
+                hi: { type: number },
+                interval: { type: number },
+              },
           }

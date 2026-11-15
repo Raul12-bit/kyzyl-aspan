@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
+  INDEX_CAP,
   noiseReport,
   NRT_TARGET_MIN,
   type DangerClass,
@@ -292,7 +293,8 @@ function SpreadCard() {
                 {t.danger[r.forecast.danger]}
               </span>
               <span className="num text-[13px] text-ink-muted">
-                {t.index[r.forecast.fuel]} {fmt.dec(r.forecast.index, 1)}
+                {t.index[r.forecast.fuel]}{' '}
+                {r.forecast.index >= INDEX_CAP ? `≥ ${INDEX_CAP}` : fmt.dec(r.forecast.index, 1)}
               </span>
             </div>
             <dl className="lab-kv">

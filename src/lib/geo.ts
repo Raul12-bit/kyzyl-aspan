@@ -55,6 +55,36 @@ export function bboxAreaKm2(b: BBox): number {
   return EARTH_RADIUS_KM ** 2 * width * Math.abs(Math.sin(b[3] * toRad) - Math.sin(b[1] * toRad));
 }
 
+/**
+ * Spherical area of one ring given as a flat [lng, lat, lng, lat, …] array, in km² (Chamberlain & Duquette
+ * 2007, "Some algorithms for polygons on a sphere" — the formula behind d3-geo and Turf). Orientation-free.
+ */
+export function ringAreaKm2(flat: ArrayLike<number>): number {
+  const toRad = Math.PI / 180;
+  const n = Math.floor(flat.length / 2);
+  if (n < 3) return 0;
+  let s = 0;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    s +=
+      (flat[2 * j]! - flat[2 * i]!) *
+      toRad *
+      (2 + Math.sin(flat[2 * i + 1]! * toRad) + Math.sin(flat[2 * j + 1]! * toRad));
+  }
+  return Math.abs((s * EARTH_RADIUS_KM ** 2) / 2);
+}
+
+/** Area of a multipolygon of flat rings ([outer, hole, hole…][]), holes subtracted, in km². */
+export function polygonsAreaKm2(polys: readonly (readonly ArrayLike<number>[])[]): number {
+  let total = 0;
+  for (const rings of polys) {
+    rings.forEach((ring, i) => {
+      total += (i === 0 ? 1 : -1) * ringAreaKm2(ring);
+    });
+  }
+  return total;
+}
+
 export function bboxContains(b: BBox, lng: number, lat: number): boolean {
   if (lat < b[1] || lat > b[3]) return false;
   return b[0] <= b[2] ? lng >= b[0] && lng <= b[2] : lng >= b[0] || lng <= b[2];

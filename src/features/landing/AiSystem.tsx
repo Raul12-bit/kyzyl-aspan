@@ -1,12 +1,53 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import type { AiId } from '@/domain/ai/registry';
+import { useAiServerStatus } from '@/features/ai-lab/serverStatus';
 import { SystemDiagram } from '@/features/ai-lab/SystemDiagram';
+import { useHeliosAvailable } from '@/features/helios/api';
 import { useI18n } from '@/i18n';
 import { ButtonLink, Icon, SensorMark } from '@/ui';
 import { Accent } from './Accent';
 
 const IDS: AiId[] = ['ai1', 'ai2', 'ai3'];
+
+function Status({ tone, children }: { tone: 'on' | 'off' | 'wait'; children: string }) {
+  return (
+    <li className="lp-status" data-tone={tone}>
+      <span className="lp-status__dot" aria-hidden />
+      {children}
+    </li>
+  );
+}
+
+/**
+ * What actually runs on this site, checked live — so the section never reads as "already in orbit":
+ * AI #1 and AI #2 are onboard/communications simulations in the browser, AI #3 answers from the ground
+ * server (or falls back to the browser), and the HELIOS real-data mode is on or off.
+ */
+function SiteStatus() {
+  const { m } = useI18n();
+  const s = m.ai.lab.status;
+  const server = useAiServerStatus();
+  const helios = useHeliosAvailable();
+  return (
+    <ul
+      className="lp-ai__status"
+      aria-label={m.ai.landing.statusLabel}
+      data-rv
+      style={{ ['--d' as string]: 3 } as CSSProperties}
+    >
+      <Status tone="on">{s.browser}</Status>
+      {server.isPending ? (
+        <Status tone="wait">{s.checking}</Status>
+      ) : server.data?.online ? (
+        <Status tone="on">{s.server}</Status>
+      ) : (
+        <Status tone="off">{s.fallback}</Status>
+      )}
+      <Status tone={helios ? 'on' : 'off'}>{helios ? s.helios : s.heliosOff}</Status>
+    </ul>
+  );
+}
 
 /**
  * Landing section, near the bottom: how the three AIs work together and how MODIS and VIIRS are combined.
@@ -28,6 +69,7 @@ export function AiSystem() {
           <p className="lp-lead" data-rv style={{ ['--d' as string]: 2 } as CSSProperties}>
             {l.lead}
           </p>
+          <SiteStatus />
         </header>
 
         <figure className="lp-ai__diagram" data-rv>

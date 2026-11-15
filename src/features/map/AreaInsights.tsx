@@ -1,10 +1,13 @@
 import { useMemo } from 'react';
+import { DataBadge } from '@/app/DataBadge';
 import { useAppParams } from '@/app/useAppParams';
 import { useCalendar } from '@/data/queries';
 import type { BBox } from '@/data/types';
 import { bboxMask, polygonMask } from '@/domain/area';
 import { hideMaskOf, type FireArchive } from '@/domain/archive';
+import { HARMONIZATION_RES } from '@/domain/hexgrid';
 import { aggregateHex } from '@/domain/hexStats';
+import { FLAG_ALL_NOISE } from '@/domain/noise';
 import { buildAreaSummary, type AreaSummary } from '@/domain/summary';
 import { AiPanel } from '@/features/ai/AiPanel';
 import { findCountry, useCountries } from '@/features/geo/countries';
@@ -12,7 +15,7 @@ import { useHeliosAvailable } from '@/features/helios/api';
 import { HeliosAreaCard } from '@/features/helios/HeliosAreaCard';
 import { useAreaStats } from '@/features/world/api';
 import { useI18n } from '@/i18n';
-import { fromMonthIndex, VIIRS_START_INDEX, VIIRS_START_YEAR } from '@/lib/date';
+import { fromMonthIndex, monthIndex, VIIRS_START_INDEX, VIIRS_START_YEAR } from '@/lib/date';
 import { Skeleton, Tooltip } from '@/ui';
 import { useMapStore } from './mapStore';
 import { useEffectiveRange } from './timeStore';
@@ -41,8 +44,12 @@ function Stat({ label, value, hint, tone }: { label: string; value: string; hint
   );
 }
 
-/** Annual harmonized totals with their 90% intervals — the record the whole method exists to make. */
-function AnnualChart({ summary }: { summary: AreaSummary }) {
+/**
+ * Annual harmonized totals with their 90% intervals — the record the whole method exists to make. Only
+ * complete years are drawn; years outside the selected period are dimmed, so the chart keeps the long-term
+ * context while showing which part of it the statistics above and the AI brief describe.
+ */
+function AnnualChart({ summary, range }: { summary: AreaSummary; range: readonly [number, number] }) {
   const { fmt } = useI18n();
   const data = summary.annual;
   const W = 320;
@@ -51,6 +58,7 @@ function AnnualChart({ summary }: { summary: AreaSummary }) {
   const bw = W / data.length;
   const y = (v: number) => H - 14 - (v / max) * (H - 22);
   const viirsX = data.findIndex((d) => d.year === VIIRS_START_YEAR) * bw;
+  const inPeriod = (year: number) => monthIndex(year, 12) >= range[0] && monthIndex(year, 1) <= range[1];
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label={data.map((d) => `${d.year}: ${fmt.int(d.value)}`).join(', ')}>
       <defs>
@@ -70,7 +78,7 @@ function AnnualChart({ summary }: { summary: AreaSummary }) {
       {data.map((d, i) => {
         const x = i * bw;
         return (
-          <g key={d.year}>
+          <g key={d.year} opacity={inPeriod(d.year) ? 1 : 0.28}>
             <rect x={x + bw * 0.18} width={bw * 0.64} y={y(d.value)} height={Math.max(1, H - 14 - y(d.value))} rx={1.5} fill="url(#annual-bar)" />
             <line x1={x + bw / 2} x2={x + bw / 2} y1={y(d.hi)} y2={y(d.lo)} stroke="var(--el-ink)" strokeOpacity=".45" strokeWidth={1} />
           </g>
@@ -123,28 +131,43 @@ export function AreaInsights({ archive }: { archive: FireArchive | null }) {
       return lo;
     };
     const opts = { flags: archive.flags, hideMask: hideMaskOf(noise), sensors: [sensors.MODIS, sensors.VIIRS] as const, area: mask };
-    const grid = gridAt(archive, 5);
-    const totals = aggregateHex(archive.table, grid, { ...opts, from: lb(range[0]), to: lb(range[1] + 1) }).totals;
+    const grid = gridAt(archive, HARMONIZATION_RES);
+    const win = { from: lb(range[0]), to: lb(range[1] + 1) };
+    const totals = aggregateHex(archive.table, grid, { ...opts, ...win }).totals;
     // Sensor ratios only mean something where both sensors fly: the overlap part of the window.
     const overlapFrom = Math.max(range[0], VIIRS_START_INDEX);
     const overlap =
       overlapFrom <= range[1] ? aggregateHex(archive.table, grid, { ...opts, from: lb(overlapFrom), to: lb(range[1] + 1) }).totals : null;
-    return { totals, overlap };
+    // What the AI brief is told about the period: always the standard filter and both sensors, like the
+    // harmonized series it describes — the display toggles above do not change the brief.
+    const standard = aggregateHex(archive.table, grid, { ...win, flags: archive.flags, hideMask: FLAG_ALL_NOISE, sensors: [true, true], area: mask }).totals;
+    return { totals, overlap, standard };
   }, [archive, range, noise, sensors, mask, world]);
   const sensorKey = sensors.MODIS && sensors.VIIRS ? 'MV' : sensors.MODIS ? 'M' : 'V';
+  const areaQuery = { bbox: box, regionId: bbox ? regionId : 'WORLD', range };
   const server = useAreaStats(
-    world
-      ? { bbox: box, regionId: bbox ? regionId : 'WORLD', range, lowconf: noise.lowConfidence, static: noise.staticSources, sensors: sensorKey }
-      : null,
+    world ? { ...areaQuery, lowconf: noise.lowConfidence, static: noise.staticSources, sensors: sensorKey } : null,
     world,
   );
+  // Same query as above when the toggles are at their defaults (react-query shares it).
+  const serverStandard = useAreaStats(world ? { ...areaQuery, lowconf: true, static: true, sensors: 'MV' } : null, world);
   const totals = world ? (server.data?.totals ?? null) : (agg?.totals ?? null);
   const overlap = world ? (server.data?.overlap ?? null) : (agg?.overlap ?? null);
+  const periodTotals = world ? (serverStandard.data?.totals ?? null) : (agg?.standard ?? null);
 
   const calendar = useCalendar({ bbox: box, regionId: bbox ? regionId : null });
-  const summary = useMemo(
+  // The whole harmonized record: the chart and its long-term figures.
+  const record = useMemo(
     () => (calendar.data ? buildAreaSummary(calendar.data, { name, iso2: country?.id ?? null, bbox: box }) : null),
     [calendar.data, name, country, box],
+  );
+  // The selected period: what the AI brief receives ("What is sent" matches the time bar).
+  const summary = useMemo(
+    () =>
+      calendar.data && periodTotals
+        ? buildAreaSummary(calendar.data, { name, iso2: country?.id ?? null, bbox: box }, { range, totals: periodTotals })
+        : null,
+    [calendar.data, name, country, box, range, periodTotals],
   );
 
   const a = fromMonthIndex(range[0]);
@@ -153,12 +176,15 @@ export function AreaInsights({ archive }: { archive: FireArchive | null }) {
   const rawRatio = overlap && overlap.rawModis > 0 && overlap.rawViirs > 0 ? overlap.rawViirs / overlap.rawModis : null;
   const hexRatio = overlap && overlap.hexDaysModis > 0 && overlap.hexDaysViirs > 0 ? overlap.hexDaysViirs / overlap.hexDaysModis : null;
 
+  const chartYears = record && record.annual.length ? [record.annual[0]!.year, record.annual[record.annual.length - 1]!.year] : null;
+
   return (
     <div className="grid gap-4">
       <div>
-        <div className="mb-2.5 flex items-baseline justify-between gap-3">
+        <div className="mb-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
           <h3 className="eyebrow m-0">{m.map.stats.title}</h3>
           <span className="num text-[11px] text-ink-dim">{m.map.stats.period(fmt.yearMonth(a.year, a.month), fmt.yearMonth(b.year, b.month))}</span>
+          <DataBadge className="basis-auto" />
         </div>
         {totals ? (
           totals.considered === 0 ? (
@@ -183,29 +209,34 @@ export function AreaInsights({ archive }: { archive: FireArchive | null }) {
       </div>
 
       <div>
-        <h3 className="eyebrow m-0 mb-1">{m.map.stats.calendar}</h3>
-        <p className="m-0 mb-2 text-[11.5px] leading-snug text-ink-dim">{m.map.stats.calendarHint}</p>
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+          <h3 className="eyebrow m-0">{chartYears ? m.map.stats.calendar(String(chartYears[0]), String(chartYears[1])) : m.map.stats.calendarNoYears}</h3>
+          <DataBadge />
+        </div>
+        <p className="m-0 mb-2 text-[11.5px] leading-snug text-ink-dim">
+          {m.map.stats.calendarHint(String(calendar.data?.meta.grid.resolution ?? HARMONIZATION_RES), fmt.int(calendar.data?.meta.grid.cellAreaKm2 ?? 253))}
+        </p>
         {calendar.isPending ? (
           <Skeleton className="h-[96px] w-full !rounded-[10px]" />
         ) : calendar.isError ? (
           <p className="m-0 text-[13px] text-danger">{m.map.stats.error}</p>
-        ) : summary ? (
+        ) : record ? (
           <>
-            <AnnualChart summary={summary} />
+            <AnnualChart summary={record} range={range} />
             <dl className="m-0 mt-2.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[12.5px]">
               <dt className="text-ink-dim">{m.map.stats.peak}</dt>
               <dd className="m-0 text-ink-muted">
-                {summary.peakMonths.length ? fmt.list(summary.peakMonths.map((mo) => fmt.month(mo, 'short'))) : m.map.stats.none}
+                {record.peakMonths.length ? fmt.list(record.peakMonths.map((mo) => fmt.month(mo, 'short'))) : m.map.stats.none}
               </dd>
               <dt className="text-ink-dim">{m.map.stats.trend}</dt>
               <dd className="num m-0 text-ink-muted">
-                {fmt.pct(summary.trendPctPerYear / 100, 1, true)} {m.map.stats.perYear}
+                {record.trendPctPerYear === null ? m.map.stats.none : `${fmt.pct(record.trendPctPerYear / 100, 1, true)} ${m.map.stats.perYear}`}
               </dd>
               <dt className="text-ink-dim">{m.map.stats.anomalies}</dt>
               <dd className="m-0 text-ink-muted">
-                {summary.anomalies.length
+                {record.anomalies.length
                   ? fmt.list(
-                      summary.anomalies.slice(0, 3).map((x) => {
+                      record.anomalies.slice(0, 3).map((x) => {
                         const [y, mo] = x.month.split('-').map(Number);
                         return fmt.yearMonth(y!, mo!);
                       }),

@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useHeliosAvailable } from '@/features/helios/api';
 import { useI18n } from '@/i18n';
 import { Skeleton } from '@/ui';
-import { useAiServerStatus } from './groundClient';
+import { useAiServerStatus } from './serverStatus';
 import { SystemTab } from './SystemTab';
 import './ailab.css';
 

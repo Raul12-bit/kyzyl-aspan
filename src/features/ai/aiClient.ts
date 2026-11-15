@@ -1,9 +1,19 @@
 import type { Finding } from '@/domain/summary';
 import type { AreaSummary } from '@/domain/summary';
 
+/** 'demo': synthetic numbers, explained and never forecast; 'risk': a risk briefing on real data. */
+export type BriefMode = 'demo' | 'risk';
+
+interface BriefMeta {
+  /** Sent by the server; absent from older servers (the client then falls back to `summary.synthetic`). */
+  mode?: BriefMode;
+  /** The period the server analysed — echoed so the UI can show it next to the answer. */
+  period?: { from: string; to: string };
+}
+
 export type AnalysisResult =
-  | { source: 'gemini'; model: string; text: string }
-  | { source: 'rules'; findings: Finding[]; reason?: 'not-configured' | 'model-error' | 'offline' };
+  | (BriefMeta & { source: 'gemini'; model: string; text: string })
+  | (BriefMeta & { source: 'rules'; findings: Finding[]; reason?: 'not-configured' | 'model-error' | 'offline' });
 
 export class AiOfflineError extends Error {
   constructor(message: string) {

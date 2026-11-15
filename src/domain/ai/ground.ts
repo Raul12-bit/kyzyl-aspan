@@ -131,10 +131,27 @@ export function dangerClass(index: number, fuel: Fuel): DangerClass {
   return DANGER_CLASSES[i < 0 ? b.length : i]!;
 }
 
+/**
+ * Ceiling of both danger indices: twice the top of the "catastrophic" class. The McArthur fits are
+ * exponential in wind and were never calibrated that far; without a ceiling, 90 km/h of wind at 45 °C made a
+ * grass fire run at ~50 km/h. With it the grass head fire tops out at 0.13 × 200 = 26 km/h.
+ */
+export const INDEX_CAP = 200;
+
+/**
+ * Below this the grass moisture equation is outside its domain: it has a pole at −6 °C (fuel moisture → ∞,
+ * i.e. no fire, when approached from above; a sign flip and an explosion below — −7 °C gave GFDI ≈ 1.7·10⁹).
+ * At −5 °C it already gives 0 for any humidity, so returning 0 below keeps it continuous.
+ */
+export const GFDI_MIN_TEMP_C = -5;
+
 /** McArthur Mk5 forest fire-danger index (Noble et al. 1980). */
 export function ffdi(w: Pick<Weather, 'tempC' | 'rh' | 'windKmh' | 'drought'>): number {
   const d = Math.max(0.1, w.drought);
-  return 2 * Math.exp(-0.45 + 0.987 * Math.log(d) - 0.0345 * w.rh + 0.0338 * w.tempC + 0.0234 * w.windKmh);
+  return Math.min(
+    INDEX_CAP,
+    2 * Math.exp(-0.45 + 0.987 * Math.log(d) - 0.0345 * w.rh + 0.0338 * w.tempC + 0.0234 * w.windKmh),
+  );
 }
 
 /**
@@ -142,10 +159,14 @@ export function ffdi(w: Pick<Weather, 'tempC' | 'rh' | 'windKmh' | 'drought'>): 
  * humidity at a given curing (%), then the index from fuel load W (t/ha) and wind.
  */
 export function gfdi(w: Pick<Weather, 'tempC' | 'rh' | 'windKmh'>, curingPct = 95, loadTHa = 4.5): number {
+  if (w.tempC <= GFDI_MIN_TEMP_C) return 0;
   const c = Math.max(20, Math.min(100, curingPct));
   const m = (97.7 + 4.06 * w.rh) / (w.tempC + 6) - 0.00854 * w.rh + 3000 / c - 30;
-  if (m < 18.8) return 3.35 * loadTHa * Math.exp(-0.0897 * m + 0.0403 * w.windKmh);
-  return Math.max(0, 0.299 * loadTHa * Math.exp(-1.686 + 0.0403 * w.windKmh) * (30 - m));
+  const index =
+    m < 18.8
+      ? 3.35 * loadTHa * Math.exp(-0.0897 * m + 0.0403 * w.windKmh)
+      : Math.max(0, 0.299 * loadTHa * Math.exp(-1.686 + 0.0403 * w.windKmh) * (30 - m));
+  return Math.min(INDEX_CAP, index);
 }
 
 /** Head-fire rate of spread, km/h: forest 0.0012·FFDI·W (W ≈ 15 t/ha), grass 0.13·GFDI. */

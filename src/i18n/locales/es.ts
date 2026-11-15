@@ -186,7 +186,9 @@ export const es: Messages = {
       selected: 'Zona seleccionada',
       none: 'Aún no hay zona. Haz clic en un país, búscalo, dibuja un recuadro o escribe coordenadas.',
       customArea: 'Zona personalizada',
-      areaKm2: (v: string) => `${v} km²`,
+      areaOutline: (v: string) => `País ≈${v} km² · las estadísticas se cuentan dentro de su contorno`,
+      areaRegion: (v: string) => `Recuadro ≈${v} km² · las estadísticas se cuentan dentro del contorno de la región`,
+      areaBox: (v: string) => `Recuadro ≈${v} km² · las estadísticas se cuentan dentro del recuadro`,
       clear: 'Quitar selección',
       zoomTo: 'Ver la zona',
       world: 'Mundo entero',
@@ -195,7 +197,8 @@ export const es: Messages = {
       label: 'Vista',
       points: 'Detecciones',
       hex: 'Hexágonos H3',
-      hexHint: (res: string, km2: string) => `Resolución H3 ${res} · ≈${km2} km² por celda`,
+      hexHint: (res: string, km2: string) =>
+        `Malla de visualización: H3 res ${res} · ≈${km2} km² por celda, cambia con el zoom. Las estadísticas y el informe de IA usan res 5 (≈253 km²).`,
     },
     layers: {
       title: 'Sensores',
@@ -272,9 +275,10 @@ export const es: Messages = {
       ratioHex: 'VIIRS / MODIS, hexágonos',
       ratioHint:
         'Contar hexágonos en lugar de píxeles reduce la brecha de resolución de 3–4×; el resto se calibra.',
-      calendar: 'Actividad armonizada, 2000–2026',
-      calendarHint:
-        'Hexágonos-día de quema equivalentes a MODIS por año; los bigotes muestran el intervalo del 90 %.',
+      calendar: (from: string, to: string) => `Actividad armonizada, ${from}–${to} · años completos`,
+      calendarNoYears: 'Actividad armonizada · años completos',
+      calendarHint: (res: string, km2: string) =>
+        `Días-hexágono con fuego equivalentes a MODIS por año en H3 res ${res} (celdas de ≈${km2} km²); los bigotes muestran el intervalo del 90 %. Los años atenuados quedan fuera del periodo elegido.`,
       peak: 'Meses pico',
       trend: 'Tendencia',
       anomalies: 'Meses inusuales',
@@ -292,6 +296,13 @@ export const es: Messages = {
       loading: 'Leyendo las cifras…',
       sourceGemini: (model: string) => `${model} · texto escrito por un modelo, puede contener errores`,
       sourceRules: 'Resumen basado en reglas · la clave de Gemini no está configurada en el servidor',
+      sourceRulesError: 'Resumen basado en reglas · el modelo no respondió a tiempo',
+      demoTitle: 'Informe de demostración',
+      demoSubtitle:
+        'Gemini explica las estadísticas sintéticas del periodo elegido. Es un ejemplo práctico del método, no un pronóstico para un lugar real.',
+      periodLabel: 'Periodo enviado a la IA:',
+      demoPill: 'Demo',
+      demoDisclaimer: 'Datos de demostración sintéticos: no es un pronóstico de incendios para ningún lugar real.',
       error: 'El análisis falló.',
       offline:
         'El servidor de análisis no responde: se muestra el resumen basado en reglas. Inícialo con «pnpm server».',
@@ -303,19 +314,22 @@ export const es: Messages = {
         risk: (level: string, months: string) =>
           `Nivel ${level.toLowerCase()} de actividad esperado en ${months}, según la estación y los últimos meses.`,
         season: (months: string) => `La mayor parte de la actividad ocurre en ${months}.`,
-        trendUp: (pct: string) => `La actividad crece alrededor de un ${pct} al año desde 2000.`,
-        trendDown: (pct: string) => `La actividad baja alrededor de un ${pct} al año desde 2000.`,
-        trendFlat: 'No hay una tendencia clara a largo plazo.',
-        recentHigh: (x: string) => `Los últimos 12 meses estuvieron en ${x} el nivel típico.`,
-        recentLow: (x: string) =>
-          `Los últimos 12 meses fueron más tranquilos de lo habitual (${x} el nivel típico).`,
-        recentTypical: 'Los últimos 12 meses estuvieron cerca del nivel típico.',
+        trendUp: (pct: string, years: string) => `La actividad subió alrededor de un ${pct} al año en ${years}.`,
+        trendDown: (pct: string, years: string) => `La actividad bajó alrededor de un ${pct} al año en ${years}.`,
+        trendFlat: (years: string) => `No hay una tendencia clara en ${years}.`,
+        recentHigh: (x: string) => `Los últimos 12 meses del periodo estuvieron en ${x} el nivel típico.`,
+        recentLow: (x: string) => `Los últimos 12 meses del periodo fueron más tranquilos de lo normal (${x} el nivel típico).`,
+        recentTypical: 'Los últimos 12 meses del periodo estuvieron cerca del nivel típico.',
         anomalies: (months: string) => `Meses inusualmente activos: ${months}.`,
         noise: (share: string, cells: string) =>
-          `El filtro eliminó como ruido el ${share} de los píxeles calientes, incluidas ${cells} celdas de fuentes de calor persistentes.`,
+          `El filtro eliminó como ruido el ${share} de los píxeles calientes del periodo; la zona tiene ${cells} celdas con fuentes de calor persistentes (halladas en todo el archivo).`,
         sensors: (raw: string, hex: string) =>
           `Aquí VIIRS ve ${raw}× más píxeles calientes que MODIS, pero solo ${hex}× más hexágonos quemados; la escala lo corrige.`,
-        uncertainty: (pct: string, level: string) => `Incertidumbre típica desde 2012: ±${pct} (intervalo del ${level}).`,
+        uncertainty: (value: string, lo: string, hi: string, level: string) =>
+          `Total del periodo: ${value} días-hexágono con fuego en la escala MODIS (intervalo del ${level}: ${lo}–${hi}).`,
+        demo: 'Cifras de demostración sintéticas: describen datos generados, no un lugar real, y no pronostican nada.',
+        noSeason: (n: string) => `El periodo dura menos de un año (${n} meses): no permite ver ni estacionalidad ni tendencia.`,
+        noTrend: 'Menos de cinco años completos en el periodo: no se calcula tendencia.',
         forecast: (max: string, mean: string, typical: string) => `IA n.º 3 de HELIOS: probabilidad de incendio la próxima semana de hasta ${max} aquí (media ${mean}; lo típico esta semana, ${typical}).`,
       },
     },
@@ -405,7 +419,7 @@ export const es: Messages = {
       priorityConfirmed: 'Si se confirma',
       priorities: { critical: 'Crítica', high: 'Alta', watch: 'Vigilancia' },
       limitation:
-        'MODIS y VIIRS siempre miran hacia abajo, no se pueden reorientar ni se comunican entre sí. Esto requiere satélites compatibles, enlaces de relé y capacidad de programar observaciones: no se puede añadir a los VIIRS actuales con una actualización de la web.',
+        'MODIS y VIIRS son escáneres transversales a la traza: con un calendario fijo barren una franja ancha a ambos lados de la traza (hasta unos 55° del nadir), y no se pueden apuntar a un objetivo, reprogramar ni comunicarse entre sí. Esto requiere satélites compatibles, enlaces de relé y capacidad de programar observaciones: no se puede añadir a los VIIRS actuales con una actualización de la web.',
     },
   },
   method: {
@@ -415,11 +429,11 @@ export const es: Messages = {
     steps: [
       {
         title: 'Limpiar el ruido',
-        body: 'Se descartan los píxeles de baja confianza (reflejos, suelo caliente, bordes de nubes). Luego se comprueba la persistencia de cada celda de una malla fina de hexágonos: una antorcha de gas o una acería están calientes casi todos los años y en cualquier estación; un incendio forestal no. Esas celdas también se eliminan.',
+        body: 'Se descartan los píxeles de baja confianza (reflejos, suelo caliente, bordes de nubes). Luego se comprueba la persistencia de cada celda de una malla fina de hexágonos (H3 res 6, ≈36 km²): una antorcha de gas o una acería están calientes casi todos los años y en cualquier estación; un incendio forestal no. Esas celdas también se eliminan.',
       },
       {
         title: 'Llevar ambos sensores a hexágonos H3',
-        body: 'Un píxel MODIS de 1 km y uno VIIRS de 375 m no se pueden comparar directamente. Ambos caen en el mismo hexágono fijo de la malla H3 de Uber, y contamos días de quema por hexágono en lugar de píxeles. Un frente que enciende seis píxeles VIIRS y uno MODIS es un hexágono-día para ambos.',
+        body: 'Un píxel MODIS de 1 km y uno VIIRS de 375 m no se pueden comparar directamente. Ambos caen en el mismo hexágono fijo de la malla H3 de Uber (res 5, ≈253 km²: la malla de todas las estadísticas; la del mapa cambia con el zoom), y contamos días de quema por hexágono en lugar de píxeles. Un frente que enciende seis píxeles VIIRS y uno MODIS es un hexágono-día para ambos.',
       },
       {
         title: 'Calibrar, reescalar, nunca sumar',
@@ -427,7 +441,7 @@ export const es: Messages = {
       },
       {
         title: 'Explicarlo en palabras sencillas',
-        body: 'Al hacer clic en una región, sus estadísticas —no el mapa— se envían a Gemini, que escribe un breve informe de riesgo. Sin clave de API, el servidor devuelve un resumen transparente basado en reglas, y la fuente siempre se indica.',
+        body: 'Al elegir una región y un periodo, sus estadísticas —no el mapa— se envían a Gemini. Con datos reales escribe un breve informe de riesgo; con la demostración sintética, un informe de demostración que explica las cifras y no pronostica nada. Sin clave de API, el servidor devuelve un resumen transparente basado en reglas, y la fuente siempre se indica.',
       },
     ],
     principles: {
@@ -650,7 +664,7 @@ export const es: Messages = {
       ai1: {
         name: 'IA #1',
         role: 'Ve',
-        where: 'A bordo · en cada barrido',
+        where: 'Simulación a bordo · en tu navegador',
         title: 'Encuentra el fuego en la imagen',
         body: 'Compara cada píxel de las imágenes de 4 µm y 11 µm con su entorno; después, un modelo diminuto con 26 años de memoria decide: un incendio real o una antorcha que puede esperar.',
         does: ['Prueba contextual de fuego en cada píxel', 'Clasificación: ¿incendio o calor industrial?', 'Alerta de 16 bytes para los incendios críticos'],
@@ -659,7 +673,7 @@ export const es: Messages = {
       ai2: {
         name: 'IA #2',
         role: 'Comunica',
-        where: 'A bordo · cada 30 s',
+        where: 'Simulación de enlaces · en tu navegador',
         title: 'Mantiene el satélite conectado',
         body: 'Propaga su órbita y la de sus vecinos, predice cuándo se cortará cada enlace y conmuta entre láser, radio Ka/X y la radio de respaldo en banda S antes de perder la señal.',
         does: ['Cálculo de órbitas y visibilidad', 'Predicción de pérdida de señal', 'Láser ↔ radio de respaldo para las alertas'],
@@ -668,7 +682,7 @@ export const es: Messages = {
       ai3: {
         name: 'IA #3',
         role: 'Piensa',
-        where: 'En tierra · cada hora',
+        where: 'Servidor en tierra · en línea',
         title: 'Hace el trabajo pesado',
         body: 'Limpia 26 años de detecciones, fusiona MODIS con VIIRS, superpone el viento y el tiempo, pronostica hacia dónde avanzará un incendio y vigila con qué retraso llegan los datos de cada satélite.',
         does: ['Filtro de ruido sobre todo el archivo', 'Capa meteorológica y avisos de tormenta', 'Pronóstico de propagación a 6–24 h, control de retrasos'],
@@ -679,14 +693,15 @@ export const es: Messages = {
       eyebrow: 'Cómo funciona nuestra IA',
       title: 'Tres IA, de la órbita al mapa',
       accent: 'Tres IA',
-      lead: 'Dos IA pequeñas vuelan en el satélite y una IA pesada trabaja en tierra. Las unen enlaces láser, una radio de respaldo y 26 años de memoria.',
+      lead: 'Dos IA pequeñas están diseñadas para volar en un satélite; en este sitio funcionan como simulaciones de a bordo y de comunicaciones en tu navegador, con el código que correría un satélite. La IA #3, la pesada, la calcula nuestro servidor en tierra.',
+      statusLabel: 'Qué funciona ahora mismo en este sitio',
       test: (n: string) => `Probar la IA #${n}`,
       cta: 'Abrir el laboratorio de IA',
       fusionTitle: 'MODIS × VIIRS: dos sistemas de detección, un solo registro',
       fusion: [
         { title: 'Limpiar', body: 'Un mismo filtro de ruido para ambos: primero salen los píxeles de baja confianza y las fuentes de calor persistentes.' },
         { title: 'Ajustar a H3', body: 'Ambos caen en una misma malla hexagonal; contamos días-hexágono con fuego, no píxeles.' },
-        { title: 'Confirmar', body: 'Misma celda, mismo día, ambos sensores: un incendio, más confianza y la ubicación de VIIRS.' },
+        { title: 'Contrastar', body: 'Misma celda H3, mismo día, ambos sensores: una detección conjunta en esa celda, con más confianza y la ubicación de VIIRS. No prueba que sea un único incendio.' },
         { title: 'Calibrar, nunca sumar', body: 'VIIRS se reescala con la razón medida desde 2012 y se combina con MODIS, con un intervalo del 90 %.' },
       ],
     },
@@ -706,16 +721,16 @@ export const es: Messages = {
     lab: {
       eyebrow: 'Laboratorio de IA',
       title: 'Tres IA que puedes probar aquí mismo',
-      lead: 'Las IA de a bordo se ejecutan en tu navegador con el código que correría en un satélite; la IA #3 la calcula el servidor en tierra. Escenas y tiempo son sintéticos, la física es real y cada límite está dicho.',
+      lead: 'La IA #1 y la IA #2 se ejecutan como simulaciones de a bordo en tu navegador, con el código que correría un satélite; la IA #3 la calcula el servidor en tierra. Escenas y tiempo son sintéticos, la física es real y cada límite está dicho.',
       tabsLabel: 'Secciones del laboratorio de IA',
       tabs: { system: 'Sistema', ai1: 'IA #1 · detección', ai2: 'IA #2 · enlaces', ai3: 'IA #3 · tierra', fusion: 'MODIS × VIIRS' },
       status: {
-        browser: 'IA #1 e IA #2: en tu navegador',
+        browser: 'IA #1 e IA #2: simuladas en tu navegador',
         server: 'IA #3: servidor en tierra en línea',
         fallback: 'IA #3: servidor fuera de línea, calcula el navegador',
         checking: 'IA #3: comprobando el servidor…',
-        helios: 'Modelos reales HELIOS en línea',
-        heliosOff: 'Modelos reales HELIOS fuera de línea',
+        helios: 'Modo de datos reales HELIOS en línea',
+        heliosOff: 'Modo de datos reales HELIOS fuera de línea · datos de demostración',
       },
       system: {
         flowTitle: 'Un incendio, de principio a fin',
@@ -939,8 +954,8 @@ export const es: Messages = {
           clean: { title: '1 · Limpiar ambos igual', body: (m: string, v: string) => `Ruido eliminado: el ${m} de las detecciones MODIS y el ${v} de las VIIRS.` },
           snap: { title: '2 · Contar hexágonos, no píxeles', body: (raw: string, hex: string) => `VIIRS/MODIS es ${raw}× en píxeles, pero solo ${hex}× en días-hexágono con fuego.` },
           confirm: {
-            title: '3 · Confirmar con el otro sensor',
-            body: (both: string, m: string, v: string) => `${both} eventos vistos por ambos, ${m} solo por MODIS y ${v} solo por VIIRS (desde 2012, celda H3 × día).`,
+            title: '3 · Contrastar con el otro sensor',
+            body: (both: string, m: string, v: string) => `${both} celdas-día con detecciones de ambos sensores, ${m} solo de MODIS y ${v} solo de VIIRS (desde 2012, celda H3 res 6 × día). Ambos en una celda el mismo día es una detección conjunta, no la prueba de un único incendio.`,
           },
           blend: {
             title: '4 · Calibrar, reescalar, combinar',
@@ -948,16 +963,16 @@ export const es: Messages = {
           },
         },
         confirm: {
-          modisConfirmed: 'Eventos MODIS confirmados por VIIRS',
-          viirsSeen: 'Eventos VIIRS vistos también por MODIS',
+          modisConfirmed: 'Celdas-día MODIS vistas también por VIIRS',
+          viirsSeen: 'Celdas-día VIIRS vistas también por MODIS',
           confidence: 'Confianza media',
           both: 'ambos sensores',
           single: 'un sensor',
-          pixels: (m: string, v: string) => `En eventos compartidos: ${m} píxeles MODIS frente a ${v} píxeles VIIRS por incendio.`,
+          pixels: (m: string, v: string) => `En celdas-día conjuntas: ${m} píxeles MODIS frente a ${v} píxeles VIIRS por celda-día.`,
         },
         chart: { title: 'Actividad anual en la escala MODIS', modis: 'MODIS', viirs: 'VIIRS ÷ k', harmonized: 'armonizada', interval: 'intervalo del 90 %' },
-        honest: 'Datos de demostración sintéticos. La confianza fusionada supone que los sensores fallan de forma independiente; nubes y humo rompen ese supuesto.',
-        loading: 'Calculando sobre el archivo de demostración…',
+        honest: 'La confianza fusionada supone que los sensores fallan de forma independiente; nubes y humo rompen ese supuesto.',
+        loading: 'Calculando la fusión…',
       },
     },
   },
@@ -984,6 +999,8 @@ export const es: Messages = {
   },
   common: {
     close: 'Cerrar',
+    expand: 'Ampliar panel',
+    collapse: 'Contraer panel',
     retry: 'Reintentar',
     loading: 'Cargando…',
     notFound: 'Esta página no existe.',

@@ -6,7 +6,7 @@ NASA Space Apps Challenge 2026 · *Harmonization of MODIS and VIIRS Hot Spots*.
 This file is the single place to see **what is done, what is mocked and what the backend has to build**.
 Update the status table whenever a stage moves.
 
-Last update: 2026-11-15 (AI lab, three-AI architecture, merge of the HELIOS world integration).
+Last update: 2026-11-15 (review fixes: data provenance, demo briefing, period-exact AI brief, AI #3 frost bug, proof suite).
 
 ---
 
@@ -17,7 +17,8 @@ Last update: 2026-11-15 (AI lab, three-AI architecture, merge of the HELIOS worl
 | 0 | Scaffold, design tokens, DataSource abstraction | ✅ | — | Stage 1 commit `ec37470` |
 | 1 | **Noise filter** (low confidence + persistent heat sources, “Flare-Chronos” style) | ✅ | ✅ HELIOS (world) | `src/domain/noise.ts` for the demo; on real data the server filters every detection with the global registry of persistent heat sources |
 | 2 | **H3 hexagon grid** (count burning hexagon-days, not pixels) | ✅ | ✅ HELIOS (world) | demo: `src/domain/hexgrid.ts`; real data: `/v1/hex` from EVERY detection, H3 res 2–7 chosen by zoom |
-| 3 | **AI risk analysis** (region click → stats → Gemini, “Kiln-Watch” style) | ✅ | ✅ `server/` + HELIOS | Without `GEMINI_API_KEY` the API returns rule-based findings; both get the HELIOS forecast of the area as context |
+| 3 | **AI risk analysis** (region click → stats → Gemini, “Kiln-Watch” style) | ✅ | ✅ `server/` + HELIOS | The brief describes the selected area AND period (“What is sent” = the time bar). Synthetic data (or a server without the real archive) → **Demo briefing**: the model explains the numbers, never a risk level or forecast. Without `GEMINI_API_KEY` the API returns rule-based findings; real-data briefs get the HELIOS forecast as context |
+| 3a | **Proof that the AIs compute** | ✅ | ✅ | `src/domain/ai/proof.test.ts` (metamorphic tests) + `pnpm verify:ai <url>` (black-box HTTP checks of a deployed site, report with `--write` → `docs/verification/`) |
 | 4 | **AI #1 · onboard detection + triage** (contextual 4/11 µm fire test → triage model → 16-byte alert) | ✅ | ✅ HELIOS | `src/domain/ai/{thermal,scene,contextual,triage}.ts`; lab tab `/ai#ai1` runs it on MODIS and VIIRS views of synthetic thermal scenes. HELIOS: AI #1 trained on the world archive, compiled to integer-only C99 |
 | 5 | **AI #2 · onboard link manager** (orbits, loss-of-signal prediction, laser ↔ Ka/X ↔ backup radio) | ✅ | ✅ HELIOS | `src/domain/ai/link.ts` (+ `orbit.ts`, `downlink.ts`); lab tab `/ai#ai2` compares it with a reactive rule. HELIOS: AI #2 on SGP4 orbits, real stations and weather, constellation on the globe |
 | 6 | **Satellite-to-satellite cueing** | ✅ concept | 🟡 HELIOS replay | in `/ai#ai2`; HELIOS: alert-delivery replay on real orbits, cross-satellite confirmation |
@@ -61,7 +62,9 @@ Without it the app falls back to the demo data. Add `?mock` to the URL to force 
 
 Production, one process: `pnpm build && pnpm start` (the API also serves `dist/` and proxies `/v1`).
 
-Checks: `pnpm typecheck` · `pnpm test` (125 tests) · `pnpm lint` · `pnpm build`.
+Checks: `pnpm typecheck` · `pnpm test` (149 tests) · `pnpm lint` · `pnpm build` ·
+`pnpm verify:ai [base-url] [--write]` (27 black-box checks of a running site: pages and 404s, robots/sitemap,
+`/v1/helios/status`, AI #3 metamorphic physics over HTTP, the Gemini brief's mode and period, AI #1/#2 modules).
 
 Environment variables: see `.env.example`. **Secrets only in `.env`, never in `VITE_*` variables** —
 `VITE_*` values are compiled into the browser bundle.
@@ -171,9 +174,13 @@ Backend tasks (original list — done in HELIOS for every country):
 | Method | Path | Body / returns |
 |---|---|---|
 | GET | `/api/health` | `{ ok, gemini: { configured, model } }` |
-| POST | `/api/ai/analyze` | body `{ summary: AreaSummary, locale }` → `{ source: 'gemini', model, text }` or `{ source: 'rules', findings, reason }` |
+| POST | `/api/ai/analyze` | body `{ summary: AreaSummary, locale }` → `{ source: 'gemini', mode, period, model, text }` or `{ source: 'rules', mode, period, findings, reason }`; `mode` = `demo` \| `risk` |
 
-- `AreaSummary` (`src/domain/summary.ts`) holds **aggregates only** — no detections, no visitor location.
+- `AreaSummary` (`src/domain/summary.ts`) holds **aggregates only** — no detections, no visitor location — for the
+  **selected period** (`period`, plus `record` for context). Fields a short period cannot support are empty/null
+  (season < 12 months, trend < 5 complete years, recent-vs-typical < 24 months); `seasonAhead` only on real data
+  that ends with the latest month. The server rebuilds the summary from known fields (extra keys never reach the model)
+  and picks `demo` for synthetic data or when it has no real archive (`/helios/status` `data_ready`).
 - Strict validation (`server/validate.ts`), 32 kB body limit, 10 req/min/IP, 20 s model timeout.
 - Gemini failure → degrades to rule-based findings (HTTP 200), never leaks upstream errors.
 - `GEMINI_MODEL` default `gemini-2.5-flash` — **not verified against a live key in this session**;
@@ -246,6 +253,21 @@ Backend tasks (original list — done in HELIOS for every country):
   (no relay, station or neighbour in view) — more relays (e.g. over Asia) help more than smarter switching.
 - **AI #3 spread** = McArthur Mk5 FFDI / GFDI (Noble et al. 1980) + Alexander (1985) L/B ellipse, integrated hourly
   through the daily cycle; constant wind, no terrain, no suppression → an upper-bound “potential” spread.
+  Domain guards (found by the metamorphic tests, 2026-11-15): the grass moisture equation has a pole at −6 °C — at
+  −10 °C the live site forecast a 2 239 km run in 24 h — so GFDI is 0 at ≤ −5 °C (continuous: the formula itself
+  gives 0 there); both indices are capped at 200 (twice the top of “catastrophic”), so the grass head fire tops out at
+  26 km/h instead of 618 km/h at 150 km/h of wind. The lab shows “≥ 200” at the cap.
+- **Data provenance is always on screen**: `src/app/DataBadge.tsx` — “Synthetic demo data” / “Real NASA FIRMS data”
+  over the map, next to the statistics and on the charts (map panel, AI-lab fusion chart); nothing while the
+  start-up probe runs. The landing AI section shows live status: AI #1/#2 = onboard and comms *simulations* in the
+  browser, AI #3 = ground server online/offline, HELIOS real-data mode on/off.
+- **H3 resolutions, stated separately**: statistics, harmonization and the AI brief = res 5 (≈253 km²); persistence
+  (noise filter) and MODIS × VIIRS event fusion = res 6 (≈36 km²); the map's display grid follows the zoom (res 2–6
+  demo, 2–7 HELIOS). A same-cell same-day MODIS + VIIRS hit is called a *joint detection*, not “one fire”.
+- **Area label**: a country's statistics are counted inside its outline, so the panel shows the outline area
+  (Kazakhstan ≈2.7 M km², `polygonsAreaKm2`), not the box (≈5 M km²); boxes and regions are labelled as boxes.
+- **Hosting rules** (`scripts/build-vercel.mjs`, mirrored in `server/index.ts`): app pages → 200; a missing file → 404;
+  any other path → the app's “not found” page with status 404; `robots.txt` and `sitemap.xml` are real files.
 - **No light theme**: the site is dark-only (`theme.ts` removed; the merge kept it that way).
 
 ---
@@ -256,7 +278,10 @@ Backend tasks (original list — done in HELIOS for every country):
 - [x] Province outlines — Natural Earth admin-1 (4 589 regions), shown in the “Regions” view and from zoom 4.5.
 - [ ] The 2026 part of the record: the FIRMS yearly archive ends in 2025; without a FIRMS MAP_KEY only the last
       7 days (NRT) are available, so the current forecast uses the operational model (last 7 days + climatology).
-- [ ] Gemini path tested only with the rule-based fallback (no API key in this environment).
+- [ ] Gemini path tested only with the rule-based fallback (no API key in this environment). The demo-briefing prompt
+      (no risk level on synthetic data) is checked by `pnpm verify:ai https://kyzyl-aspan.vercel.app` after a deploy.
+- [ ] The hosted site still runs on the synthetic demo archive: the HELIOS Python data API needs its own host before
+      the map can show real data (the badge says so on every data view).
 - [x] SGP4 propagation from CelesTrak TLEs — HELIOS satellites layer and `/mission` §05–06
       (the older concept sections and the globe still use circular orbits).
 - [ ] Onboard image screening (tiny CNN on thermal chips) — described, not implemented.
@@ -278,6 +303,20 @@ Backend tasks (original list — done in HELIOS for every country):
       small); consider reporting it on annual totals.
 
 ## 7. Change log
+
+- **2026-11-15 · Review fixes before the defence** — after an external review of the public site:
+  (1) “Synthetic demo data” badge on the map, the statistics and the charts; (2) on synthetic data the AI brief is a
+  **Demo briefing** — separate Gemini prompt that forbids risk levels and forecasts, enforced server-side even if a
+  request claims real data; (3) the brief is built for the **selected period** (it used to send 2000-01 → 2026-10
+  whatever the time bar said), with totals measured for that period and too-short-period fields set to null; the
+  answer echoes the period; (4) landing: AI #1/#2 described as onboard and comms simulations, live status chips;
+  (5) mobile sheet: the scroll area pads by the off-screen height (the last button was unreachable at half height)
+  and an explicit “Expand panel” button (tap and keyboard); (6) area line distinguishes country outline vs box;
+  (7) H3 display vs analysis resolution, chart titled “2000–2025 · full years” with the selected period highlighted;
+  (8) “joint detection” instead of “one fire”, MODIS/VIIRS described as cross-track scanners; (9) real
+  `robots.txt`/`sitemap.xml`, 404 for missing files and unknown pages. Also: AI #3 frost pole and index cap (above),
+  `/v1/helios/status` and `/v1/helios/constellation` functions verified in the Vercel build (the live deployment
+  predated them → 404). Proof: `proof.test.ts` (16 metamorphic tests), `pnpm verify:ai` (27 HTTP checks). 149 tests.
 
 - **2026-11-15 · New logo, live on Vercel** — logo redrawn as SVG from the brand artwork (`public/brand/kyzyl-aspan-logo.png`,
   geometry and colours measured on it): orange planet with a white ring and its satellite inside the pointy-top

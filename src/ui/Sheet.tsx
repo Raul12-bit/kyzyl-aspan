@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { cn } from './cn';
+import { Icon } from './Icon';
 
 export type SheetSnap = 'peek' | 'half' | 'full';
 const ORDER: SheetSnap[] = ['peek', 'half', 'full'];
@@ -16,6 +17,9 @@ interface SheetProps {
   peek?: number;
   /** Extra id for tour targeting. */
   id?: string;
+  /** Text of the explicit expand / collapse button (the handle alone is easy to miss). */
+  expandLabel?: string;
+  collapseLabel?: string;
 }
 
 function snapHeight(snap: SheetSnap, peek: number, viewport: number): number {
@@ -25,13 +29,18 @@ function snapHeight(snap: SheetSnap, peek: number, viewport: number): number {
 }
 
 /**
- * Mobile bottom sheet with three snap points. Drag the handle (with fling velocity) or
- * activate it with Enter/Space to cycle. Content scrolls inside when expanded.
+ * Mobile bottom sheet with three snap points. Drag the handle (with fling velocity), activate it with
+ * Enter/Space to cycle, or use the explicit expand / collapse button. Content scrolls inside.
+ *
+ * The sheet is always laid out at full height and slid down with a transform (cheap to animate), so at the
+ * peek and half snaps its lower part is below the screen edge. The scroll area pads its end by exactly that
+ * hidden height: scrolled to the bottom, the last control sits at the visible edge instead of off-screen.
  */
-export function Sheet({ label, snap, onSnapChange, header, children, className, peek = 148, id }: SheetProps) {
+export function Sheet({ label, snap, onSnapChange, header, children, className, peek = 148, id, expandLabel, collapseLabel }: SheetProps) {
   const [vh, setVh] = useState(() => (typeof window === 'undefined' ? 800 : window.innerHeight));
   const [drag, setDrag] = useState<number | null>(null);
   const start = useRef<{ y: number; h: number; t: number } | null>(null);
+  const contentId = useId();
 
   useEffect(() => {
     const onResize = () => setVh(window.innerHeight);
@@ -42,6 +51,9 @@ export function Sheet({ label, snap, onSnapChange, header, children, className, 
   const full = snapHeight('full', peek, vh);
   const target = snapHeight(snap, peek, vh);
   const height = drag ?? target;
+  /** Height of the sheet below the screen edge at the current snap (not while dragging: no layout jank). */
+  const hiddenBelow = Math.max(0, full - target);
+  const expanded = snap === 'full';
 
   const settle = (h: number, velocity: number) => {
     const projected = h - velocity * 180; // px/ms → fling projection
@@ -70,10 +82,12 @@ export function Sheet({ label, snap, onSnapChange, header, children, className, 
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
+      <div className="relative flex h-8 flex-none items-center justify-center">
       <button
         type="button"
         aria-label={label}
         aria-expanded={snap !== 'peek'}
+        aria-controls={contentId}
         className="mx-auto flex h-7 w-24 flex-none cursor-grab touch-none items-center justify-center rounded-pill focus-visible:shadow-[var(--el-focus-ring)] focus-visible:outline-none"
         onPointerDown={(e) => {
           start.current = { y: e.clientY, h: height, t: performance.now() };
@@ -114,8 +128,23 @@ export function Sheet({ label, snap, onSnapChange, header, children, className, 
       >
         <span aria-hidden className="block h-1 w-10 rounded-pill bg-[var(--el-line-hover)]" />
       </button>
+      {expandLabel && collapseLabel ? (
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-controls={contentId}
+          onClick={() => onSnapChange(expanded ? 'peek' : 'full')}
+          className="absolute right-2 top-1/2 inline-flex h-8 -translate-y-1/2 cursor-pointer items-center gap-1 rounded-pill border-0 bg-transparent px-2.5 text-[12px] font-medium text-ink-muted hover:text-ink focus-visible:shadow-[var(--el-focus-ring)] focus-visible:outline-none"
+        >
+          <Icon name="chevronDown" size={14} className={cn('transition-transform', !expanded && 'rotate-180')} />
+          {expanded ? collapseLabel : expandLabel}
+        </button>
+      ) : null}
+      </div>
       {header ? <div className="flex-none px-4 pb-3">{header}</div> : null}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6">{children}</div>
+      <div id={contentId} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4" style={{ paddingBottom: hiddenBelow + 24 }}>
+        {children}
+      </div>
     </section>
   );
 }
