@@ -20,6 +20,7 @@ import {
   Points,
   PointsMaterial,
   Raycaster,
+  RepeatWrapping,
   Scene,
   ShaderMaterial,
   SphereGeometry,
@@ -39,12 +40,10 @@ import type { loadNasaSatellite as LoadNasaSatellite, NasaModel } from './nasaSa
 import { buildSatellite, disposeSatelliteKit, type SatelliteKind } from './satelliteModels';
 
 export type Quality = 'high' | 'low';
-export type SceneTheme = 'dark' | 'light';
 
 export interface EarthSceneOptions {
   quality: Quality;
   reducedMotion: boolean;
-  theme: SceneTheme;
   onHoverEarth?: (over: boolean) => void;
   /** Click (not drag) on the planet. */
   onPick?: (lat: number, lng: number, screen: { x: number; y: number }) => void;
@@ -63,14 +62,20 @@ const TEXTURES = {
 } as const;
 
 /**
- * Satellites drawn: two MODIS platforms and one VIIRS platform. High quality loads NASA's real models;
- * the light profile (phones, data saver) keeps the procedural ones, which cost nothing to download.
+ * One satellite on its orbit: Terra (MODIS), the platform the 26-year record starts with in 2000.
+ * High quality loads NASA's real model; the light profile (phones, data saver) keeps the procedural one.
  */
-const SHOWN: { id: string; kind: SatelliteKind; model: NasaModel }[] = [
-  { id: 'terra', kind: 'eos', model: 'terra' },
-  { id: 'aqua', kind: 'eos', model: 'aqua' },
-  { id: 'snpp', kind: 'jpss', model: 'snpp' },
-];
+const SHOWN: { id: string; kind: SatelliteKind; model: NasaModel }[] = [{ id: 'terra', kind: 'eos', model: 'terra' }];
+/**
+ * Frame pacing: render every display refresh up to ~100 Hz, every 2nd on 120–165 Hz screens, every 4th at
+ * 240 Hz. Skipping whole refreshes keeps the pacing even; a time threshold (the old 12.5 ms cap) halved
+ * 90–100 Hz screens to an uneven 45–50 fps.
+ */
+const TARGET_FPS = 60;
+/** Refresh intervals sampled before the stride is chosen. */
+const PACE_SAMPLES = 30;
+/** Simulated seconds between trail points. The points sit on a fixed time grid, so only the head moves. */
+const TRAIL_STEP = 18;
 /** Orbit altitude is exaggerated so the satellites clear the atmosphere visibly. */
 const ALTITUDE_EXAGGERATION = 2.4;
 /** Simulation speed: one orbit takes ~50 s on screen. */
@@ -86,25 +91,15 @@ const ATMO_RADIUS = 1.1;
 /** Sunlight comes from the upper left, slightly in front: most of the disc is lit, a crescent of night on the right. */
 const SUN_DIR = new Vector3(-0.62, 0.38, 0.69).normalize();
 
-const THEME = {
-  dark: {
-    atmoInner: new Color('#a8d0ff'),
-    atmoOuter: new Color('#3a6fe0'),
-    atmoIntensity: 0.85,
-    atmoBlending: AdditiveBlending as Blending,
-    ambient: 0.035,
-    trail: new Color('#f3a06a'),
-    fireBlending: NormalBlending as Blending,
-  },
-  light: {
-    atmoInner: new Color('#9fc4f5'),
-    atmoOuter: new Color('#c9dcf5'),
-    atmoIntensity: 0.6,
-    atmoBlending: NormalBlending as Blending,
-    ambient: 0.07,
-    trail: new Color('#b84a12'),
-    fireBlending: NormalBlending as Blending,
-  },
+/** The one look (the site is dark-only): additive air on black space, warm trail, crisp fires. */
+const LOOK = {
+  atmoInner: new Color('#a8d0ff'),
+  atmoOuter: new Color('#3a6fe0'),
+  atmoIntensity: 0.85,
+  atmoBlending: AdditiveBlending as Blending,
+  ambient: 0.035,
+  trail: new Color('#f3a06a'),
+  fireBlending: NormalBlending as Blending,
 } as const;
 
 const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
@@ -157,12 +152,14 @@ const earthFragment = /* glsl */ `
     float diffuse = max(ndl, 0.0);
     vec3 col = albedo * (1.0 - 0.35 * cloudShadow) * (uAmbient + 1.15 * diffuse);
 
-    // Sun glint on water (specular map = ocean mask): a tight hot spot plus a faint wide sheen.
+    // Sun glint on water (specular map = ocean mask): a soft sheen with a faint core, stronger towards
+    // grazing angles (Fresnel), never a hard white disc.
     vec3 h = normalize(uSunDir + v);
     float water = uHasSpec * texture2D(uSpec, vUv).r;
     float nh = max(dot(n, h), 0.0);
-    float glint = (pow(nh, 220.0) * 0.35 + pow(nh, 18.0) * 0.02) * water * (1.0 - cloud);
-    col += vec3(1.0, 0.9, 0.74) * glint * day;
+    float fresnel = 0.55 + 0.45 * pow(1.0 - max(dot(n, v), 0.0), 2.0);
+    float glint = (pow(nh, 160.0) * 0.11 + pow(nh, 24.0) * 0.022) * fresnel * water * (1.0 - cloud);
+    col += vec3(1.0, 0.88, 0.7) * glint * day;
 
     // Clouds catch the light (and stay faintly visible at night).
     col = mix(col, vec3(1.0) * (uAmbient * 0.6 + 1.05 * diffuse), cloud * 0.9);
@@ -276,6 +273,12 @@ export interface ConstellationInput {
 }
 
 const SAT_MODEL: Record<string, NasaModel> = { TERRA: 'terra', AQUA: 'aqua', 'SUOMI NPP': 'snpp' };
+/** Fleet entry and procedural look of each model, for satellites created when the constellation plays. */
+const SAT_SPEC: Record<NasaModel, { id: string; kind: SatelliteKind }> = {
+  terra: { id: 'terra', kind: 'eos' },
+  aqua: { id: 'aqua', kind: 'eos' },
+  snpp: { id: 'snpp', kind: 'jpss' },
+};
 /** Two hours of real orbits play in about three minutes… */
 export const CONSTELLATION_SPEED = 40;
 /** …and slow down while AI #2 switches a link (laser handoff, backup radio), so it can be seen. */
@@ -293,6 +296,8 @@ interface SatVisual {
   trail: Line<BufferGeometry, LineBasicMaterial>;
   trailPositions: Float32Array;
   trailColors: Float32Array;
+  /** NASA model requested (high quality only). */
+  nasa?: boolean;
 }
 
 /**
@@ -351,7 +356,18 @@ export class EarthScene {
   private readonly resizeObserver: ResizeObserver;
   private readonly onVisibility = () => (document.hidden ? this.pause() : this.resume());
   private disposed = false;
-  private theme: SceneTheme;
+  /** Current render resolution; lowered step by step if the machine cannot keep up. */
+  private pixelRatio = 1;
+  private perf = { sum: 0, n: 0 };
+  /** Render one display refresh in `stride` (see TARGET_FPS); chosen once from measured refresh intervals. */
+  private stride = 1;
+  private vsyncs = 0;
+  private lastVsync = 0;
+  private readonly refresh: number[] = [];
+  /** debugStep() renders even when the stride would skip this refresh. */
+  private forceFrame = false;
+  /** Trail grid epoch the trail points were last built for. */
+  private trailEpoch = Number.NaN;
   /** Where the planet sits: centre offset as a share of the viewport, radius as a share of the short side. */
   private frameSpec = { x: 0, y: 0, size: 0.8 };
   private baseDistance = 4.4;
@@ -360,10 +376,10 @@ export class EarthScene {
   constructor(host: HTMLElement, opts: EarthSceneOptions) {
     this.host = host;
     this.opts = opts;
-    this.theme = opts.theme;
     const low = opts.quality === 'low';
     this.renderer = new WebGLRenderer({ antialias: !low, alpha: true, powerPreference: low ? 'low-power' : 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, low ? 1.5 : 1.75));
+    this.pixelRatio = Math.min(window.devicePixelRatio || 1, low ? 1.5 : 1.75);
+    this.renderer.setPixelRatio(this.pixelRatio);
     this.renderer.setClearColor(0x000000, 0);
     // Vertical swipes scroll the page; horizontal drags spin the planet.
     this.renderer.domElement.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;touch-action:pan-y;display:block';
@@ -389,7 +405,7 @@ export class EarthScene {
       pmrem.dispose();
     }
 
-    const t = THEME[this.theme];
+    const t = LOOK;
     const segments = low ? [64, 48] : [128, 96];
     const empty = new Texture();
     this.earth = new Mesh(
@@ -494,7 +510,8 @@ export class EarthScene {
     }
     // The rest is decoration: load after the first frame, one at a time.
     const extras: [keyof typeof TEXTURES, 'uNight' | 'uSpec' | 'uClouds', 'uHasNight' | 'uHasSpec' | 'uHasClouds', number][] = [
-      ['night', 'uNight', 'uHasNight', low ? 2048 : 4096],
+      // 2048 px is plenty for lights seen only on the night crescent, and halves the GPU upload hitch.
+      ['night', 'uNight', 'uHasNight', 2048],
       ['clouds', 'uClouds', 'uHasClouds', 1024],
       ['specular', 'uSpec', 'uHasSpec', 2048],
     ];
@@ -506,6 +523,9 @@ export class EarthScene {
         const tex = this.toTexture(bmp, width);
         // Clouds are a single channel; keep them linear so the alpha reads as authored.
         if (key !== 'night') tex.colorSpace = NoColorSpace;
+        // The cloud layer drifts in longitude: it must repeat across the date line. With the default
+        // clamp, u > 1 smeared the edge column into a striped band over the Pacific.
+        if (key === 'clouds') tex.wrapS = RepeatWrapping;
         u[uniform]!.value = tex;
         u[flag]!.value = 1;
       } catch {
@@ -526,27 +546,32 @@ export class EarthScene {
     if (this.opts.quality === 'high') void this.loadSatelliteModels();
   }
 
+  private nasaLoader: Promise<typeof LoadNasaSatellite | null> | null = null;
+
   /** Swaps in NASA's models one by one once the planet is on screen; keeps the procedural ones on failure. */
   private async loadSatelliteModels() {
-    const anisotropy = Math.min(4, this.renderer.capabilities.getMaxAnisotropy());
-    // The glTF loader is its own chunk: the planet never waits for it.
-    let loadNasaSatellite: typeof LoadNasaSatellite;
-    try {
-      ({ loadNasaSatellite } = await import('./nasaSatellites'));
-    } catch {
-      return;
+    for (const s of [...this.sats]) {
+      await this.loadSatelliteModel(s);
+      if (this.disposed) return;
     }
-    if (this.disposed) return;
-    for (const s of this.sats) {
-      try {
-        const pivot = await loadNasaSatellite(s.modelName, SAT_SIZE, anisotropy);
-        if (this.disposed) return;
-        const old = s.model.children[0];
-        if (old) s.model.remove(old);
-        s.model.add(pivot);
-      } catch (err) {
-        console.warn(`[kyzyl-aspan] satellite model ${s.modelName} unavailable, keeping the drawn one`, err);
-      }
+  }
+
+  private async loadSatelliteModel(s: SatVisual) {
+    if (s.nasa) return;
+    s.nasa = true;
+    // The glTF loader is its own chunk: the planet never waits for it.
+    this.nasaLoader ??= import('./nasaSatellites').then((m) => m.loadNasaSatellite).catch(() => null);
+    const loadNasaSatellite = await this.nasaLoader;
+    if (!loadNasaSatellite || this.disposed) return;
+    const anisotropy = Math.min(4, this.renderer.capabilities.getMaxAnisotropy());
+    try {
+      const pivot = await loadNasaSatellite(s.modelName, SAT_SIZE, anisotropy);
+      if (this.disposed) return;
+      const old = s.model.children[0];
+      if (old) s.model.remove(old);
+      s.model.add(pivot);
+    } catch (err) {
+      console.warn(`[kyzyl-aspan] satellite model ${s.modelName} unavailable, keeping the drawn one`, err);
     }
   }
 
@@ -592,7 +617,7 @@ export class EarthScene {
       },
       transparent: true,
       depthWrite: false,
-      blending: THEME[this.theme].fireBlending,
+      blending: LOOK.fireBlending,
     });
     if (this.fires) {
       this.spin.remove(this.fires);
@@ -617,7 +642,7 @@ export class EarthScene {
       this.con.stations.geometry.dispose();
       this.con.links.geometry.dispose();
     }
-    const visuals = data.satellites.map((s) => this.sats.find((v) => v.modelName === SAT_MODEL[s.name]) ?? null);
+    const visuals = data.satellites.map((s) => this.visualFor(s.name));
     for (const v of visuals) {
       if (!v || v.model.parent === this.spin) continue;
       this.tilt.remove(v.model, v.trail);
@@ -748,67 +773,72 @@ export class EarthScene {
     }
   }
 
-  setTheme(theme: SceneTheme) {
-    if (this.disposed || theme === this.theme) return;
-    this.theme = theme;
-    const t = THEME[theme];
-    const a = this.atmosphere.material;
-    a.uniforms.uInner!.value.copy(t.atmoInner);
-    a.uniforms.uOuter!.value.copy(t.atmoOuter);
-    a.uniforms.uIntensity!.value = t.atmoIntensity;
-    a.blending = t.atmoBlending;
-    a.needsUpdate = true;
-    const e = this.earth.material.uniforms;
-    e.uAtmo!.value.copy(t.atmoInner);
-    e.uAmbient!.value = t.ambient;
-    if (this.fires) {
-      this.fires.material.blending = t.fireBlending;
-      this.fires.material.needsUpdate = true;
-    }
-    for (const s of this.sats) this.paintTrail(s);
-  }
 
   private paintTrail(s: SatVisual) {
-    const t = THEME[this.theme];
+    const t = LOOK.trail;
     const n = s.trailColors.length / 3;
     for (let i = 0; i < n; i++) {
-      // Additive (dark) fades to black; normal blending (light) fades through vertex alpha.
+      // Additive blending fades the trail to black towards its tail.
       const f = (1 - i / (n - 1)) ** 1.8;
-      const k = this.theme === 'dark' ? f : 1;
-      s.trailColors.set([t.trail.r * k, t.trail.g * k, t.trail.b * k], i * 3);
+      s.trailColors.set([t.r * f, t.g * f, t.b * f], i * 3);
     }
-    s.trail.material.blending = this.theme === 'dark' ? AdditiveBlending : NormalBlending;
-    s.trail.material.opacity = this.theme === 'dark' ? 0.55 : 0.28;
+    s.trail.material.blending = AdditiveBlending;
+    s.trail.material.opacity = 0.55;
     s.trail.material.needsUpdate = true;
     (s.trail.geometry.getAttribute('color') as BufferAttribute).needsUpdate = true;
   }
 
+
   private buildSatellites() {
     for (const { id, kind, model: modelName } of SHOWN) {
       const sat = FLEET.find((s) => s.id === id);
-      if (!sat) continue;
-      // A holder that rides the orbit; the procedural model is its first child until NASA's arrives.
-      const model = new Group();
-      const drawn = buildSatellite(kind);
-      drawn.scale.setScalar(SAT_SCALE);
-      model.add(drawn);
-      model.visible = false;
-      this.tilt.add(model);
-
-      const TRAIL = 36;
-      const trailPositions = new Float32Array(TRAIL * 3);
-      const trailColors = new Float32Array(TRAIL * 3);
-      const trailGeo = new BufferGeometry();
-      trailGeo.setAttribute('position', new BufferAttribute(trailPositions, 3));
-      trailGeo.setAttribute('color', new BufferAttribute(trailColors, 3));
-      const trail = new Line(trailGeo, new LineBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false }));
-      trail.visible = false;
-      this.tilt.add(trail);
-
-      const visual: SatVisual = { sat, kind, modelName, model, trail, trailPositions, trailColors };
-      this.paintTrail(visual);
-      this.sats.push(visual);
+      if (sat) this.makeSatVisual(sat, kind, modelName);
     }
+  }
+
+  private makeSatVisual(sat: Satellite, kind: SatelliteKind, modelName: NasaModel): SatVisual {
+    // A holder that rides the orbit; the procedural model is its first child until NASA's arrives.
+    const model = new Group();
+    const drawn = buildSatellite(kind);
+    drawn.scale.setScalar(SAT_SCALE);
+    model.add(drawn);
+    model.visible = false;
+    this.tilt.add(model);
+
+    const TRAIL = 36;
+    const trailPositions = new Float32Array(TRAIL * 3);
+    const trailColors = new Float32Array(TRAIL * 3);
+    const trailGeo = new BufferGeometry();
+    trailGeo.setAttribute('position', new BufferAttribute(trailPositions, 3));
+    trailGeo.setAttribute('color', new BufferAttribute(trailColors, 3));
+    const trail = new Line(trailGeo, new LineBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false }));
+    trail.visible = false;
+    this.tilt.add(trail);
+
+    const visual: SatVisual = { sat, kind, modelName, model, trail, trailPositions, trailColors };
+    this.paintTrail(visual);
+    this.sats.push(visual);
+    return visual;
+  }
+
+  /**
+   * The visual for a satellite of the real constellation. The idle globe shows Terra only; Aqua and
+   * Suomi NPP are created here the first time the constellation plays, so laser links never end in empty space.
+   */
+  private visualFor(name: string): SatVisual | null {
+    const modelName = SAT_MODEL[name.toUpperCase()];
+    if (!modelName) return null;
+    const found = this.sats.find((v) => v.modelName === modelName);
+    if (found) return found;
+    const spec = SAT_SPEC[modelName];
+    const sat = FLEET.find((f) => f.id === spec.id);
+    if (!sat) return null;
+    const v = this.makeSatVisual(sat, spec.kind, modelName);
+    const shown = this.earth.visible && !this.dive;
+    v.model.visible = shown;
+    v.trail.visible = shown;
+    if (this.opts.quality === 'high' && this.earth.visible) void this.loadSatelliteModel(v);
+    return v;
   }
 
   private orbitRadius(sat: Satellite): number {
@@ -987,6 +1017,7 @@ export class EarthScene {
     const wasRunning = this.running;
     this.running = true;
     this.last = performance.now() - ms;
+    this.forceFrame = true;
     this.frame(performance.now());
     if (!wasRunning) {
       this.running = false;
@@ -998,10 +1029,47 @@ export class EarthScene {
   private readonly tmp2 = new Vector3();
   private readonly tmp3 = new Vector3();
 
+  /**
+   * Watches the real frame interval and lowers the render resolution (1.75 → 1.4 → 1.05 → 1) when the
+   * machine cannot hold ~40 fps for ~1.5 s. It never goes back up, so it cannot oscillate.
+   */
+  private watchFrameRate(interval: number) {
+    if (this.dive || interval > 250) return; // pauses, tab switches and the dive are not a verdict
+    this.perf.sum += interval;
+    this.perf.n += 1;
+    if (this.perf.n < 90) return;
+    const avg = this.perf.sum / this.perf.n;
+    this.perf = { sum: 0, n: 0 };
+    if (avg <= 25 || this.pixelRatio <= 1) return;
+    this.pixelRatio = Math.max(1, Math.round((this.pixelRatio - 0.35) * 100) / 100);
+    this.renderer.setPixelRatio(this.pixelRatio);
+    this.resize();
+  }
+
+  /** Learns the display's refresh rate from the first rAF intervals and picks the render stride. */
+  private pace(now: number) {
+    const iv = now - this.lastVsync;
+    this.lastVsync = now;
+    if (this.refresh.length >= PACE_SAMPLES || !(iv > 2 && iv < 40)) return;
+    this.refresh.push(iv);
+    if (this.refresh.length < PACE_SAMPLES) return;
+    const median = [...this.refresh].sort((a, b) => a - b)[PACE_SAMPLES >> 1]!;
+    this.stride = Math.max(1, Math.floor(1000 / median / TARGET_FPS + 0.15));
+  }
+
   private frame = (now: number) => {
     if (!this.running) return;
-    const dt = Math.min(0.05, (now - this.last) / 1000);
+    this.pace(now);
+    this.vsyncs += 1;
+    if (!this.forceFrame && this.vsyncs % this.stride !== 0) {
+      this.raf = requestAnimationFrame(this.frame);
+      return;
+    }
+    this.forceFrame = false;
+    const interval = now - this.last;
+    const dt = Math.min(0.05, Math.max(0, interval) / 1000);
     this.last = now;
+    this.watchFrameRate(interval);
     const reduced = this.opts.reducedMotion;
 
     if (!reduced && !this.dive) this.simTime += dt * TIME_WARP;
@@ -1024,7 +1092,7 @@ export class EarthScene {
         this.con.links.visible = fade > 0.02;
         this.con.stations.visible = fade > 0.02;
       }
-      this.atmosphere.material.uniforms.uIntensity!.value = THEME[this.theme].atmoIntensity * (1 - t * 0.6);
+      this.atmosphere.material.uniforms.uIntensity!.value = LOOK.atmoIntensity * (1 - t * 0.6);
       if (this.fires) this.fires.material.uniforms.uFade!.value = Math.max(0.15, 1 - easeInCubic(t) * 0.9) * (this.cameraDistance / 3.4);
       if (t >= 1) {
         this.dive = null;
@@ -1077,6 +1145,8 @@ export class EarthScene {
       return;
     }
     this.tilt.updateMatrixWorld();
+    const epoch = Math.floor(this.simTime / TRAIL_STEP);
+    const rebuild = epoch !== this.trailEpoch;
     for (const s of this.sats) {
       const pos = this.satPosition(s.sat, this.simTime, this.tmp);
       s.model.position.copy(pos);
@@ -1085,13 +1155,24 @@ export class EarthScene {
       s.model.up.copy(ahead.transformDirection(this.tilt.matrixWorld));
       s.model.lookAt(this.tmp2.copy(pos).multiplyScalar(2).applyMatrix4(this.tilt.matrixWorld));
 
-      const n = s.trailPositions.length / 3;
-      for (let i = 0; i < n; i++) {
-        const p = this.satPosition(s.sat, this.simTime - i * 18, this.tmp2);
-        s.trailPositions.set([p.x, p.y, p.z], i * 3);
+      // The head is the satellite itself (every frame); the rest sits on a fixed time grid in the inertial
+      // frame, so it only changes when the grid advances — smooth, and nearly free.
+      const out = s.trailPositions;
+      out[0] = pos.x;
+      out[1] = pos.y;
+      out[2] = pos.z;
+      if (rebuild) {
+        const n = out.length / 3;
+        for (let i = 1; i < n; i++) {
+          const p = this.satPosition(s.sat, (epoch - i + 1) * TRAIL_STEP, this.tmp2);
+          out[i * 3] = p.x;
+          out[i * 3 + 1] = p.y;
+          out[i * 3 + 2] = p.z;
+        }
       }
       (s.trail.geometry.getAttribute('position') as BufferAttribute).needsUpdate = true;
     }
+    this.trailEpoch = epoch;
   }
 
   private applyViewOffset() {

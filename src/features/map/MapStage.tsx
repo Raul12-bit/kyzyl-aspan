@@ -4,9 +4,8 @@ import { parseAppParams } from '@/app/urlState';
 import { introDispatch, useIntroStore, WORLD_BOUNDS } from '@/features/intro/introStore';
 import { TIMELINE } from '@/features/intro/transition.config';
 import { useI18n } from '@/i18n';
-import { useThemeStore } from '@/app/theme';
-import { loadBasemapStyle, retintBasemap } from './basemap';
-import { addFireLayers, addHexLayers, addSelectionLayers, retintDataLayers } from './layers';
+import { loadBasemapStyle } from './basemap';
+import { addFireLayers, addHexLayers, addSelectionLayers } from './layers';
 import { BASEMAP_ERROR_BUDGET, BASEMAP_STYLE_URL, uiPadding } from './map.config';
 import { hasWebGL, useMapStore } from './mapStore';
 
@@ -200,15 +199,6 @@ export default function MapStage() {
     // The map is created exactly once; label updates are handled below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Theme switch: repaint the live map from the new tokens (basemap and our own layers).
-  const theme = useThemeStore((s) => s.theme);
-  useEffect(() => {
-    const map = useMapStore.getState().map;
-    if (!map || !map.isStyleLoaded()) return;
-    retintBasemap(map);
-    retintDataLayers(map);
-  }, [theme]);
 
   useEffect(() => {
     useMapStore.getState().map?.getCanvas().setAttribute('aria-label', label);

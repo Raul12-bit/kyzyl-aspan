@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useThemeStore } from '@/app/theme';
 import { useOverview } from '@/data/queries';
 import { useCountries } from '@/features/geo/countries';
 import { useConstellation, useHeliosAvailable, type ConstellationResponse } from '@/features/helios/api';
@@ -60,7 +59,7 @@ export interface GlobeCanvasProps {
 }
 
 /**
- * React shell around the imperative three.js scene: creates it once, feeds it data and the theme,
+ * React shell around the imperative three.js scene: creates it once, feeds it data,
  * runs the dive when the intro machine enters `zoom`, stops rendering when scrolled out of view, and
  * tears everything down (GPU memory included) on unmount. With the real backend it also plays the three
  * satellites on their real orbits (AI #2 handing data over before a link drops) and captions it.
@@ -74,7 +73,6 @@ export default function GlobeCanvas({ onPick, onHover, facingRef, onReady, onErr
   const [ready, setReady] = useState(false);
   const countries = useCountries();
   const overview = useOverview();
-  const theme = useThemeStore((s) => s.theme);
   const phase = useIntroStore((s) => s.phase);
   const reduced = useMemo(() => prefersReducedMotion(), []);
 
@@ -98,7 +96,6 @@ export default function GlobeCanvas({ onPick, onHover, facingRef, onReady, onErr
       scene = new EarthScene(host, {
         quality: pickQuality(),
         reducedMotion: prefersReducedMotion(),
-        theme: useThemeStore.getState().theme,
         onPick: (lat, lng, screen) => handlers.current.onPick(lat, lng, screen),
         onHoverEarth: (over) => handlers.current.onHover?.(over),
         onReady: () => {
@@ -140,9 +137,6 @@ export default function GlobeCanvas({ onPick, onHover, facingRef, onReady, onErr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    sceneRef.current?.setTheme(theme);
-  }, [theme]);
 
   useEffect(() => {
     if (countries.data) sceneRef.current?.setCountries(countries.data.countries);

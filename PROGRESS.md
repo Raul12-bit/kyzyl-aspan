@@ -6,7 +6,7 @@ NASA Space Apps Challenge 2026 · *Harmonization of MODIS and VIIRS Hot Spots*.
 This file is the single place to see **what is done, what is mocked and what the backend has to build**.
 Update the status table whenever a stage moves.
 
-Last update: 2026-11-14.
+Last update: 2026-11-15 (AI lab, three-AI architecture, merge of the HELIOS world integration).
 
 ---
 
@@ -18,13 +18,16 @@ Last update: 2026-11-14.
 | 1 | **Noise filter** (low confidence + persistent heat sources, “Flare-Chronos” style) | ✅ | ✅ HELIOS (world) | `src/domain/noise.ts` for the demo; on real data the server filters every detection with the global registry of persistent heat sources |
 | 2 | **H3 hexagon grid** (count burning hexagon-days, not pixels) | ✅ | ✅ HELIOS (world) | demo: `src/domain/hexgrid.ts`; real data: `/v1/hex` from EVERY detection, H3 res 2–7 chosen by zoom |
 | 3 | **AI risk analysis** (region click → stats → Gemini, “Kiln-Watch” style) | ✅ | ✅ `server/` + HELIOS | Without `GEMINI_API_KEY` the API returns rule-based findings; both get the HELIOS forecast of the area as context |
-| 4 | **Onboard AI** (tiny model trained on the 26-year archive) | ✅ | ✅ HELIOS | AI #1 trained on the world archive; compiled to integer-only C99 for any flight computer (`/mission` §04) |
-| 5 | **Link prediction** (orbits + stations + weather → Ka/X/other station) | ✅ | ✅ HELIOS | `/mission` §05: link-physics calculator; AI #2 on SGP4 orbits, real stations and weather |
-| 6 | **Satellite-to-satellite cueing** | ✅ concept | 🟡 HELIOS replay | `/mission` §06: alert-delivery replay on real orbits, cross-satellite confirmation |
+| 4 | **AI #1 · onboard detection + triage** (contextual 4/11 µm fire test → triage model → 16-byte alert) | ✅ | ✅ HELIOS | `src/domain/ai/{thermal,scene,contextual,triage}.ts`; lab tab `/ai#ai1` runs it on MODIS and VIIRS views of synthetic thermal scenes. HELIOS: AI #1 trained on the world archive, compiled to integer-only C99 |
+| 5 | **AI #2 · onboard link manager** (orbits, loss-of-signal prediction, laser ↔ Ka/X ↔ backup radio) | ✅ | ✅ HELIOS | `src/domain/ai/link.ts` (+ `orbit.ts`, `downlink.ts`); lab tab `/ai#ai2` compares it with a reactive rule. HELIOS: AI #2 on SGP4 orbits, real stations and weather, constellation on the globe |
+| 6 | **Satellite-to-satellite cueing** | ✅ concept | 🟡 HELIOS replay | in `/ai#ai2`; HELIOS: alert-delivery replay on real orbits, cross-satellite confirmation |
+| 6c | **AI #3 · ground segment** (noise filter, weather overlay, spread forecast 6/12/24 h, signal-delay tracking) | ✅ | ✅ `server/` | `src/domain/ai/ground.ts`; `POST /api/ai/ground/forecast`, `GET /api/ai/ground/delays` (browser fallback with the same code); weather is SYNTHETIC; floods are not modelled |
+| 6d | **MODIS × VIIRS fusion** (event-level confirmation + series-level harmonization) | ✅ | ✅ HELIOS (series) | `src/domain/ai/fusion.ts` + `harmonize.ts`; lab tab `/ai#fusion` with live numbers; landing section explains the four steps |
+| 6e | **AI lab `/ai`** (replaces `/mission`, which redirects) + landing section “How our AI works” | ✅ | — | `src/features/ai-lab/`, `src/features/landing/AiSystem.tsx`; registry of the three AIs in `src/domain/ai/registry.ts` (also `GET /api/ai/status`) |
 | 6a | **All countries + regions** (admin-1) and precise map | ✅ | ✅ HELIOS (world) | `src/features/world/`: view “Regions” (countries → regions choropleth), server hexagons, every pixel at its real size from zoom 7 |
 | 6b | **HELIOS AI layers** (forecast 1–4 weeks + Time Machine, alerts, flares, blind spots, spread, satellites) | ✅ | ✅ HELIOS | `src/features/helios/`; forecast covers every country |
-| 7 | 3D Earth intro with MODIS + VIIRS satellites, dive → white flash → map | ✅ | — | three.js, lazy chunk, `src/features/globe/`; real NASA models (Terra, Aqua, Suomi NPP) since the redesign |
-| 7a | **Landing page** (header + centred Earth, story on scroll) and minimal-luxury redesign, light/dark | ✅ | — | `src/features/landing/`; see §5 “Design” |
+| 7 | 3D Earth intro, dive → soft veil → map | ✅ | — | three.js, lazy chunk, `src/features/globe/`; idle globe shows Terra only; with HELIOS the real constellation (Terra, Aqua, Suomi NPP + laser/radio links) plays. Even frame pacing, smooth trails, soft sun glint |
+| 7a | **Landing page** (header + centred Earth, story on scroll) and minimal-luxury redesign, dark only | ✅ | — | `src/features/landing/`; see §5 “Design” |
 | 8 | Geolocation → language + landing country | ✅ | — | offline point-in-polygon, nothing sent to a server |
 | 9 | i18n: en, ru, kk, es, fr, de, pt, zh | ✅ | — | every dictionary type-checked + tested |
 | 10 | Real data (FIRMS MODIS C6.1 2000–2025 + VIIRS S-NPP 2012–2025, all countries) | ✅ | ✅ HELIOS | world archive + 7-day NRT for the current forecast; see §4 |
@@ -58,7 +61,7 @@ Without it the app falls back to the demo data. Add `?mock` to the URL to force 
 
 Production, one process: `pnpm build && pnpm start` (the API also serves `dist/` and proxies `/v1`).
 
-Checks: `pnpm typecheck` · `pnpm test` (94 tests) · `pnpm lint` · `pnpm build`.
+Checks: `pnpm typecheck` · `pnpm test` (125 tests) · `pnpm lint` · `pnpm build`.
 
 Environment variables: see `.env.example`. **Secrets only in `.env`, never in `VITE_*` variables** —
 `VITE_*` values are compiled into the browser bundle.
@@ -85,6 +88,15 @@ src/
     downlink.ts     weather-aware Ka/X downlink planner
     crosscue.ts     tip-and-cue planner
     countries.ts    offline reverse geocoding
+    ai/             the three AIs as pure modules (also run by server/):
+      thermal.ts      Planck, brightness temperatures, FRP          ─┐
+      scene.ts        synthetic 4/11 µm scenes, MODIS/VIIRS views    │ AI #1 (onboard)
+      contextual.ts   contextual fire test (after MOD14 / VNP14)     │
+      triage.ts       priority + 16-byte alert packet with CRC-8    ─┘
+      link.ts         AI #2: visibility, loss-of-signal prediction, laser / Ka / X / backup-radio policy
+      ground.ts       AI #3: synthetic weather, McArthur FFDI/GFDI, elliptical spread, noise report, delays
+      fusion.ts       MODIS × VIIRS event fusion (H3 cell × day)
+      registry.ts     who runs where (UI + /api/ai/status)
   data/           DataSource interface, MockDataSource (static JSON), HttpDataSource (real API),
                   AutoDataSource (real API if it answers, else the demo — decided once)
   features/
@@ -97,7 +109,9 @@ src/
     geo/            geolocation consent, country store, country outlines loader
     map/            MapLibre stage, layers, panels, stats, H3 view
     ai/             AI panel + API client (safe markdown-lite renderer)
-    mission/        /mission — ideas 4, 5, 6 + HELIOS results (real models, onboard C code, link physics, delivery)
+    ai-lab/         /ai — the AI lab: system diagram, AI #1 / AI #2 / AI #3 tabs, MODIS × VIIRS fusion; ground client
+                    with browser fallback (groundClient.ts)
+    mission/        sections reused by the AI lab (triage model, Ka/X planner, cueing, HELIOS results); /mission → /ai
     method/         /method — how it works
   i18n/locales/   en (reference) + 7 lazy-loaded dictionaries
 server/           minimal Node API (no dependencies): Gemini proxy, validation, rate limit, static files
@@ -164,6 +178,13 @@ Backend tasks (original list — done in HELIOS for every country):
 - Gemini failure → degrades to rule-based findings (HTTP 200), never leaks upstream errors.
 - `GEMINI_MODEL` default `gemini-2.5-flash` — **not verified against a live key in this session**;
   set the model id your key supports.
+- Oversized bodies get a clean `413` (the socket is closed after the answer, no reset connection).
+
+| Method | Path | Body / returns |
+|---|---|---|
+| GET | `/api/ai/status` | `{ ok, systems, flows, gemini: { configured, model }, helios: { reachable } }` (HELIOS probe cached 60 s) |
+| POST | `/api/ai/ground/forecast` | body `{ lat, lng, fuel?: 'grass'\|'forest', weather?: { windKmh, windFromDeg, tempC, rh, drought, rain24h }, hours?: int[1..72] (≤6), localHour? }` → `{ source: 'ground-server', computedMs, weather, forecast }`. Strict validation (unknown keys rejected, physical ranges), 60 req/min/IP (`AI_GROUND_RATE_LIMIT_PER_MIN`) |
+| GET | `/api/ai/ground/delays?storm=<station>&kp=0..9` | `{ source, computedMs, streams: [{ satellite, sensor, meanMin, medianMin, p90Min, maxMin, status }] }` |
 
 ---
 
@@ -179,13 +200,15 @@ Backend tasks (original list — done in HELIOS for every country):
   fewer segments, DPR ≤ 1.5, no MSAA). Rendering pauses in background tabs.
 - **Bundle**: first-screen JS ~110 kB gzip: `h3-js` (64 kB) loads with the map, dictionaries per
   language. Globe chunk 156 kB gzip; the glTF loader is a separate 15 kB chunk loaded after the planet shows.
-- **Satellite models**: NASA 3D Resources (public domain) — Terra, Aqua, Suomi NPP. Originals 6.4 MB
+- **Satellite model**: one satellite on its orbit — Terra (MODIS), where the 26-year record starts —
+  from NASA 3D Resources (public domain). Original 2.1 MB
   (117k-triangle CAD meshes, Draco, PNG duplicates). `pnpm models:build <dir>` (script
   `scripts/build-satellite-models.mjs`, uses only libraries bundled with three) decodes, welds, simplifies
-  to 4–10k triangles and drops normals → **487 kB total** in `public/models/`, no Draco decoder at runtime.
+  to ~9k triangles and drops normals → **131 kB** in `public/models/terra.glb`, no Draco decoder at runtime.
   Normals are rebuilt in the browser with a 35° crease. Phones / low profile keep procedural models (0 bytes).
-- **Design** (2026-11-14 redesign, v2): one accent per theme — fire orange `#f37021` on warm obsidian
-  `#0a0a0b`, burnt orange `#b84a12` on porcelain `#f6f4ef`. Heat ramp embers → orange → amber (no cream).
+- **Design** (2026-11-14 redesign, v2; dark-only since 2026-11-15): one theme — fire orange `#f37021` on
+  warm obsidian `#0a0a0b`. Heat ramp embers → orange → amber (no cream). There is no light theme and no
+  theme switch; `index.html` clears the old `kyzylaspan.theme` key.
   Instruments: MODIS = steel, outline hexagons; VIIRS = amber, filled hexagons; harmonized = ink.
   **One shape everywhere: the pointy-top hexagon** — H3 cells on the map (default view, with real seams
   between cells), detection marks (SDF icon), fires on the 3D globe, legends, landing illustrations,
@@ -193,8 +216,12 @@ Backend tasks (original list — done in HELIOS for every country):
   only for numbers. Landing:
   `/` shows only the header and the Earth; sections reveal on scroll (one shared IntersectionObserver,
   transforms/opacity only). Map: same header as the site, one toolbar opens one panel at a time (area or
-  layers), min zoom = one world width. The map re-tints live on theme change (basemap + data layers).
-  Theme switch cross-fades via the View Transitions API.
+  layers), min zoom = one world width.
+- **Globe smoothness**: rendering capped at ~72 fps (120–165 Hz screens no longer redraw 2–3× more than
+  needed); render resolution steps down 1.75 → 1.4 → 1.05 → 1 when the machine cannot hold ~40 fps;
+  satellite trails rebuilt every 4th frame without per-vertex allocations; night texture 2048 px everywhere
+  (smaller GPU upload hitch). The cloud layer drifts in longitude, so its texture repeats (`RepeatWrapping`):
+  the default clamp smeared the edge column into a striped band over the Pacific.
 - **Dive transition**: no white flash. A veil in the page colour starts rising 0.55 s before the camera
   reaches the surface (1.2 s cubic plunge), holds while the map lands, then lifts over 1.1 s while the
   map settles from a 6% zoom with a 4 px blur. Pinned by `introMachine.test.ts`.
@@ -207,6 +234,19 @@ Backend tasks (original list — done in HELIOS for every country):
     (the low-confidence rule also drops real small fires).
 - **Ideas 5 and 6 are concepts**: circular orbits (no SGP4/TLE), assumed station capabilities and link
   margins, synthetic weather. MODIS/VIIRS cannot be re-tasked; idea 6 needs new satellites and relays.
+- **Three AIs, one architecture** (`src/domain/ai/registry.ts`): AI #1 and AI #2 run on board (in the lab: in the
+  browser, as the flight-computer stand-in), AI #3 on the ground (the Node server; the lab falls back to the same
+  code in the browser and says so). HELIOS-SHIELD holds the versions trained on real data.
+- **AI #1 numbers** (lab scenes, synthetic): forest fire → both sensors, CRITICAL; 100 m² stubble burn → VIIRS
+  only (diluted below MOD14-style thresholds in a 1.1 km pixel); gas flare → detected, then DROP by the triage
+  model (21 hot years); sun-baked rock → every candidate rejected by context. Detector + triage ≈ 0.02–0.1 ms
+  per scene in a laptop browser. VIIRS I4 saturates at 367 K, so its FRP on big fires is a lower bound.
+- **AI #2 numbers** (3 h, circular orbits, synthetic rain): predictive policy 2–3 unexpected link losses vs 5–7
+  for the reactive rule; with a downpour over Fairbanks 3 vs 14–18. Alert latency is dominated by coverage gaps
+  (no relay, station or neighbour in view) — more relays (e.g. over Asia) help more than smarter switching.
+- **AI #3 spread** = McArthur Mk5 FFDI / GFDI (Noble et al. 1980) + Alexander (1985) L/B ellipse, integrated hourly
+  through the daily cycle; constant wind, no terrain, no suppression → an upper-bound “potential” spread.
+- **No light theme**: the site is dark-only (`theme.ts` removed; the merge kept it that way).
 
 ---
 
@@ -230,8 +270,31 @@ Backend tasks (original list — done in HELIOS for every country):
       `pnpm remove @fontsource-variable/cormorant-garamond` (needs registry access).
 - [ ] Higgsfield: the connected MCP is read-only (no media generation) and the account has no generations;
       all visuals are code (SVG, three.js) and NASA imagery/models.
+- [ ] AI lab weather is synthetic (moving pressure systems): plug ERA5/GFS into `ground.ts` for real overlays.
+- [ ] AI #2 in the lab uses circular orbits; port the HELIOS SGP4 tracks (`/v1/helios/constellation`) into the lab.
+- [ ] Flood spread is not modelled (needs rainfall + terrain); only heavy-rain warnings.
+- [ ] The HELIOS-SHIELD Python backend is not in this repository; without it every number is synthetic demo data.
+- [ ] Map brief: the “typical uncertainty since 2012” line can read ±90–100% on quiet areas (monthly counts are
+      small); consider reporting it on annual totals.
 
 ## 7. Change log
+
+- **2026-11-15 · AI lab** — the three AIs as one architecture: `src/domain/ai/` (AI #1 contextual detector +
+  triage + 16-byte alert packet; AI #2 link manager with loss-of-signal prediction and laser ↔ backup-radio
+  switching; AI #3 weather overlay, McArthur spread forecast, noise report, signal delays; MODIS × VIIRS event
+  fusion; registry), 27 tests. Server: `/api/ai/status`, `/api/ai/ground/forecast`, `/api/ai/ground/delays`
+  (validated, rate-limited) + clean `413` for oversized bodies. New `/ai` lab (five tabs, works on phones) replacing
+  `/mission` (redirect); landing section “How our AI works” replaces the mission band; 8 dictionaries extended.
+  Globe: even frame pacing on 90–240 Hz screens, smooth satellite trails, soft sun glint; constellation satellites
+  created on demand (idle globe still shows Terra only). Merge of origin/main (HELIOS world) resolved dark-only.
+
+- **2026-11-15 · Dark only** — light theme removed: no theme toggle, single token set, globe and map tinted
+  once; theme store, live map re-tint, View Transitions cross-fade and the toggle labels (8 locales) deleted.
+
+- **2026-11-15 · Globe fixes** — one satellite only (Terra; Aqua and Suomi NPP removed, screen-reader label
+  updated in 8 locales); fixed the striped cloud band at
+  the date line (cloud texture now repeats); quieter sun glint; ~72 fps cap and adaptive resolution;
+  cheaper trail updates; night texture 2048 px.
 
 - **2026-11-15 · World** — real data for every country through the HELIOS-SHIELD API: NASA FIRMS MODIS 2000–2025 +
   VIIRS S-NPP 2012–2025 (all countries), global persistent-source registry, burning hexagon-days H3 res 2–7.

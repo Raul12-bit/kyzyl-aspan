@@ -2,7 +2,6 @@ import type { Feature, FeatureCollection, MultiPolygon, Point, Polygon } from 'g
 import type { Map as MLMap } from 'maplibre-gl';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppParams } from '@/app/useAppParams';
-import { useThemeStore } from '@/app/theme';
 import type { BBox, FireProperties } from '@/data/types';
 import { countryAt } from '@/domain/countries';
 import { hexRing } from '@/domain/hexgrid';
@@ -133,7 +132,6 @@ export function WorldSync() {
   const view = useMapStore((s) => s.view);
   const sensors = useMapStore((s) => s.sensors);
   const noise = useMapStore((s) => s.noise);
-  const theme = useThemeStore((s) => s.theme);
   const range = useEffectiveRange();
   const { bbox, regionId } = useAppParams();
   const countries = useCountries();
@@ -147,7 +145,7 @@ export function WorldSync() {
 
   useEffect(() => {
     if (ready) retintWorldLayers(map);
-  }, [ready, map, theme]);
+  }, [ready, map]);
 
   useEffect(() => {
     if (!ready || !mapMode) return;
@@ -277,7 +275,7 @@ export function WorldSync() {
     setWorldVisible(map, 'regionsLine', showRegions);
     setWorldVisible(map, 'regionsLabel', showRegions);
     if (showRegions && regionFc) setSourceData(map, 'regions', regionFc);
-  }, [ready, map, regionsMode, showRegions, regionFc, theme]);
+  }, [ready, map, regionsMode, showRegions, regionFc]);
 
   const countryFc = useMemo(() => {
     if (!regionsMode || !countries.data) return null;

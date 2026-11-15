@@ -5,6 +5,7 @@ import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.j
 /**
  * Real spacecraft from NASA 3D Resources (public domain), simplified for the web by
  * scripts/build-satellite-models.mjs: ~4–10k triangles and 130–200 kB each, no decoder needed.
+ * The idle globe shows Terra only; Aqua and Suomi NPP load when the real constellation plays.
  */
 export type NasaModel = 'terra' | 'aqua' | 'snpp';
 

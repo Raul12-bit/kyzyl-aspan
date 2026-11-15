@@ -43,6 +43,8 @@ export const config = {
     .filter(Boolean),
   /** Requests per minute per client IP on the AI endpoint. */
   rateLimitPerMinute: int(process.env.AI_RATE_LIMIT_PER_MIN, 10),
+  /** Requests per minute per client IP on the AI #3 ground endpoints (cheap, no external model). */
+  groundRateLimitPerMinute: int(process.env.AI_GROUND_RATE_LIMIT_PER_MIN, 60),
   /** Serve the production build (dist/) as well, for one-process deployments. */
   serveStatic: process.env.SERVE_STATIC !== '0',
   /** HELIOS data API (Python, FastAPI): /v1/* is proxied there and AI briefs get its forecast as context. */

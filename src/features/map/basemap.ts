@@ -1,4 +1,4 @@
-import type { LayerSpecification, Map as MLMap, StyleSpecification } from 'maplibre-gl';
+import type { LayerSpecification, StyleSpecification } from 'maplibre-gl';
 import { token, withAlpha } from '@/styles/tokens';
 import { BASEMAP_TIMEOUT_MS } from './map.config';
 
@@ -16,7 +16,7 @@ const HIDE = /(poi|building|housenum|road_label|roadname|highway_name|transit|ra
 
 /**
  * The paint a third-party basemap layer gets in our theme, or null to drop the layer. Pure function of
- * the layer id/type and the current tokens, so the same rules tint a fresh style and re-tint a live map.
+ * the layer id/type and the current tokens.
  * Look: quiet land a step above the page, water in the page colour, hairline borders in warm ink.
  */
 export function basemapPaint(id: string, type: string, hasText: boolean): Record<string, unknown> | null {
@@ -78,16 +78,6 @@ export function tintStyle(style: StyleSpecification): StyleSpecification {
   return { ...style, layers };
 }
 
-/** Theme switch on a live map: repaint every basemap layer (our own `el-*` layers repaint themselves). */
-export function retintBasemap(map: MLMap) {
-  for (const layer of map.getStyle().layers) {
-    if (layer.id.startsWith('el-')) continue;
-    const hasText = layer.type === 'symbol' && map.getLayoutProperty(layer.id, 'text-field') !== undefined;
-    const paint = basemapPaint(layer.id, layer.type, hasText);
-    if (!paint) continue;
-    for (const [prop, value] of Object.entries(paint)) map.setPaintProperty(layer.id, prop, value);
-  }
-}
 
 export async function loadBasemapStyle(url: string): Promise<{ style: StyleSpecification; ok: boolean }> {
   const controller = new AbortController();

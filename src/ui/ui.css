@@ -480,7 +480,7 @@ button.chip:disabled {
 .maplibregl-ctrl-attrib a {
   color: var(--el-ink-muted) !important;
 }
-:root[data-theme='dark'] .maplibregl-ctrl-attrib-button {
+.maplibregl-ctrl-attrib-button {
   filter: invert(1) opacity(0.6);
 }
 .maplibregl-canvas:focus-visible {

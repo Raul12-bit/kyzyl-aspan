@@ -7,7 +7,6 @@ import { useHeliosAvailable } from '@/features/helios/api';
 import { FallbackGlobe } from '@/features/intro/FallbackGlobe';
 import {
   introDispatch,
-  prefersReducedMotion,
   setIntroMode,
   useIntroStore,
   WORLD_BOUNDS,
@@ -18,7 +17,9 @@ import { useI18n } from '@/i18n';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { ButtonLink, Icon } from '@/ui';
 import { diveBridge } from './diveBridge';
-import { BriefVisual, HexVisual, NoiseVisual, OrbitArt } from './visuals';
+import { Accent } from './Accent';
+import { AiSystem } from './AiSystem';
+import { BriefVisual, HexVisual, NoiseVisual } from './visuals';
 import './landing.css';
 
 const GlobeCanvas = lazy(() => import('@/features/globe/GlobeCanvas'));
@@ -132,19 +133,7 @@ function splitWords(text: string, accent: string, locale: string): { text: strin
   return words;
 }
 
-function Accent({ text, accent }: { text: string; accent: string }) {
-  const i = accent ? text.indexOf(accent) : -1;
-  if (i < 0) return <>{text}</>;
-  return (
-    <>
-      {text.slice(0, i)}
-      <span className="lp-accent">{accent}</span>
-      {text.slice(i + accent.length)}
-    </>
-  );
-}
-
-/** Deterministic star dust behind the planet (dark theme only; hidden by a token in light). */
+/** Deterministic star dust behind the planet, drawn once per resize. */
 function HeroStars() {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -254,7 +243,6 @@ function Hero() {
       <div className="lp-hero__stage">
         <HeroStars />
         <div className="lp-hero__halo" aria-hidden />
-        <div className="lp-hero__shadow" aria-hidden />
         {showGlobe ? (
           fallback ? (
             <button
@@ -464,35 +452,6 @@ function How() {
   );
 }
 
-function Mission() {
-  const { m } = useI18n();
-  const x = m.landing.mission;
-  const [animate] = useState(() => !prefersReducedMotion());
-  return (
-    <section className="lp-section" aria-labelledby="lp-mission">
-      <div className="lp-wrap">
-        <div className="lp-night" data-rv>
-          <div className="lp-night__copy">
-            <p className="lp-eyebrow">{x.eyebrow}</p>
-            <h2 id="lp-mission" className="lp-h2">
-              {x.title}
-            </h2>
-            <p className="lp-lead">{x.body}</p>
-            <div className="mt-2">
-              <ButtonLink to="/mission" variant="primary" iconRight="arrowRight">
-                {x.cta}
-              </ButtonLink>
-            </div>
-          </div>
-          <div className="lp-night__art">
-            <OrbitArt animate={animate} />
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function About() {
   const { m } = useI18n();
   const a = m.landing.about;
@@ -544,7 +503,7 @@ function Footer() {
   const f = m.landing.footer;
   const nav: { to: string; label: string }[] = [
     { to: '/map', label: m.app.nav.map },
-    { to: '/mission', label: m.app.nav.mission },
+    { to: '/ai', label: m.app.nav.ai },
     { to: '/method', label: m.app.nav.method },
   ];
   return (
@@ -610,8 +569,8 @@ export function LandingPage() {
       <What />
       <Numbers />
       <How />
-      <Mission />
       <About />
+      <AiSystem />
       <Final />
       <Footer />
     </main>

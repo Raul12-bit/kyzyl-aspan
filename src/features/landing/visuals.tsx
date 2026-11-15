@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 /**
- * Section illustrations for the landing page. Plain SVG drawn from tokens, so they follow the theme,
+ * Section illustrations for the landing page. Plain SVG drawn from tokens, so they match the site,
  * weigh nothing over the network and stay sharp at any size. One visual language with the map: a
  * pointy-top hexagon grid and the heat ramp. They illustrate the method — they do not pretend to be data.
  */
@@ -202,72 +202,6 @@ export function BriefVisual() {
         stroke="var(--el-gold)"
         strokeWidth="1.5"
       />
-    </svg>
-  );
-}
-
-/** Night art for the mission band: the limb of the planet, an orbit and a satellite riding it. */
-export function OrbitArt({ animate }: { animate: boolean }) {
-  const stars = useMemo(() => {
-    const rnd = rng(11);
-    return Array.from({ length: 60 }, () => ({
-      x: rnd() * 600,
-      y: rnd() * 520,
-      r: rnd() ** 3 * 1.4 + 0.3,
-      a: 0.2 + rnd() * 0.6,
-    }));
-  }, []);
-  const orbit = 'M40 360 C 140 140, 470 70, 580 170 C 650 240, 420 420, 40 360 Z';
-  return (
-    <svg
-      viewBox="0 0 600 520"
-      preserveAspectRatio="xMidYMid slice"
-      aria-hidden
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-    >
-      <defs>
-        <radialGradient id="lp-limb" cx="0.62" cy="0.18" r="0.9">
-          <stop offset="0" stopColor="#24324c" />
-          <stop offset="0.55" stopColor="#0f1522" />
-          <stop offset="1" stopColor="#08090c" />
-        </radialGradient>
-        <radialGradient id="lp-air" cx="0.5" cy="0.5" r="0.5">
-          <stop offset="0.86" stopColor="rgb(120 170 255 / 0)" />
-          <stop offset="0.93" stopColor="rgb(120 170 255 / 0.3)" />
-          <stop offset="1" stopColor="rgb(120 170 255 / 0)" />
-        </radialGradient>
-      </defs>
-      {stars.map((s, i) => (
-        <circle key={i} cx={s.x} cy={s.y} r={s.r} fill="#eee9e0" fillOpacity={s.a} />
-      ))}
-      <circle cx="380" cy="760" r="470" fill="url(#lp-air)" />
-      <circle cx="380" cy="760" r="430" fill="url(#lp-limb)" />
-      {[
-        [250, 352, 1],
-        [300, 338, 0.7],
-        [420, 334, 0.85],
-        [356, 333, 0.5],
-      ].map(([x, y, w], i) => (
-        <polygon key={i} points={hexPoints(x!, y!, 3 + w! * 2.5)} fill={w! > 0.8 ? '#ffbf5a' : '#ec6420'} />
-      ))}
-      <path d={orbit} fill="none" stroke="#f37021" strokeOpacity="0.45" strokeWidth="1" />
-      <g>
-        <rect x="-5" y="-3.5" width="10" height="7" rx="1.2" fill="#eee9e0" />
-        <rect x="-19" y="-2.2" width="12" height="4.4" rx="0.6" fill="#93afcc" />
-        <rect x="7" y="-2.2" width="12" height="4.4" rx="0.6" fill="#93afcc" />
-        {animate ? (
-          <animateMotion dur="22s" repeatCount="indefinite" rotate="auto" path={orbit} />
-        ) : (
-          <animateMotion
-            dur="0.001s"
-            fill="freeze"
-            keyPoints="0.18;0.18"
-            keyTimes="0;1"
-            calcMode="linear"
-            path={orbit}
-          />
-        )}
-      </g>
     </svg>
   );
 }

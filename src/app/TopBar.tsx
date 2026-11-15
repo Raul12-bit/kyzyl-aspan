@@ -15,7 +15,7 @@ function NavItems({ onNavigate, vertical }: { onNavigate?: () => void; vertical?
   const { search, pathname } = useLocation();
   const items = [
     { to: '/map', label: m.app.nav.map, icon: 'map' as const },
-    { to: '/mission', label: m.app.nav.mission, icon: 'satellite' as const },
+    { to: '/ai', label: m.app.nav.ai, icon: 'sparkles' as const },
     { to: '/method', label: m.app.nav.method, icon: 'help' as const },
   ];
   return (
@@ -85,7 +85,7 @@ function MobileMenu({ showCta, onCta }: { showCta: boolean; onCta: (e: React.Mou
           style={{ animation: 'el-rise-in 240ms var(--el-ease-emphasized) both', borderRadius: 20 }}
         >
           <NavItems vertical onNavigate={() => setOpen(false)} />
-          <div className="mt-2 flex items-center justify-between gap-2 border-t border-line px-2 pt-3">
+          <div className="mt-2 flex items-center gap-2 border-t border-line px-2 pt-3">
             <LanguageSwitch />
           </div>
           {showCta ? (

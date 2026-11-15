@@ -1,0 +1,160 @@
+/* System diagram (landing + AI lab). Colours come from tokens.css; links share the globe's palette. */
+
+.sd {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  font-family: var(--el-font-sans);
+}
+
+.sd-seg {
+  fill: var(--el-ink-dim);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.sd-divider {
+  stroke: var(--el-line);
+  stroke-width: 1;
+  stroke-dasharray: 2 6;
+}
+
+/* nodes */
+.sd-node {
+  fill: var(--el-surface-2);
+  stroke: var(--el-line-strong);
+  stroke-width: 1.25;
+  transition:
+    stroke var(--el-dur-base) var(--el-ease-standard),
+    fill var(--el-dur-base) var(--el-ease-standard);
+}
+.sd-node[data-on='true'] {
+  stroke: var(--el-gold);
+  fill: color-mix(in srgb, var(--el-gold) 9%, var(--el-surface-2));
+}
+.sd-node__inner {
+  fill: none;
+  stroke: var(--el-line);
+  stroke-width: 1;
+}
+.sd-node__id {
+  fill: var(--el-ink-dim);
+  font-family: var(--el-font-mono);
+  font-size: 12px;
+  text-anchor: middle;
+}
+.sd-node__role {
+  fill: var(--el-ink);
+  font-size: 21px;
+  font-weight: 380;
+  letter-spacing: -0.02em;
+  text-anchor: middle;
+}
+.sd-node[data-on='true'] ~ .sd-node__role {
+  fill: var(--el-gold-soft);
+}
+
+.sd-hit {
+  cursor: pointer;
+  outline: none;
+}
+.sd-hit:hover .sd-node {
+  stroke: var(--el-line-hover);
+}
+.sd-hit:focus-visible .sd-node {
+  stroke: var(--el-focus);
+  stroke-width: 2;
+}
+
+.sd-small {
+  fill: var(--el-bg-3);
+  stroke: var(--el-line-strong);
+  stroke-width: 1;
+}
+.sd-small--ground {
+  stroke: var(--el-link-radio);
+}
+.sd-small--out {
+  fill: var(--el-gold-bg);
+  stroke: var(--el-gold);
+}
+.sd-small__label {
+  fill: var(--el-ink-muted);
+  font-size: 12px;
+  text-anchor: middle;
+}
+
+/* links */
+.sd-link {
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.sd-link--alert {
+  stroke: var(--el-gold);
+}
+.sd-link--laser {
+  stroke: var(--el-link-laser);
+  stroke-dasharray: 7 5;
+}
+.sd-link--thin {
+  stroke-width: 1.1;
+  opacity: 0.7;
+}
+.sd-link--rf {
+  stroke: var(--el-link-rf);
+}
+.sd-link--radio {
+  stroke: var(--el-link-radio);
+  stroke-dasharray: 1.5 5;
+}
+.sd-link--out {
+  stroke: var(--el-ink-muted);
+}
+.sd-link--memory {
+  stroke: var(--el-ink-dim);
+  stroke-dasharray: 3 6;
+}
+.sd-arrow {
+  fill: var(--el-ink-muted);
+}
+
+.sd-label {
+  fill: var(--el-ink-dim);
+  font-size: 12px;
+  text-anchor: middle;
+}
+.sd-label--laser {
+  fill: var(--el-link-laser);
+}
+.sd-label--rf {
+  fill: var(--el-link-rf);
+}
+.sd-label--radio {
+  fill: var(--el-link-radio);
+}
+.sd-label--memory {
+  fill: var(--el-ink-dim);
+}
+
+/* packets riding the links (SMIL; not rendered with reduced motion) */
+.sd-packet {
+  stroke: none;
+}
+.sd-packet--alert {
+  fill: var(--el-gold);
+}
+.sd-packet--laser {
+  fill: var(--el-link-laser);
+}
+.sd-packet--rf {
+  fill: var(--el-link-rf);
+}
+.sd-packet--radio {
+  fill: var(--el-link-radio);
+}
+.sd-packet--memory {
+  fill: var(--el-ink-muted);
+}

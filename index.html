@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0a0a0b" />
-    <meta name="color-scheme" content="dark light" />
+    <meta name="color-scheme" content="dark" />
     <meta
       name="description"
       content="Kyzyl Aspan — 26 years of MODIS and VIIRS fire detections on one comparable H3 scale, with noise filtering, AI risk briefings and a concept space segment."
@@ -14,8 +14,10 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Kyzyl Aspan — fire from space, on one honest scale</title>
     <script>
-      // The site has one theme: dark (space, fire, satellites). Set before first paint.
-      document.documentElement.dataset.theme = "dark";
+      // Dark is the only theme; drop the old saved choice from the light/dark era.
+      try {
+        localStorage.removeItem("kyzylaspan.theme");
+      } catch (e) {}
       // The landing page opens on the Earth: start fetching its daylight texture right away.
       if (location.pathname === "/") {
         var l = document.createElement("link");
