@@ -11,12 +11,14 @@ import {
   ImageBitmapLoader,
   Line,
   LineBasicMaterial,
+  LineSegments,
   Mesh,
   NoColorSpace,
   NormalBlending,
   PerspectiveCamera,
   PMREMGenerator,
   Points,
+  PointsMaterial,
   Raycaster,
   RepeatWrapping,
   Scene,
@@ -47,6 +49,8 @@ export interface EarthSceneOptions {
   onPick?: (lat: number, lng: number, screen: { x: number; y: number }) => void;
   /** The daylight texture is on the GPU — the planet can be shown. */
   onReady?: () => void;
+  /** Real-orbit playback moved to another 30-second step or changed speed (for the caption). */
+  onConstellationTick?: (index: number, slow: boolean) => void;
 }
 
 /** NASA Blue Marble / Black Marble derived maps (public domain imagery, via the three.js examples). */
@@ -250,6 +254,31 @@ const fireFragment = /* glsl */ `
   }
 `;
 
+/** Three satellites on their real orbits and their links (from /v1/helios/constellation). */
+export interface ConstellationInput {
+  /** ISO time of step 0. */
+  start: string;
+  step_s: number;
+  satellites: { name: string; track: readonly (readonly [number, number, number])[] }[];
+  stations: { lat: number; lon: number; kind: string }[];
+  states: readonly (readonly (readonly [number, number, number, number, number, number, string])[])[];
+}
+
+const SAT_MODEL: Record<string, NasaModel> = { TERRA: 'terra', AQUA: 'aqua', 'SUOMI NPP': 'snpp' };
+/** Fleet entry and procedural look of each model, for satellites created when the constellation plays. */
+const SAT_SPEC: Record<NasaModel, { id: string; kind: SatelliteKind }> = {
+  terra: { id: 'terra', kind: 'eos' },
+  aqua: { id: 'aqua', kind: 'eos' },
+  snpp: { id: 'snpp', kind: 'jpss' },
+};
+/** Two hours of real orbits play in about three minutes… */
+export const CONSTELLATION_SPEED = 40;
+/** …and slow down while AI #2 switches a link (laser handoff, backup radio), so it can be seen. */
+export const CONSTELLATION_SLOW = 10;
+const MAX_LINKS = 8;
+const LINK_COLOR = { down: new Color('#5ee6c6'), laser: new Color('#ffb24a'), radio: new Color('#7cb7ff') };
+const STATION_COLOR = { radio: new Color('#8be9d9'), optical: new Color('#c4a8ff') };
+
 interface SatVisual {
   sat: Satellite;
   kind: SatelliteKind;
@@ -259,6 +288,8 @@ interface SatVisual {
   trail: Line<BufferGeometry, LineBasicMaterial>;
   trailPositions: Float32Array;
   trailColors: Float32Array;
+  /** NASA model requested (high quality only). */
+  nasa?: boolean;
 }
 
 /**
@@ -276,6 +307,19 @@ export class EarthScene {
   private readonly atmosphere: Mesh<SphereGeometry, ShaderMaterial>;
   private fires: Points<BufferGeometry, ShaderMaterial> | null = null;
   private readonly sats: SatVisual[] = [];
+  private con: {
+    data: ConstellationInput;
+    /** Playback position in (fractional) steps. */
+    f: number;
+    visuals: (SatVisual | null)[];
+    stationPos: Vector3[];
+    stations: Points<BufferGeometry, PointsMaterial>;
+    links: LineSegments<BufferGeometry, LineBasicMaterial>;
+    lastTick: number;
+    lastSlow: boolean;
+  } | null = null;
+  /** Turns the planet toward a point for a while (the storm demo); a drag cancels it. */
+  private focus: { lat: number; lng: number; until: number } | null = null;
   private readonly raycaster = new Raycaster();
   private readonly pointer = new Vector2();
   private readonly textures: Texture[] = [];
@@ -486,27 +530,32 @@ export class EarthScene {
     if (this.opts.quality === 'high') void this.loadSatelliteModels();
   }
 
+  private nasaLoader: Promise<typeof LoadNasaSatellite | null> | null = null;
+
   /** Swaps in NASA's models one by one once the planet is on screen; keeps the procedural ones on failure. */
   private async loadSatelliteModels() {
-    const anisotropy = Math.min(4, this.renderer.capabilities.getMaxAnisotropy());
-    // The glTF loader is its own chunk: the planet never waits for it.
-    let loadNasaSatellite: typeof LoadNasaSatellite;
-    try {
-      ({ loadNasaSatellite } = await import('./nasaSatellites'));
-    } catch {
-      return;
+    for (const s of [...this.sats]) {
+      await this.loadSatelliteModel(s);
+      if (this.disposed) return;
     }
-    if (this.disposed) return;
-    for (const s of this.sats) {
-      try {
-        const pivot = await loadNasaSatellite(s.modelName, SAT_SIZE, anisotropy);
-        if (this.disposed) return;
-        const old = s.model.children[0];
-        if (old) s.model.remove(old);
-        s.model.add(pivot);
-      } catch (err) {
-        console.warn(`[kyzyl-aspan] satellite model ${s.modelName} unavailable, keeping the drawn one`, err);
-      }
+  }
+
+  private async loadSatelliteModel(s: SatVisual) {
+    if (s.nasa) return;
+    s.nasa = true;
+    // The glTF loader is its own chunk: the planet never waits for it.
+    this.nasaLoader ??= import('./nasaSatellites').then((m) => m.loadNasaSatellite).catch(() => null);
+    const loadNasaSatellite = await this.nasaLoader;
+    if (!loadNasaSatellite || this.disposed) return;
+    const anisotropy = Math.min(4, this.renderer.capabilities.getMaxAnisotropy());
+    try {
+      const pivot = await loadNasaSatellite(s.modelName, SAT_SIZE, anisotropy);
+      if (this.disposed) return;
+      const old = s.model.children[0];
+      if (old) s.model.remove(old);
+      s.model.add(pivot);
+    } catch (err) {
+      console.warn(`[kyzyl-aspan] satellite model ${s.modelName} unavailable, keeping the drawn one`, err);
     }
   }
 
@@ -565,6 +614,149 @@ export class EarthScene {
     this.resize();
   }
 
+  /**
+   * Switches the three satellites to their real orbits (SGP4 tracks from the API) and draws the ground
+   * stations and the links: satellite → station, satellite → satellite (laser) and the backup radio.
+   */
+  setConstellation(data: ConstellationInput) {
+    if (this.disposed || !data.satellites.length) return;
+    const prev = this.con;
+    if (this.con) {
+      this.spin.remove(this.con.stations, this.con.links);
+      this.con.stations.geometry.dispose();
+      this.con.links.geometry.dispose();
+    }
+    const visuals = data.satellites.map((s) => this.visualFor(s.name));
+    for (const v of visuals) {
+      if (!v || v.model.parent === this.spin) continue;
+      this.tilt.remove(v.model, v.trail);
+      this.spin.add(v.model, v.trail);
+    }
+    const stationPos = data.stations.map((s) => new Vector3(...latLngToXYZ(s.lat, s.lon, 1.006)));
+    const sGeo = new BufferGeometry();
+    sGeo.setAttribute('position', new BufferAttribute(new Float32Array(stationPos.flatMap((v) => [v.x, v.y, v.z])), 3));
+    sGeo.setAttribute(
+      'color',
+      new BufferAttribute(
+        new Float32Array(data.stations.flatMap((s) => {
+          const c = s.kind === 'optical' ? STATION_COLOR.optical : STATION_COLOR.radio;
+          return [c.r, c.g, c.b];
+        })),
+        3,
+      ),
+    );
+    const stations = new Points(sGeo, new PointsMaterial({ size: 7, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false }));
+    stations.renderOrder = 3;
+    const lGeo = new BufferGeometry();
+    lGeo.setAttribute('position', new BufferAttribute(new Float32Array(MAX_LINKS * 6), 3));
+    lGeo.setAttribute('color', new BufferAttribute(new Float32Array(MAX_LINKS * 6), 3));
+    const links = new LineSegments(lGeo, new LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false }));
+    links.renderOrder = 4;
+    links.frustumCulled = false;
+    this.spin.add(stations, links);
+    const steps = data.satellites[0]?.track.length ?? 0;
+    // Keep the same moment across refetches (the window start moves by 10 minutes); start at "now".
+    const ref = prev ? Date.parse(prev.data.start) + prev.f * prev.data.step_s * 1000 : Date.now();
+    const f0 = (ref - Date.parse(data.start)) / 1000 / data.step_s;
+    const f = Number.isFinite(f0) ? Math.max(0, Math.min(Math.max(0, steps - 1.001), f0)) : 0;
+    this.con = { data, f, visuals, stationPos, stations, links, lastTick: -1, lastSlow: false };
+  }
+
+  /** Jumps the real-orbit playback to a step (e.g. the first moment the storm matters). */
+  seekConstellation(index: number) {
+    const c = this.con;
+    if (!c) return;
+    const steps = c.data.satellites[0]?.track.length ?? 0;
+    c.f = Math.max(0, Math.min(Math.max(0, steps - 1.001), index));
+  }
+
+  /** Smoothly turns the planet so that a point faces the viewer, then goes back to the idle spin. */
+  focusOn(lat: number, lng: number, ms = 9000) {
+    if (this.dive) return;
+    this.focus = { lat, lng, until: performance.now() + ms };
+    this.spinVelocity = 0;
+    this.resume();
+  }
+
+  /** Point of a real track at fractional step f, in the Earth-fixed (spinning) frame. */
+  private trackPoint(track: readonly (readonly [number, number, number])[], f: number, out: Vector3): Vector3 {
+    const i = Math.max(0, Math.min(track.length - 1, Math.floor(f)));
+    const w = Math.max(0, Math.min(1, f - i));
+    const a = track[i]!;
+    const b = track[Math.min(i + 1, track.length - 1)]!;
+    let dl = b[0] - a[0];
+    if (dl > 180) dl -= 360;
+    if (dl < -180) dl += 360;
+    const alt = a[2] + (b[2] - a[2]) * w;
+    const [x, y, z] = latLngToXYZ(a[1] + (b[1] - a[1]) * w, a[0] + dl * w, 1 + (alt / EARTH_RADIUS_KM) * ALTITUDE_EXAGGERATION);
+    return out.set(x, y, z);
+  }
+
+  private updateConstellation(dt: number) {
+    const c = this.con!;
+    const steps = c.data.satellites[0]?.track.length ?? 0;
+    if (steps < 2) return;
+    const at = Math.floor(c.f);
+    // Laser handoff (2) or backup-radio alerts (4): the moments AI #2 changes the link.
+    const slow = c.data.states.some((st) => {
+      const a = st[Math.min(at, st.length - 1)]?.[0];
+      return a === 2 || a === 4;
+    });
+    const speed = this.opts.reducedMotion ? 0 : slow ? CONSTELLATION_SLOW : CONSTELLATION_SPEED;
+    c.f = (c.f + (dt * speed) / c.data.step_s) % (steps - 1);
+    const f = c.f;
+    const i0 = Math.floor(f);
+    this.spin.updateMatrixWorld();
+    const pos = c.data.satellites.map((s) => this.trackPoint(s.track, f, new Vector3()));
+    c.visuals.forEach((v, i) => {
+      if (!v) return;
+      const track = c.data.satellites[i]!.track;
+      const p = pos[i]!;
+      v.model.position.copy(p);
+      const ahead = this.trackPoint(track, Math.min(steps - 1.001, f + 0.4), this.tmp3).sub(p);
+      v.model.up.copy(ahead.transformDirection(this.spin.matrixWorld));
+      v.model.lookAt(this.tmp2.copy(p).multiplyScalar(2).applyMatrix4(this.spin.matrixWorld));
+      const n = v.trailPositions.length / 3;
+      for (let k = 0; k < n; k++) {
+        const q = this.trackPoint(track, Math.max(0, f - k * 0.45), this.tmp);
+        v.trailPositions.set([q.x, q.y, q.z], k * 3);
+      }
+      (v.trail.geometry.getAttribute('position') as BufferAttribute).needsUpdate = true;
+    });
+    const lp = c.links.geometry.getAttribute('position') as BufferAttribute;
+    const lc = c.links.geometry.getAttribute('color') as BufferAttribute;
+    const P = lp.array as Float32Array;
+    const C = lc.array as Float32Array;
+    let seg = 0;
+    const pulse = 0.55 + 0.45 * Math.sin(performance.now() / 160);
+    const put = (a: Vector3, b: Vector3, col: Color, k = 1) => {
+      if (seg >= MAX_LINKS) return;
+      P.set([a.x, a.y, a.z, b.x, b.y, b.z], seg * 6);
+      C.set([col.r * k, col.g * k, col.b * k, col.r * k, col.g * k, col.b * k], seg * 6);
+      seg++;
+    };
+    c.data.states.forEach((states, i) => {
+      const s = states[Math.min(i0, states.length - 1)];
+      if (!s) return;
+      const [action, partner, station] = s;
+      const st = station >= 0 ? c.stationPos[station] : undefined;
+      if (st && (action === 1 || action === 3)) put(pos[i]!, st, LINK_COLOR.down);
+      if (st && action === 4) put(pos[i]!, st, LINK_COLOR.radio, pulse);
+      if (action === 2 && partner >= 0 && pos[partner]) put(pos[i]!, pos[partner]!, LINK_COLOR.laser, pulse);
+    });
+    for (; seg < MAX_LINKS; seg++) {
+      P.fill(0, seg * 6, seg * 6 + 6);
+      C.fill(0, seg * 6, seg * 6 + 6);
+    }
+    lp.needsUpdate = true;
+    lc.needsUpdate = true;
+    if (i0 !== c.lastTick || slow !== c.lastSlow) {
+      c.lastTick = i0;
+      c.lastSlow = slow;
+      this.opts.onConstellationTick?.(i0, slow);
+    }
+  }
+
 
   private paintTrail(s: SatVisual) {
     const t = LOOK.trail;
@@ -584,29 +776,53 @@ export class EarthScene {
   private buildSatellites() {
     for (const { id, kind, model: modelName } of SHOWN) {
       const sat = FLEET.find((s) => s.id === id);
-      if (!sat) continue;
-      // A holder that rides the orbit; the procedural model is its first child until NASA's arrives.
-      const model = new Group();
-      const drawn = buildSatellite(kind);
-      drawn.scale.setScalar(SAT_SCALE);
-      model.add(drawn);
-      model.visible = false;
-      this.tilt.add(model);
-
-      const TRAIL = 36;
-      const trailPositions = new Float32Array(TRAIL * 3);
-      const trailColors = new Float32Array(TRAIL * 3);
-      const trailGeo = new BufferGeometry();
-      trailGeo.setAttribute('position', new BufferAttribute(trailPositions, 3));
-      trailGeo.setAttribute('color', new BufferAttribute(trailColors, 3));
-      const trail = new Line(trailGeo, new LineBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false }));
-      trail.visible = false;
-      this.tilt.add(trail);
-
-      const visual: SatVisual = { sat, kind, modelName, model, trail, trailPositions, trailColors };
-      this.paintTrail(visual);
-      this.sats.push(visual);
+      if (sat) this.makeSatVisual(sat, kind, modelName);
     }
+  }
+
+  private makeSatVisual(sat: Satellite, kind: SatelliteKind, modelName: NasaModel): SatVisual {
+    // A holder that rides the orbit; the procedural model is its first child until NASA's arrives.
+    const model = new Group();
+    const drawn = buildSatellite(kind);
+    drawn.scale.setScalar(SAT_SCALE);
+    model.add(drawn);
+    model.visible = false;
+    this.tilt.add(model);
+
+    const TRAIL = 36;
+    const trailPositions = new Float32Array(TRAIL * 3);
+    const trailColors = new Float32Array(TRAIL * 3);
+    const trailGeo = new BufferGeometry();
+    trailGeo.setAttribute('position', new BufferAttribute(trailPositions, 3));
+    trailGeo.setAttribute('color', new BufferAttribute(trailColors, 3));
+    const trail = new Line(trailGeo, new LineBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false }));
+    trail.visible = false;
+    this.tilt.add(trail);
+
+    const visual: SatVisual = { sat, kind, modelName, model, trail, trailPositions, trailColors };
+    this.paintTrail(visual);
+    this.sats.push(visual);
+    return visual;
+  }
+
+  /**
+   * The visual for a satellite of the real constellation. The idle globe shows Terra only; Aqua and
+   * Suomi NPP are created here the first time the constellation plays, so laser links never end in empty space.
+   */
+  private visualFor(name: string): SatVisual | null {
+    const modelName = SAT_MODEL[name.toUpperCase()];
+    if (!modelName) return null;
+    const found = this.sats.find((v) => v.modelName === modelName);
+    if (found) return found;
+    const spec = SAT_SPEC[modelName];
+    const sat = FLEET.find((f) => f.id === spec.id);
+    if (!sat) return null;
+    const v = this.makeSatVisual(sat, spec.kind, modelName);
+    const shown = this.earth.visible && !this.dive;
+    v.model.visible = shown;
+    v.trail.visible = shown;
+    if (this.opts.quality === 'high' && this.earth.visible) void this.loadSatelliteModel(v);
+    return v;
   }
 
   private orbitRadius(sat: Satellite): number {
@@ -651,6 +867,7 @@ export class EarthScene {
     const now = performance.now();
     this.drag = { x: e.clientX, y: e.clientY, t: now, moved: 0, lastX: e.clientX, lastY: e.clientY, lastT: now };
     this.spinVelocity = 0;
+    this.focus = null;
   };
 
   private onMove = (e: PointerEvent) => {
@@ -842,6 +1059,10 @@ export class EarthScene {
         s.model.visible = fade > 0.02;
         s.trail.visible = fade > 0.02;
       }
+      if (this.con) {
+        this.con.links.visible = fade > 0.02;
+        this.con.stations.visible = fade > 0.02;
+      }
       this.atmosphere.material.uniforms.uIntensity!.value = LOOK.atmoIntensity * (1 - t * 0.6);
       if (this.fires) this.fires.material.uniforms.uFade!.value = Math.max(0.15, 1 - easeInCubic(t) * 0.9) * (this.cameraDistance / 3.4);
       if (t >= 1) {
@@ -849,9 +1070,19 @@ export class EarthScene {
         d.resolve();
       }
     } else if (!this.drag) {
-      if (!reduced) this.spinAngle += (IDLE_SPIN + this.spinVelocity) * dt;
-      this.spinVelocity *= Math.pow(0.04, dt);
-      this.tiltAngle += (0.36 - this.tiltAngle) * Math.min(1, dt * 0.6);
+      const focus = this.focus && now < this.focus.until ? this.focus : null;
+      if (focus) {
+        const target = nearestAngle(this.spinAngle, spinToFace(focus.lng) - this.earthSpin());
+        const k = reduced ? 1 : Math.min(1, dt * 2.4);
+        this.spinAngle += (target - this.spinAngle) * k;
+        const tilt = Math.max(-0.9, Math.min(0.9, ((focus.lat * Math.PI) / 180) * 0.8));
+        this.tiltAngle += (tilt - this.tiltAngle) * (reduced ? 1 : Math.min(1, dt * 1.8));
+      } else {
+        this.focus = null;
+        if (!reduced) this.spinAngle += (IDLE_SPIN + this.spinVelocity) * dt;
+        this.spinVelocity *= Math.pow(0.04, dt);
+        this.tiltAngle += (0.36 - this.tiltAngle) * Math.min(1, dt * 0.6);
+      }
     }
 
     this.spin.rotation.y = this.spinAngle + this.earthSpin();
@@ -863,7 +1094,7 @@ export class EarthScene {
     if (!reduced) u.uCloudShift!.value = (u.uCloudShift!.value + dt * 0.0016) % 1;
     if (this.fires) this.fires.material.uniforms.uTime!.value = now / 1000;
 
-    this.updateSatellites();
+    this.updateSatellites(dt);
 
     if (this.hoverDirty && !this.dive) {
       this.hoverDirty = false;
@@ -879,7 +1110,11 @@ export class EarthScene {
     this.raf = requestAnimationFrame(this.frame);
   };
 
-  private updateSatellites() {
+  private updateSatellites(dt = 0) {
+    if (this.con) {
+      this.updateConstellation(dt);
+      return;
+    }
     this.tilt.updateMatrixWorld();
     for (const s of this.sats) {
       const pos = this.satPosition(s.sat, this.simTime, this.tmp);

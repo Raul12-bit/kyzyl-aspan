@@ -30,8 +30,10 @@ export interface AreaSummary {
   anomalies: { month: string; z: number }[];
   /** Last 12 months against the same months' climatology (1 = typical). */
   recentVsTypical: number | null;
-  /** Mean relative width of the 90% interval since 2012. */
+  /** Mean relative width of the calendar interval since 2012. */
   relativeUncertainty: number;
+  /** Central probability of the calendar intervals (0.9 in the synthetic demo, 0.95 from the HELIOS API). */
+  interval?: number;
   /** Climatological share of activity in the next three calendar months after the series ends. */
   seasonAhead: { months: number[]; share: number };
 }
@@ -125,6 +127,7 @@ export function buildAreaSummary(
     anomalies,
     recentVsTypical,
     relativeUncertainty,
+    interval: meta.interval,
     seasonAhead: { months: ahead, share },
   };
 }
@@ -149,7 +152,9 @@ export type Finding =
   | { kind: 'anomalies'; months: string[] }
   | { kind: 'noise'; removedShare: number; staticCells: number }
   | { kind: 'sensors'; raw: number | null; hex: number }
-  | { kind: 'uncertainty'; relative: number };
+  | { kind: 'uncertainty'; relative: number; interval?: number }
+  /** Added by the server from the HELIOS API: AI #3 chance of fire next week in the area. */
+  | { kind: 'forecast'; max: number; mean: number; typical: number };
 
 /** Rule-based findings, rendered by the client in the interface language. */
 export function ruleFindings(s: AreaSummary): Finding[] {
@@ -163,7 +168,7 @@ export function ruleFindings(s: AreaSummary): Finding[] {
     out.push({ kind: 'noise', removedShare: round(removed / s.totals.detectionsConsidered, 3), staticCells: s.totals.staticCells });
   }
   out.push({ kind: 'sensors', raw: s.sensors.rawViirsToModis, hex: s.sensors.hexViirsToModis });
-  out.push({ kind: 'uncertainty', relative: s.relativeUncertainty });
+  out.push({ kind: 'uncertainty', relative: s.relativeUncertainty, interval: s.interval });
   return out;
 }
 

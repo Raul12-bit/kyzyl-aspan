@@ -32,7 +32,9 @@ export class HttpDataSource implements DataSource {
   ) {}
 
   private async get<T>(path: string, params: Record<string, string>, guard: (v: unknown) => v is T, options?: RequestOptions): Promise<T> {
-    const url = new URL(`${this.baseUrl.replace(/\/$/, '')}/${path}`);
+    // Relative bases ("/v1") resolve against the page origin, so one-origin deployments need no CORS.
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    const url = new URL(`${this.baseUrl.replace(/\/$/, '')}/${path}`, origin);
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
     const timeout = AbortSignal.timeout(this.timeoutMs);
     const signal = options?.signal ? AbortSignal.any([options.signal, timeout]) : timeout;

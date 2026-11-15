@@ -4,10 +4,12 @@ import type { BBox } from '@/data/types';
 import type { FireArchive } from '@/domain/archive';
 import { nearestCountry } from '@/domain/countries';
 import { loadCountries } from '@/features/geo/countries';
+import { HeliosSync } from '@/features/helios/HeliosSync';
 import { introSelectors } from '@/features/intro/introMachine';
 import { useIntroStore, WORLD_BOUNDS } from '@/features/intro/introStore';
 import { useReveal } from '@/features/intro/useReveal';
 import { Tour } from '@/features/onboarding/Tour';
+import { WorldSync } from '@/features/world/WorldSync';
 import { useI18n } from '@/i18n';
 import { BREAKPOINTS, useMediaQuery } from '@/lib/useMediaQuery';
 import { Banner, cn, Icon, IconButton, Panel, Segmented, Sheet, Spinner, type SheetSnap } from '@/ui';
@@ -241,6 +243,15 @@ export function MapScreen() {
     [setArea],
   );
 
+  // Click on a region (admin-1) of the shaded map → select that region.
+  const onPickRegion = useCallback(
+    (id: string, box: BBox) => {
+      setArea(box, id);
+      flyToArea(box);
+    },
+    [setArea],
+  );
+
   // Landing from the intro on the visitor's country: make it the selected area (once).
   const landed = useRef(false);
   useEffect(() => {
@@ -256,7 +267,9 @@ export function MapScreen() {
   return (
     <>
       <MapSync index={fires.index} archive={fires.archive} />
-      <MapHover onPickCountry={onPickCountry} />
+      <HeliosSync />
+      <WorldSync />
+      <MapHover onPickCountry={onPickCountry} onPickRegion={onPickRegion} />
       <main id="main" className="pointer-events-none fixed inset-0" style={{ zIndex: 'var(--el-z-ui)' as unknown as number }}>
         <h1 className="sr-only">
           {m.app.name} — {m.app.nav.map}
