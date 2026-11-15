@@ -71,6 +71,11 @@
   --el-band: rgb(238 233 224 / 0.12);
   --el-anomaly: #f37021;
 
+  /* ---------- satellite links (globe, AI #2 lab, system diagram) ---------- */
+  --el-link-laser: #ffb24a; /* optical: inter-satellite and relay */
+  --el-link-rf: #5ee6c6; /* Ka/X-band downlink to a station */
+  --el-link-radio: #7cb7ff; /* backup S-band radio: alerts only */
+
   /* ---------- heat ramp (sequential, √ scale): embers → orange → amber ---------- */
   --el-ramp-0: #1a1716;
   --el-ramp-1: #3b150b;
@@ -101,11 +106,6 @@
 
   /* ---------- hero / globe ---------- */
   --el-hero-glow: radial-gradient(50% 50% at 50% 50%, rgb(110 150 220 / 0.13), rgb(110 150 220 / 0.04) 45%, transparent 70%);
-  /* Night palette for the mission band (kept separate so the band can differ from the page). */
-  --el-night: #0a0a0b;
-  --el-night-ink: #eee9e0;
-  --el-night-muted: #aaa398;
-  --el-night-line: rgb(255 245 230 / 0.12);
 }
 
 :root {

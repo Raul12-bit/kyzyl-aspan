@@ -68,7 +68,7 @@ function Compare({
 
 /* ------------------------------------------------------------------ 04 · real models */
 
-function ModelsSection() {
+export function ModelsSection() {
   const { m, fmt } = useI18n();
   const t = m.helios.mission.models;
   const mission = useHeliosMission();
@@ -237,7 +237,7 @@ function marginColor(db: number) {
   return 'var(--el-kyzyl)';
 }
 
-function PhysicsSection() {
+export function PhysicsSection() {
   const { m, fmt } = useI18n();
   const t = m.helios.mission.physics;
   const [flarePos, setFlarePos] = useState(40);
@@ -394,7 +394,7 @@ const STRATEGY_ORDER = [
   'D2_plus_geo_relay_76E',
 ] as const;
 
-function DeliverySection() {
+export function DeliverySection() {
   const { m, fmt } = useI18n();
   const t = m.helios.mission.delivery;
   const mission = useHeliosMission();

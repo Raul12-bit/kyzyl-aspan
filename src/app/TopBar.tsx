@@ -15,7 +15,7 @@ function NavItems({ onNavigate, vertical }: { onNavigate?: () => void; vertical?
   const { search, pathname } = useLocation();
   const items = [
     { to: '/map', label: m.app.nav.map, icon: 'map' as const },
-    { to: '/mission', label: m.app.nav.mission, icon: 'satellite' as const },
+    { to: '/ai', label: m.app.nav.ai, icon: 'sparkles' as const },
     { to: '/method', label: m.app.nav.method, icon: 'help' as const },
   ];
   return (

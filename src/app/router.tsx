@@ -14,9 +14,11 @@ export const router = createBrowserRouter(
         { index: true, element: <LandingPage /> },
         { path: 'map', element: <LazyMapScreen /> },
         {
-          path: 'mission',
-          lazy: async () => ({ Component: (await import('@/features/mission/MissionPage')).MissionPage }),
+          path: 'ai',
+          lazy: async () => ({ Component: (await import('@/features/ai-lab/AiLabPage')).AiLabPage }),
         },
+        // The space-segment concepts now live in the AI lab, next to the AI they belong to.
+        { path: 'mission', element: <Redirect to="/ai" /> },
         {
           path: 'method',
           lazy: async () => ({ Component: (await import('@/features/method/MethodPage')).MethodPage }),

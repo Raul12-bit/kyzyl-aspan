@@ -53,3 +53,55 @@ export function parseAnalyzeRequest(body: unknown): { ok: true; value: AnalyzeRe
   }
   return { ok: true, value: { summary: s as unknown as AreaSummary, locale: locale as AnalyzeRequest['locale'] } };
 }
+
+/* ------------------------------------------------------------------ AI #3 ground forecast */
+
+export interface GroundRequest {
+  lat: number;
+  lng: number;
+  fuel: 'grass' | 'forest';
+  /** Overrides of the synthetic weather at the point (all optional). */
+  weather: Partial<Record<'windKmh' | 'windFromDeg' | 'tempC' | 'rh' | 'drought' | 'rain24h', number>>;
+  hours: number[];
+  localHour: number | null;
+}
+
+/** Allowed ranges of the weather overrides (physical limits, not forecasts). */
+const WEATHER_RANGE: Record<keyof GroundRequest['weather'], [number, number]> = {
+  windKmh: [0, 150],
+  windFromDeg: [0, 360],
+  tempC: [-40, 55],
+  rh: [1, 100],
+  drought: [0, 10],
+  rain24h: [0, 500],
+};
+
+/** Validates POST /api/ai/ground/forecast. Unknown keys are rejected so typos never pass silently. */
+export function parseGroundRequest(body: unknown): { ok: true; value: GroundRequest } | { ok: false; error: string } {
+  if (!isObj(body)) return { ok: false, error: 'Body must be a JSON object' };
+  const allowed = new Set(['lat', 'lng', 'fuel', 'weather', 'hours', 'localHour']);
+  const unknown = Object.keys(body).find((k) => !allowed.has(k));
+  if (unknown) return { ok: false, error: `Unknown field: ${unknown.slice(0, 40)}` };
+  const { lat, lng } = body;
+  if (!isNum(lat) || lat < -90 || lat > 90) return { ok: false, error: 'lat must be a number within ±90' };
+  if (!isNum(lng) || lng < -180 || lng > 180) return { ok: false, error: 'lng must be a number within ±180' };
+  const fuel = body.fuel ?? 'grass';
+  if (fuel !== 'grass' && fuel !== 'forest') return { ok: false, error: 'fuel must be "grass" or "forest"' };
+  const weather: GroundRequest['weather'] = {};
+  if (body.weather !== undefined) {
+    if (!isObj(body.weather)) return { ok: false, error: 'weather must be an object' };
+    for (const [k, v] of Object.entries(body.weather)) {
+      const range = WEATHER_RANGE[k as keyof GroundRequest['weather']];
+      if (!range) return { ok: false, error: `Unknown weather field: ${k.slice(0, 40)}` };
+      if (!isNum(v) || v < range[0] || v > range[1]) return { ok: false, error: `weather.${k} must be within ${range[0]}…${range[1]}` };
+      weather[k as keyof GroundRequest['weather']] = v;
+    }
+  }
+  const hours = body.hours ?? [6, 12, 24];
+  if (!Array.isArray(hours) || hours.length === 0 || hours.length > 6 || !hours.every((h) => isNum(h) && Number.isInteger(h) && h >= 1 && h <= 72)) {
+    return { ok: false, error: 'hours must be 1–6 whole numbers within 1…72' };
+  }
+  const localHour = body.localHour ?? null;
+  if (!(localHour === null || (isNum(localHour) && localHour >= 0 && localHour < 24))) return { ok: false, error: 'localHour must be within 0…24' };
+  return { ok: true, value: { lat, lng, fuel, weather, hours: hours as number[], localHour } };
+}
