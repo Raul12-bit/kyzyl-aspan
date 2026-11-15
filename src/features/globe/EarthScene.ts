@@ -235,7 +235,8 @@ const fireVertex = /* glsl */ `
     // Fade points near the limb so the planet's edge stays clean.
     vec3 nView = normalize(mat3(modelViewMatrix) * normalize(position));
     vFacing = smoothstep(0.05, 0.35, dot(nView, normalize(-mv.xyz)));
-    gl_PointSize = (6.0 + aWeight * 9.0) * uScale * uFade / -mv.z;
+    // Small, crisp hexagons: a fire field, not a quilt (≈3–8 px on a laptop screen).
+    gl_PointSize = (2.6 + aWeight * 4.8) * uScale * uFade / -mv.z;
     gl_Position = projectionMatrix * mv;
   }
 `;

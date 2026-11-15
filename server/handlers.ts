@@ -8,6 +8,10 @@
  *   GET  /api/ai/status           → the three AIs (registry), where each runs, Gemini / HELIOS availability
  *   POST /api/ai/ground/forecast  → AI #3: weather overlay + fire-spread forecast for one ignition point
  *   GET  /api/ai/ground/delays    → AI #3: age of each satellite stream's data on arrival (?storm=&kp=)
+ *   GET  /api/live/fires|tle|weather → real-time NASA FIRMS hot spots, CelesTrak orbits, Open-Meteo wind (server/live.ts)
+ *   POST /api/ai/chat             → the in-app AI guide: { messages, locale, page?, facts? } → { source, text } (server/assistant.ts)
+ *   POST /api/ai/link/predict     → run the trained AI #2 network on a situation set up by the visitor
+ *   POST /api/ai/replay           → one real FIRMS fire played through AI #1 → AI #2 → AI #3 (server/replay.ts)
  *
  * Node built-ins only. Its one job is to keep the Gemini key off the client and to put a validated,
  * rate-limited, size-limited door in front of the model.
@@ -17,7 +21,10 @@ import { forecastSpread, syntheticWeather, trackDelays } from '../src/domain/ai/
 import { AI_FLOWS, AI_SYSTEMS } from '../src/domain/ai/registry';
 import { STATIONS } from '../src/domain/downlink';
 import { ruleFindings, type AreaSummary, type Finding } from '../src/domain/summary';
+import { answerChat, parseChatRequest, parseLinkProbe, probeLink } from './assistant';
+import { parseReplay, replay } from './replay';
 import { config } from './config';
+import { handleLive } from './live';
 import { analyzeWithGemini, GeminiError, type BriefMode } from './gemini';
 import { parseAnalyzeRequest, parseGroundRequest } from './validate';
 
@@ -114,7 +121,7 @@ setInterval(() => {
   for (const [ip, e] of hits) if (e.reset <= now) hits.delete(ip);
 }, 60_000).unref();
 
-function readJson(req: IncomingMessage): Promise<unknown> {
+function readJson(req: IncomingMessage, maxBody = MAX_BODY): Promise<unknown> {
   return new Promise((resolveBody, reject) => {
     let size = 0;
     let tooLarge = false;
@@ -122,7 +129,7 @@ function readJson(req: IncomingMessage): Promise<unknown> {
     req.on('data', (chunk: Buffer) => {
       if (tooLarge) return;
       size += chunk.length;
-      if (size > MAX_BODY) {
+      if (size > maxBody) {
         // Stop buffering and answer 413; the socket is closed once the answer is out (see sendBodyError).
         tooLarge = true;
         chunks.length = 0;
@@ -274,6 +281,69 @@ async function groundForecast(req: IncomingMessage, res: ServerResponse) {
   send(res, 200, { source: 'ground-server', computedMs, weather, forecast });
 }
 
+/** Reads, validates and rate-limits a JSON POST; null when an answer has already been sent. */
+async function jsonBody(
+  req: IncomingMessage,
+  res: ServerResponse,
+  key: string,
+  limit: number,
+  maxBody = MAX_BODY,
+): Promise<unknown | null> {
+  if (!(req.headers['content-type'] ?? '').includes('application/json')) {
+    send(res, 415, { error: 'Content-Type must be application/json' });
+    return null;
+  }
+  const retry = rateLimited(`${key}:${clientIp(req)}`, limit);
+  if (retry !== null) {
+    send(res, 429, { error: 'Too many requests' }, { 'retry-after': String(retry) });
+    return null;
+  }
+  try {
+    return await readJson(req, maxBody);
+  } catch (err) {
+    sendBodyError(req, res, err);
+    return null;
+  }
+}
+
+async function replayFire(req: IncomingMessage, res: ServerResponse) {
+  // A fire's detections (≤ 400 rows of 12 numbers) need more room than a chat message.
+  const body = await jsonBody(req, res, 'replay', config.chatRateLimitPerMinute, 96 * 1024);
+  if (body === null) return;
+  const parsed = parseReplay(body);
+  if (!parsed.ok) {
+    send(res, 422, { error: parsed.error });
+    return;
+  }
+  const t0 = performance.now();
+  const out = await replay(parsed.value);
+  send(res, 200, { source: 'replay', computedMs: Math.round(performance.now() - t0), ...out });
+}
+
+async function chat(req: IncomingMessage, res: ServerResponse) {
+  const body = await jsonBody(req, res, 'chat', config.chatRateLimitPerMinute);
+  if (body === null) return;
+  const parsed = parseChatRequest(body);
+  if (!parsed.ok) {
+    send(res, 422, { error: parsed.error });
+    return;
+  }
+  send(res, 200, await answerChat(parsed.value));
+}
+
+async function linkPredict(req: IncomingMessage, res: ServerResponse) {
+  const body = await jsonBody(req, res, 'link', config.groundRateLimitPerMinute);
+  if (body === null) return;
+  const parsed = parseLinkProbe(body);
+  if (!parsed.ok) {
+    send(res, 422, { error: parsed.error });
+    return;
+  }
+  const t0 = performance.now();
+  const out = probeLink(parsed.value);
+  send(res, 200, { source: 'ai2-network', computedMs: Math.round((performance.now() - t0) * 1000) / 1000, input: parsed.value, ...out });
+}
+
 function groundDelays(req: IncomingMessage, res: ServerResponse) {
   const url = new URL(req.url ?? '/', 'http://localhost');
   const storm = url.searchParams.get('storm') || null;
@@ -324,6 +394,20 @@ export function handleApi(req: IncomingMessage, res: ServerResponse): boolean {
     } catch (err) {
       fail('ground delays failed')(err);
     }
+  } else if (path === '/api/ai/chat') {
+    if (req.method !== 'POST') send(res, 405, { error: 'Method not allowed' }, { allow: 'POST' });
+    else chat(req, res).catch(fail('chat failed'));
+  } else if (path === '/api/ai/replay') {
+    if (req.method !== 'POST') send(res, 405, { error: 'Method not allowed' }, { allow: 'POST' });
+    else replayFire(req, res).catch(fail('replay failed'));
+  } else if (path === '/api/ai/link/predict') {
+    if (req.method !== 'POST') send(res, 405, { error: 'Method not allowed' }, { allow: 'POST' });
+    else linkPredict(req, res).catch(fail('link predict failed'));
+  } else if (path.startsWith('/api/live/')) {
+    // Cached at the CDN and in memory; the limit only stops a client from hammering NASA through us.
+    const retry = rateLimited(`live:${clientIp(req)}`, 120);
+    if (retry !== null) send(res, 429, { error: 'Too many requests' }, { 'retry-after': String(retry) });
+    else handleLive(req, res, send);
   } else {
     send(res, 404, { error: 'Unknown endpoint' });
   }

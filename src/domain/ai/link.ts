@@ -1,11 +1,11 @@
 import { LINK, rainAttenuationDb, STATIONS, syntheticForecast, type GroundStation } from '../downlink';
 import {
   EARTH_RADIUS_KM,
-  elevationDeg,
+  elevationFromEcef,
   FLEET,
   geoToEcef,
   positionEcef,
-  subSatellitePoint,
+  toGeo,
   type GeoPoint,
   type Satellite,
   type Vec3,
@@ -15,8 +15,8 @@ import {
  * AI #2 — the satellite's link manager (runs on board, every 30 s).
  *
  * 1. Orbit calculation: propagates its own orbit and its neighbours' (orbit.ts, circular two-body
- *    orbits) to know which ground stations, GEO laser relays and neighbouring satellites are in view —
- *    now and for the next minutes.
+ *    orbits — or, live, SGP4 from today's CelesTrak elements through `propagator`) to know which ground
+ *    stations, GEO laser relays and neighbouring satellites are in view — now and for the next minutes.
  * 2. Loss-of-signal prediction: for every link, the time until the geometry breaks (deterministic) and
  *    the chance that weather or space weather breaks it first (rain fade from the station forecast,
  *    laser pointing loss, ionospheric scintillation on the backup radio during a geomagnetic storm).
@@ -94,6 +94,11 @@ export interface SimOptions {
   alertsAtMin?: number[];
   weatherSeed?: number;
   policy: 'ai' | 'reactive';
+  /**
+   * Real positions: Earth-fixed km of satellite `id` at `tSec` (same clock as `startSec`). Null for a satellite
+   * it does not know, which then keeps its circular orbit.
+   */
+  propagator?: (id: string, tSec: number) => Vec3 | null;
 }
 
 export interface StepRecord {
@@ -187,7 +192,14 @@ function stepsLeft(up: Uint8Array): Int16Array {
   return left;
 }
 
-function computeGeometry(sat: Satellite, start: number, n: number): Geometry {
+type Propagator = SimOptions['propagator'];
+
+/** Earth-fixed position of a satellite: the real one when the propagator knows it, else the circular orbit. */
+export function fleetPosition(s: Satellite, t: number, propagator?: Propagator): Vec3 {
+  return propagator?.(s.id, t) ?? positionEcef(s, t);
+}
+
+function computeGeometry(sat: Satellite, start: number, n: number, propagator?: Propagator): Geometry {
   const neighbours = FLEET.filter((s) => s.id !== sat.id);
   const relayPos = RELAYS.map(relayPosition);
   const elevation = STATIONS.map(() => new Float32Array(n));
@@ -198,16 +210,16 @@ function computeGeometry(sat: Satellite, start: number, n: number): Geometry {
   const sub: GeoPoint[] = [];
   for (let k = 0; k < n; k++) {
     const t = start + k * STEP_SEC;
-    const p = positionEcef(sat, t);
-    sub.push(subSatellitePoint(sat, t));
+    const p = fleetPosition(sat, t, propagator);
+    sub.push(toGeo(p));
     STATIONS.forEach((st, i) => {
-      const e = elevationDeg(sat, t, st.location);
+      const e = elevationFromEcef(p, st.location);
       elevation[i]![k] = e;
       stationUp[i]![k] = e >= LINK.minElevationDeg ? 1 : 0;
     });
     relayPos.forEach((r, i) => (relayUp[i]![k] = lineOfSight(p, r) ? 1 : 0));
     neighbours.forEach((o, i) => {
-      const q = positionEcef(o, t);
+      const q = fleetPosition(o, t, propagator);
       const los = lineOfSight(p, q);
       const d = distanceKm(p, q);
       laserUp[i]![k] = los && d <= TERMINALS.laserNeighbourKm ? 1 : 0;
@@ -397,7 +409,7 @@ export function simulateLinks(opts: SimOptions): SimResult {
   const seed = opts.weatherSeed ?? 1;
   const storm = opts.stormStation ?? null;
   const kp = opts.kp ?? 2;
-  const g = computeGeometry(sat, start, n);
+  const g = computeGeometry(sat, start, n, opts.propagator);
   const genMB = (TERMINALS.generateMbps[sat.sensor] * STEP_SEC) / 8;
 
   // Alerts: the first pass over Kazakhstan (where AI #1 would see the steppe burning) + the visitor's.

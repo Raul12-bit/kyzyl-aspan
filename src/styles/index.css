@@ -495,3 +495,107 @@
     animation: el-rise-in 260ms var(--el-ease-emphasized) both;
   }
 }
+
+/* ------------------------------------------------------------------ live hot spots chip (map) */
+@layer components {
+  .map-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 28px;
+    padding: 0 12px 0 10px;
+    border: 1px solid var(--el-gold-line);
+    border-radius: var(--el-radius-pill);
+    background: var(--el-panel);
+    backdrop-filter: blur(var(--el-blur-glass));
+    -webkit-backdrop-filter: blur(var(--el-blur-glass));
+    color: var(--el-ink);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition:
+      opacity var(--el-dur-base) var(--el-ease-standard),
+      border-color var(--el-dur-base) var(--el-ease-standard);
+  }
+  .map-live b {
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .map-live[aria-pressed='false'] {
+    border-color: var(--el-line-strong);
+    color: var(--el-ink-dim);
+  }
+  .map-live:focus-visible {
+    outline: none;
+    box-shadow: var(--el-focus-ring);
+  }
+  .map-live__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--el-gold);
+    animation: map-live-ping 1.6s ease-out infinite;
+  }
+  .map-live[aria-pressed='false'] .map-live__dot {
+    background: var(--el-ink-dim);
+    animation: none;
+  }
+  .map-live__age {
+    color: var(--el-ink-dim);
+  }
+  @keyframes map-live-ping {
+    0% {
+      box-shadow: 0 0 0 0 rgb(243 112 33 / 0.6);
+    }
+    100% {
+      box-shadow: 0 0 0 7px rgb(243 112 33 / 0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .map-live__dot {
+      animation: none;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ AI guide button (header) */
+.ask-ai {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--el-gold-line);
+  border-radius: 999px;
+  background: var(--el-gold-bg);
+  color: var(--el-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    border-color var(--el-dur-base) var(--el-ease-standard),
+    background var(--el-dur-base) var(--el-ease-standard);
+}
+.ask-ai svg {
+  color: var(--el-gold-soft);
+}
+.ask-ai:hover,
+.ask-ai[aria-pressed='true'] {
+  border-color: var(--el-gold);
+  background: rgb(243 112 33 / 0.2);
+}
+.ask-ai:focus-visible {
+  outline: none;
+  box-shadow: var(--el-focus-ring);
+}
+@media (max-width: 640px) {
+  .ask-ai {
+    width: 34px;
+    padding: 0;
+    justify-content: center;
+  }
+  .ask-ai__text {
+    display: none;
+  }
+}

@@ -191,6 +191,104 @@ export function setHexVisible(map: MLMap, visible: boolean) {
   }
 }
 
+/* ------------------------------------------------------------------ live hot spots (NASA FIRMS, last 24 h) */
+
+/** Properties of a live feature: detections, FRP and hours since the latest one. */
+export interface LiveProperties {
+  n: number;
+  frp: number;
+  age: number;
+}
+
+/** Fresh = brightest: < 3 h amber, < 12 h orange, older embers. */
+function liveColor(): ExpressionSpecification {
+  const ramp = rampColors();
+  return ['step', ['get', 'age'], ramp[6]!, 3, ramp[5]!, 12, ramp[3]!];
+}
+
+/**
+ * Real-time layer on top of the archive: the world's last 24 h on a 0.5° grid (soft glow sized by detections,
+ * a small hexagon at the centre) and every single hot spot over Central Asia. Labels stay above.
+ */
+export function addLiveLayers(map: MLMap) {
+  if (map.getSource(SOURCES.liveCells)) return;
+  ensureHexImage(map);
+  const before = firstSymbolLayer(map);
+  const color = liveColor();
+  map.addSource(SOURCES.liveCells, { type: 'geojson', data: EMPTY });
+  map.addSource(SOURCES.livePoints, { type: 'geojson', data: EMPTY });
+  map.addLayer(
+    {
+      id: LAYERS.liveCellGlow,
+      type: 'circle',
+      source: SOURCES.liveCells,
+      paint: {
+        'circle-color': color,
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 1, ['+', 1.5, ['*', 0.7, ['sqrt', ['get', 'n']]]], 4, ['+', 3, ['*', 1.3, ['sqrt', ['get', 'n']]]], 8, ['+', 18, ['*', 2.5, ['sqrt', ['get', 'n']]]]],
+        'circle-blur': 1,
+        'circle-opacity': ['step', ['get', 'age'], 0.55, 3, 0.4, 12, 0.25],
+      },
+    },
+    before,
+  );
+  map.addLayer(
+    {
+      id: LAYERS.liveCellCore,
+      type: 'symbol',
+      source: SOURCES.liveCells,
+      layout: {
+        'icon-image': HEX_IMAGE,
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 1, 0.12, 4, 0.17, 8, 0.24],
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+      paint: { 'icon-color': color },
+    },
+    before,
+  );
+  map.addLayer(
+    {
+      id: LAYERS.livePointGlow,
+      type: 'circle',
+      source: SOURCES.livePoints,
+      filter: ['<', ['get', 'age'], 6],
+      paint: {
+        'circle-color': color,
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 2.5, 6, 6, 10, 12],
+        'circle-blur': 1,
+        'circle-opacity': 0.5,
+      },
+    },
+    before,
+  );
+  map.addLayer(
+    {
+      id: LAYERS.livePointCore,
+      type: 'symbol',
+      source: SOURCES.livePoints,
+      layout: {
+        'icon-image': HEX_IMAGE,
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.1, 6, 0.18, 10, 0.32],
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+      paint: { 'icon-color': color },
+    },
+    before,
+  );
+}
+
+export function setLiveData(map: MLMap, cells: FeatureCollection<Point, LiveProperties>, points: FeatureCollection<Point, LiveProperties>) {
+  (map.getSource(SOURCES.liveCells) as GeoJSONSource | undefined)?.setData(cells);
+  (map.getSource(SOURCES.livePoints) as GeoJSONSource | undefined)?.setData(points);
+}
+
+export function setLiveVisible(map: MLMap, visible: boolean) {
+  for (const id of [LAYERS.liveCellGlow, LAYERS.liveCellCore, LAYERS.livePointGlow, LAYERS.livePointCore]) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
+  }
+}
+
 /* ------------------------------------------------------------------ area of interest */
 
 function selectionPaint() {

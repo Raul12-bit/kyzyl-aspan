@@ -2,7 +2,8 @@
  * Prepares a prebuilt Vercel deployment (Build Output API v3) in .vercel/output:
  *
  *   static/                       ← dist/ from `pnpm build` (the site)
- *   functions/api/<path>.func/    ← server/handlers.ts bundled for Node: the Gemini brief and the AI #3 endpoints
+ *   functions/api/<path>.func/    ← server/handlers.ts bundled for Node: the Gemini brief, the AI #3 endpoints and
+ *                                   the real-time feeds /api/live/{fires,tle,weather} (FIRMS, CelesTrak, Open-Meteo)
  *   functions/v1/helios/{status,constellation}.func/
  *                                 ← server/heliosLite.ts: the five real satellites computed in TypeScript
  *                                   (SGP4, ITU-R link margins, Open-Meteo, AI #2) — the landing globe's live part
@@ -91,8 +92,25 @@ function addFunction(path, file) {
 
 const api = await bundle('vercel-entry.ts', 'api');
 const helios = await bundle('vercel-helios-entry.ts', 'helios');
-const ENDPOINTS = ['api/health', 'api/ai/analyze', 'api/ai/status', 'api/ai/ground/forecast', 'api/ai/ground/delays'];
+const ENDPOINTS = [
+  'api/health',
+  'api/ai/analyze',
+  'api/ai/status',
+  'api/ai/ground/forecast',
+  'api/ai/ground/delays',
+  // The in-app AI guide (Gemini + fact sheet) and the AI #2 network run on demand (server/assistant.ts).
+  'api/ai/chat',
+  'api/ai/link/predict',
+  // A real FIRMS fire played through the three AIs; AI #1 reads its 26-year table next to the function.
+  'api/ai/replay',
+  // Real-time feeds (server/live.ts): NASA FIRMS hot spots, CelesTrak orbits, Open-Meteo wind.
+  'api/live/fires',
+  'api/live/tle',
+  'api/live/weather',
+];
 for (const endpoint of ENDPOINTS) addFunction(endpoint, api);
+// AI #1's onboard history table (2.2 MB): only the replay function reads it, from its own directory.
+cpSync(join(root, 'artifacts', 'models', 'onboard_history.bin'), join(out, 'functions', 'api/ai/replay.func', 'onboard_history.bin'));
 for (const endpoint of ['v1/helios/status', 'v1/helios/constellation']) addFunction(endpoint, helios);
 ENDPOINTS.push('v1/helios/status', 'v1/helios/constellation');
 rmSync(join(out, '.tmp'), { recursive: true, force: true });

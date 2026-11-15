@@ -22,12 +22,18 @@ export const SOURCES = {
   VIIRS: 'el-fires-viirs',
   aoi: 'el-aoi',
   hex: 'el-hex',
+  liveCells: 'el-live-cells',
+  livePoints: 'el-live-points',
 } as const;
 
 export const LAYERS = {
   aoiFill: 'el-aoi-fill',
   aoiLine: 'el-aoi-line',
   hexFill: 'el-hex-fill',
+  liveCellGlow: 'el-live-cell-glow',
+  liveCellCore: 'el-live-cell-core',
+  livePointGlow: 'el-live-point-glow',
+  livePointCore: 'el-live-point-core',
   MODIS: {
     cluster: 'el-modis-cluster',
     point: 'el-modis-point',

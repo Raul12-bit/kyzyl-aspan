@@ -12,6 +12,7 @@ import { useArchive } from '@/features/map/useFireData';
 import { Meter } from '@/features/mission/Section';
 import { useI18n } from '@/i18n';
 import { Card, Segmented, SensorMark, Skeleton } from '@/ui';
+import { LiveFusion } from './LiveFusion';
 
 type AreaId = 'KZ' | 'world';
 const AREAS: Record<AreaId, { bbox: BBox; regionId: string | null }> = {
@@ -153,6 +154,8 @@ export default function FusionTab() {
           </div>
         </Card>
       </div>
+
+      <LiveFusion />
 
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-[12px] text-ink-dim">{t.area}</span>

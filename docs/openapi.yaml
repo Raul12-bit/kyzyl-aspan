@@ -231,6 +231,190 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
 
+  /api/ai/chat:
+    post:
+      summary: In-app AI guide — answers about the three AIs from the project's fact sheet (+ live page facts)
+      description: |
+        Gemini (fast model first) under fixed server-side instructions and a fact sheet built from
+        artifacts/reports/*.json; without a key or on a model error, an offline FAQ answers (HTTP 200).
+        20 requests/min/IP (AI_CHAT_RATE_LIMIT_PER_MIN), 32 kB body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messages, locale]
+              additionalProperties: false
+              properties:
+                messages:
+                  type: array
+                  minItems: 1
+                  maxItems: 12
+                  description: 'Conversation so far; the last item is the visitor''s question.'
+                  items:
+                    type: object
+                    required: [role, text]
+                    properties:
+                      role: { type: string, enum: [user, assistant] }
+                      text: { type: string, maxLength: 1200 }
+                locale: { type: string, enum: [en, ru, kk, es, fr, de, pt, zh] }
+                page: { type: string, maxLength: 80 }
+                facts: { type: array, maxItems: 8, items: { type: string, maxLength: 500 }, description: 'What the visitor''s page computed just now' }
+                ui: { type: string, maxLength: 600, description: 'Names of tabs and cards in the visitor''s language' }
+      responses:
+        '200':
+          description: An answer.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties: { source: { const: gemini }, model: { type: string }, text: { type: string } }
+                  - type: object
+                    properties:
+                      source: { const: facts }
+                      topic: { type: string }
+                      text: { type: string }
+                      reason: { type: string, enum: [not-configured, model-error] }
+        '415': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+  /api/ai/link/predict:
+    post:
+      summary: Run the trained AI #2 network (link-drop risk within 5 min) on a situation you set up
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [station, elDeg, rainMmH, kp, losMin]
+              additionalProperties: false
+              properties:
+                station: { type: string, enum: [SVALSAT, POKER_FLAT, TROLLSAT, MCMURDO] }
+                elDeg: { type: number, minimum: 5, maximum: 90 }
+                rainMmH: { type: number, minimum: 0, maximum: 60 }
+                kp: { type: number, minimum: 0, maximum: 9 }
+                losMin: { type: number, minimum: 1, maximum: 15, description: 'Minutes until the satellite sets' }
+      responses:
+        '200':
+          description: Risk per downlink band of the station, the reactive rule's verdict and AI #2's choice.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  source: { const: ai2-network }
+                  computedMs: { type: number }
+                  choice: { type: string, enum: [Ka, X] }
+                  bands:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        band: { type: string, enum: [Ka, X] }
+                        risk: { type: number, description: 'AI #2: network + physics guard' }
+                        network: { type: number }
+                        physics: { type: number }
+                        marginDb: { type: number }
+                        marginIn5MinDb: { type: number }
+                        rule: { type: string, enum: [drop, holds] }
+        '422': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+  /api/live/fires:
+    get:
+      summary: Real-time NASA FIRMS hot spots (MODIS Terra/Aqua, VIIRS Suomi NPP/NOAA-20/NOAA-21)
+      description: |
+        Near-real-time FIRMS files, fetched without a key and kept 10 minutes (CDN: s-maxage 600).
+        `kz` / `ca` return every detection in the box, `world` the last 24 h on a 0.5° grid.
+      parameters:
+        - { name: region, in: query, schema: { type: string, enum: [kz, ca, world], default: kz } }
+        - { name: hours, in: query, schema: { type: integer, enum: [24, 48, 168], default: 48 }, description: 'world: always 24' }
+      responses:
+        '200':
+          description: Live hot spots.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [region, hours, fetched, bbox, feeds]
+                properties:
+                  region: { type: string }
+                  hours: { type: integer }
+                  fetched: { type: string, format: date-time }
+                  bbox: { type: array, items: { type: number }, minItems: 4, maxItems: 4 }
+                  feeds:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key: { type: string, enum: [MODIS, SNPP, N20, N21] }
+                        ok: { type: boolean }
+                        rows: { type: integer }
+                        updated: { type: [string, 'null'], format: date-time, description: 'Last-Modified of the FIRMS file' }
+                  rows:
+                    description: '[lng, lat, sat (0 Terra, 1 Aqua, 2 Suomi NPP, 3 NOAA-20, 4 NOAA-21), unixSec, frpMW, conf 0|1|2, scanKm, trackKm, day 1|0], sorted by time'
+                    type: array
+                    items: { type: array, items: { type: number }, minItems: 9, maxItems: 9 }
+                  cells:
+                    description: '[lng, lat, detections, frpSum, sensors (1 MODIS | 2 VIIRS), lastUnixSec] — region=world only'
+                    type: array
+                    items: { type: array, items: { type: number }, minItems: 6, maxItems: 6 }
+        '422': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /api/live/tle:
+    get:
+      summary: Orbital elements of the five fire satellites (CelesTrak, snapshot fallback)
+      responses:
+        '200':
+          description: Two-line elements by CelesTrak name (TERRA, AQUA, SUOMI NPP, NOAA 20, NOAA 21).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fetched: { type: string, format: date-time }
+                  live: { type: boolean, description: 'false: some elements come from the snapshot' }
+                  tle: { type: object, additionalProperties: { type: array, items: { type: string }, minItems: 2, maxItems: 2 } }
+        '503': { $ref: '#/components/responses/Error' }
+  /api/live/weather:
+    get:
+      summary: Wind at the fires (Open-Meteo), current and hourly for the past 7 days
+      parameters:
+        - { name: pts, in: query, required: true, schema: { type: string }, description: '1–24 points "lat,lng;lat,lng" (rounded to 0.1°)' }
+      responses:
+        '200':
+          description: One entry per point.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fetched: { type: string, format: date-time }
+                  points:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        lat: { type: number }
+                        lng: { type: number }
+                        windKmh: { type: number }
+                        windFromDeg: { type: number, description: 'Direction the wind blows FROM, degrees' }
+                        tempC: { type: number }
+                        rh: { type: number }
+                        precipMm: { type: number }
+                        hourly:
+                          type: [object, 'null']
+                          properties:
+                            start: { type: integer, description: 'unix s of the first hour' }
+                            step: { type: integer, const: 3600 }
+                            windKmh: { type: array, items: { type: number } }
+                            windFromDeg: { type: array, items: { type: number } }
+        '422': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+
 components:
   parameters:
     BBox:

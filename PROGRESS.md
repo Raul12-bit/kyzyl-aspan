@@ -6,7 +6,7 @@ NASA Space Apps Challenge 2026 · *Harmonization of MODIS and VIIRS Hot Spots*.
 This file is the single place to see **what is done, what is mocked and what the backend has to build**.
 Update the status table whenever a stage moves.
 
-Last update: 2026-11-15 (review fixes: data provenance, demo briefing, period-exact AI brief, AI #3 frost bug, proof suite).
+Last update: 2026-11-15 (real time: live NASA FIRMS feed, Temporal Bridge, live MODIS × VIIRS cross-check, AI #2 on real orbits; finer hexagons; compact satellite caption).
 
 ---
 
@@ -25,6 +25,10 @@ Last update: 2026-11-15 (review fixes: data provenance, demo briefing, period-ex
 | 6c | **AI #3 · ground segment** (noise filter, weather overlay, spread forecast 6/12/24 h, signal-delay tracking) | ✅ | ✅ `server/` | `src/domain/ai/ground.ts`; `POST /api/ai/ground/forecast`, `GET /api/ai/ground/delays` (browser fallback with the same code); weather is SYNTHETIC; floods are not modelled |
 | 6d | **MODIS × VIIRS fusion** (event-level confirmation + series-level harmonization) | ✅ | ✅ HELIOS (series) | `src/domain/ai/fusion.ts` + `harmonize.ts`; lab tab `/ai#fusion` with live numbers; landing section explains the four steps |
 | 6e | **AI lab `/ai`** (replaces `/mission`, which redirects) + landing section “How our AI works” | ✅ | — | `src/features/ai-lab/`, `src/features/landing/AiSystem.tsx`; registry of the three AIs in `src/domain/ai/registry.ts` (also `GET /api/ai/status`) |
+| 6f | **Real time** — live NASA FIRMS hot spots (Terra, Aqua, NOAA-20, NOAA-21; Suomi NPP stopped), CelesTrak orbits, Open-Meteo wind | ✅ | ✅ `server/live.ts` | `GET /api/live/{fires,tle,weather}` (no keys, cached 10/360/15 min); map layer “LIVE · 24 h”, live fires on the landing globe, AI #2 lab on SGP4 orbits and the real clock |
+| 6g | **Temporal Bridge** (passes of four satellites → fire events → spread vector, speed, wind check) | ✅ | ✅ live | `src/domain/ai/temporal.ts`; lab tab `/ai#bridge` (pass timeline, map, events); vectors only above 2σ AND with the leading edge advancing; wind = hourly at the fire’s time |
+| 6i | **AI guide (chat) + “Run AI #2 yourself”** | ✅ | ✅ `server/assistant.ts` | Header button “Ask AI” on every page; Gemini answers from a fact sheet built from `artifacts/reports/*.json` plus live facts the open page publishes (AI #2 lab, Temporal Bridge, cross-check, map, satellites); offline FAQ fallback. `POST /api/ai/link/predict` runs the trained AI #2 network (1 249 weights) on a pass the visitor sets up, per band, vs the “margin < 2 dB” rule |
+| 6h | **MODIS × VIIRS live**: mutual confirmation with wind drift + spatial matching (MODIS 1 km FRP split over VIIRS 375 m pixels) | ✅ | ✅ live | `src/domain/ai/crosscheck.ts`, `fuseFootprints` in `fusion.ts`; “noise” = weak daytime hot spot another satellite flew over (SGP4 swath) within 4 h and missed |
 | 6a | **All countries + regions** (admin-1) and precise map | ✅ | ✅ HELIOS (world) | `src/features/world/`: view “Regions” (countries → regions choropleth), server hexagons, every pixel at its real size from zoom 7 |
 | 6b | **HELIOS AI layers** (forecast 1–4 weeks + Time Machine, alerts, flares, blind spots, spread, satellites) | ✅ | ✅ HELIOS | `src/features/helios/`; forecast covers every country |
 | 7 | 3D Earth intro, dive → soft veil → map | ✅ | — | three.js, lazy chunk, `src/features/globe/`; idle globe shows Terra only; with HELIOS the real constellation (Terra, Aqua, Suomi NPP + laser/radio links) plays. Even frame pacing, smooth trails, soft sun glint |
@@ -62,7 +66,7 @@ Without it the app falls back to the demo data. Add `?mock` to the URL to force 
 
 Production, one process: `pnpm build && pnpm start` (the API also serves `dist/` and proxies `/v1`).
 
-Checks: `pnpm typecheck` · `pnpm test` (149 tests) · `pnpm lint` · `pnpm build` ·
+Checks: `pnpm typecheck` · `pnpm test` (163 tests) · `pnpm lint` · `pnpm build` ·
 `pnpm verify:ai [base-url] [--write]` (27 black-box checks of a running site: pages and 404s, robots/sitemap,
 `/v1/helios/status`, AI #3 metamorphic physics over HTTP, the Gemini brief's mode and period, AI #1/#2 modules).
 
@@ -303,6 +307,24 @@ Backend tasks (original list — done in HELIOS for every country):
       small); consider reporting it on annual totals.
 
 ## 7. Change log
+
+- **2026-11-15 · Real time, Temporal Bridge, finer hexagons** — `server/live.ts`: `/api/live/fires` (NASA FIRMS NRT
+  CSVs: MODIS Terra/Aqua, VIIRS Suomi NPP/NOAA-20/NOAA-21; Kazakhstan / Central Asia rows or the world on a 0.5° grid),
+  `/api/live/tle` (CelesTrak), `/api/live/weather` (Open-Meteo, current + hourly past 7 days); bundled into Vercel
+  functions. New lab tab **Temporal bridge** (`/ai#bridge`): SGP4 passes of the five satellites over the region (past,
+  now, next 12 h), live hot spots by age, fire events linked across passes, spread vector (weighted least squares on
+  pass centres, VIIRS ≈7× the weight of MODIS) with front-advance check and the wind at the time. **MODIS × VIIRS**
+  tab: live mutual confirmation (wind-aware drift; glint = weak daytime miss) and pixel-level spatial matching. AI #2
+  lab runs on today’s orbits with a LIVE playhead. Map: live layer (59 k hot spots/24 h worldwide, every Central Asian
+  pixel) with a LIVE chip; archive hexagons ≈2.5× finer (9–24 px, res 7–8 when zoomed far in). Globe: live fires,
+  smaller hexagons. Landing: compact satellite caption (one line per satellite, details in tooltips, foldable), finer
+  illustration grid, Temporal Bridge teaser. `pnpm dev` now proxies `/v1` through `pnpm server` (live satellites
+  without Python). 14 new tests (`live.test.ts`).
+  **AI guide**: “Ask AI” in the header opens a chat (`src/features/assistant/`) that explains which AI does what, with the
+  real metrics and where to check them, answers about what the open page shows right now, and offers a “Run AI #2
+  yourself” card — the trained link-outage network evaluated per band for a pass the visitor sets up (TrollSat Ka in
+  5 mm/h rain: the rule says the link holds at 3 dB, AI #2 says ≈100 % and switches to X; the margin then falls to
+  −7 dB). Fix found on the way: the probe's margin-trend feature sign now matches training (now − 1 min ago).
 
 - **2026-11-15 · Review fixes before the defence** — after an external review of the public site:
   (1) “Synthetic demo data” badge on the map, the statistics and the charts; (2) on synthetic data the AI brief is a

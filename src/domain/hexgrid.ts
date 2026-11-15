@@ -96,10 +96,20 @@ export function gridInfo(res: number): GridInfo {
   return { res, areaKm2: getHexagonAreaAvg(res, UNITS.km2), edgeKm: getHexagonEdgeLengthAvg(res, UNITS.km) };
 }
 
+/** Finest grid the map draws: from zoom ~8 the cells are re-indexed from the detections themselves (res 7–8). */
+export const MAX_DISPLAY_RES = 8;
+
+/** Average H3 edge length per resolution, km (res 0…8). */
+const EDGE_KM = [1107.7, 418.7, 158.2, 59.8, 22.6, 8.54, 3.23, 1.22, 0.46];
+
 /**
- * Grid resolution for a web-mercator zoom, chosen so hexagons stay roughly 15–40 px wide:
- * each H3 level is ~2.6× finer, i.e. ~1.4 zoom levels.
+ * Grid resolution for a web-mercator zoom: the finest level whose cells are still ≥ `minPx` across at
+ * latitude `lat` (512-px tiles). Default ≈ 9–24 px per cell — small enough to read as a heat field rather
+ * than a quilt; each H3 level is ~2.65× finer, i.e. ~1.4 zoom levels.
  */
-export function resolutionForZoom(zoom: number): number {
-  return Math.max(MIN_RES, Math.min(BASE_RES, Math.floor((zoom - 1.8) / 1.4) + 2));
+export function resolutionForZoom(zoom: number, lat = 45, minPx = 9): number {
+  const kmPerPx = (78.27 * Math.cos((Math.min(80, Math.abs(lat)) * Math.PI) / 180)) / 2 ** zoom;
+  let res = MIN_RES;
+  for (let r = MIN_RES; r <= MAX_DISPLAY_RES; r++) if ((2 * EDGE_KM[r]!) / kmPerPx >= minPx) res = r;
+  return res;
 }

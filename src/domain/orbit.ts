@@ -108,7 +108,11 @@ export function groundDistanceKm(a: GeoPoint, b: GeoPoint): number {
 
 /** Elevation of the satellite above the local horizon of `site`, degrees. */
 export function elevationDeg(sat: Satellite, t: number, site: GeoPoint): number {
-  const s = positionEcef(sat, t);
+  return elevationFromEcef(positionEcef(sat, t), site);
+}
+
+/** Elevation of an Earth-fixed position (km) above the local horizon of `site`, degrees. */
+export function elevationFromEcef(s: Vec3, site: GeoPoint): number {
   const g = geoToEcef(site);
   const d = { x: s.x - g.x, y: s.y - g.y, z: s.z - g.z };
   const up = Math.hypot(g.x, g.y, g.z);

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useOverview } from '@/data/queries';
 import { useCountries } from '@/features/geo/countries';
 import { useConstellation, useHeliosLive, type ConstellationResponse, type ConstellationScenario } from '@/features/helios/api';
+import { useLiveFires } from '@/features/live/api';
 import { prefersReducedMotion, useIntroStore } from '@/features/intro/introStore';
 import { TIMELINE } from '@/features/intro/transition.config';
 import { useI18n } from '@/i18n';
@@ -154,9 +155,24 @@ export default function GlobeCanvas({ onPick, onHover, facingRef, onReady, onErr
     if (countries.data) sceneRef.current?.setCountries(countries.data.countries);
   }, [countries.data]);
 
+  // Real fires when the live feed answers (NASA FIRMS, last 24 h, 0.5° cells); the archive overview otherwise.
+  const liveFires = useLiveFires('world', 24);
+  const liveCells = liveFires.data?.cells;
+  const livePoints = useMemo(() => {
+    if (!liveCells?.length) return null;
+    let max = 1;
+    let total = 0;
+    for (const c of liveCells) {
+      if (c[2] > max) max = c[2];
+      total += c[2];
+    }
+    const k = Math.log1p(max);
+    return { total, points: liveCells.map((c) => [c[0], c[1], Math.min(1, Math.log1p(c[2]) / k)] as [number, number, number]) };
+  }, [liveCells]);
   useEffect(() => {
-    if (overview.data) sceneRef.current?.setFires(overview.data.points);
-  }, [overview.data]);
+    if (livePoints) sceneRef.current?.setFires(livePoints.points);
+    else if (overview.data) sceneRef.current?.setFires(overview.data.points);
+  }, [livePoints, overview.data]);
 
   useEffect(() => {
     sceneRef.current?.setFrame({ x: 0, y: 0, size });
@@ -186,7 +202,7 @@ export default function GlobeCanvas({ onPick, onHover, facingRef, onReady, onErr
     else if (lastOn === 'db') scene.focusOn(ASTANA.lat, ASTANA.lon);
   }, [altData, base.data, lastOn]);
 
-  const detections = overview.data && !overview.data.synthetic ? overview.data.detections : undefined;
+  const detections = livePoints ? livePoints.total : overview.data && !overview.data.synthetic ? overview.data.detections : undefined;
   const hasPass = useMemo(() => !!live && nextRegionPass(live, 0) !== null, [live]);
 
   // Judges' button: jump a few steps before the next pass over Kazakhstan and turn the planet to it.

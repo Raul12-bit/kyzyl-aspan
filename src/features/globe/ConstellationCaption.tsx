@@ -1,4 +1,5 @@
-import { useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { publishFact } from '@/features/assistant/assistantStore';
 import { ACTION, type ConstellationResponse, type DeliveryPath, type DropReason } from '@/features/helios/api';
 import { useI18n } from '@/i18n';
 import { satLabel, shortStation } from './constellationText';
@@ -24,11 +25,28 @@ export interface ConstellationCaptionProps {
   onNextPass?: () => void;
 }
 
+const COLLAPSE_KEY = 'kyzylaspan.liveCollapsed';
+
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeCollapsed(v: boolean) {
+  try {
+    localStorage.setItem(COLLAPSE_KEY, v ? '1' : '0');
+  } catch {
+    /* storage unavailable — the panel just forgets */
+  }
+}
+
 /**
- * What each of the five real satellites is doing at this moment of the playback, worked out on the ground
- * from orbits, link physics and the weather forecast over the antennas (no satellite is changed): its link
- * and when that link will end, when data taken now will be on the ground, and which pass brings the news of
- * a fire in Kazakhstan first.
+ * The five real satellites at this moment of the playback, one line each: the link it is on (or what it holds on
+ * board) and when data taken now reach the ground. The long explanations live in each row's tooltip, so the panel
+ * stays small next to the planet; it also folds down to its title line.
  */
 export function ConstellationCaption({
   data,
@@ -44,10 +62,11 @@ export function ConstellationCaption({
 }: ConstellationCaptionProps) {
   const { m, locale } = useI18n();
   const L = m.landing.live;
+  const [collapsed, setCollapsed] = useState(readCollapsed);
   const fmt = useMemo(
     () => ({
       int: new Intl.NumberFormat(locale),
-      min: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }),
+      min: new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }),
       pct: new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 0 }),
       mb: new Intl.NumberFormat(locale, { style: 'unit', unit: 'megabyte', unitDisplay: 'short', maximumFractionDigits: 0 }),
       gb: new Intl.NumberFormat(locale, { style: 'unit', unit: 'gigabyte', unitDisplay: 'short', maximumFractionDigits: 1 }),
@@ -83,63 +102,74 @@ export function ConstellationCaption({
     let text: string;
     if (action === ACTION.DOWNLINK && channel === 'TDRS') {
       kind = 'relay';
-      text = L.tdrs(stationName(station));
+      text = `TDRS → ${stationName(station)}`;
     } else if (action === ACTION.DOWNLINK) {
       kind = 'down';
-      text = L.downlink(stationName(station), channel || '—');
+      text = `${stationName(station)} · ${channel || '—'}`;
     } else if (action === ACTION.BROADCAST) {
       kind = 'db';
-      text = L.broadcast(stationName(broadcastAt));
+      text = L.viaDb(stationName(broadcastAt));
     } else if (f?.[3] === 'outage' && outageName) {
       kind = 'blocked';
-      text = L.blocked(outageName);
+      text = L.outage(outageName);
     } else {
       kind = 'store';
-      text = L.store(queue >= 1000 ? fmt.gb.format(queue / 1000) : fmt.mb.format(queue));
+      text = L.onBoard(queue >= 1000 ? fmt.gb.format(queue / 1000) : fmt.mb.format(queue));
     }
-    let forecast: string | null = null;
+    // The full story goes to the tooltip: why the link ends, when the next one comes, how the data travel.
+    const details: string[] = [];
     if (f) {
       const [drop, next, nextStation, reason, p] = f;
       if (action === ACTION.DOWNLINK) {
-        forecast = drop === null ? L.steady : L.dropIn(fmt.min.format(drop), why(reason));
-        if (drop !== null && p >= 0.2) forecast += ` · ${L.risk(fmt.pct.format(p))}`;
+        let line = drop === null ? L.steady : L.dropIn(fmt.min.format(drop), why(reason));
+        if (drop !== null && p >= 0.2) line += ` · ${L.risk(fmt.pct.format(p))}`;
+        details.push(line);
       } else {
-        forecast = next === null ? L.noNext : L.nextIn(fmt.min.format(next), stationName(nextStation));
+        details.push(next === null ? L.noNext : L.nextIn(fmt.min.format(next), stationName(nextStation)));
       }
     }
-    let delivery: string | null = null;
+    let ground: string | null = null;
     if (d) {
-      const [ground, path, st, dumpOnly] = d;
-      if (ground === null) delivery = L.groundLater;
-      else delivery = ground === 0 ? L.groundNow(via(path, st)) : L.groundIn(fmt.min.format(ground), via(path, st));
-      if (path === 'db' && dumpOnly !== null && dumpOnly > 0) delivery += ` · ${L.withoutDb(fmt.min.format(dumpOnly))}`;
+      const [g, path, st] = d;
+      ground = g === null ? L.later : g === 0 ? L.now : L.inMin(fmt.min.format(g));
+      details.push(g === null ? L.groundLater : g === 0 ? L.groundNow(via(path, st)) : L.groundIn(fmt.min.format(g), via(path, st)));
     }
     const retired = sat.retired ? L.retired(fmt.date.format(new Date(sat.retired))) : null;
-    return { key: sat.name, name: satLabel(sat.name), kind, text, forecast, delivery, retired };
+    if (retired) details.unshift(retired);
+    return { key: sat.name, name: satLabel(sat.name), kind, text, ground, retired: !!retired, title: details.join('\n') };
   });
 
-  const passes = data.region.passes
-    .filter((p) => p.t_end >= index)
-    .slice(0, 3)
-    .map((p) => {
-      const now = p.t_start <= index;
-      const when = now ? L.regionNow : `${clock(p.t_start)} UTC`;
-      const ground = p.ground_t === null ? L.later : clock(p.ground_t);
-      let how = p.ground_t === null ? null : via(p.path, p.station);
-      // With the Astana antenna: how long the same pass would have waited for the satellite's own station.
-      if (how && p.path === 'db' && p.wait_dump_min !== null && p.wait_dump_min > 0) how += ` · ${L.withoutDb(fmt.min.format(p.wait_dump_min))}`;
-      return { key: `${p.sat}-${p.t_start}`, now, text: L.regionPass(satLabel(data.satellites[p.sat]?.name), when, ground), via: how };
-    });
-  // The antenna only serves passes over Kazakhstan, so compare those (the planet-wide median barely moves).
-  const kz = data.region.passes.filter((p) => p.wait_min !== null && p.wait_dump_min !== null);
-  const median = (xs: number[]) => {
-    const s = [...xs].sort((a, b) => a - b);
-    return s.length ? (s.length % 2 ? s[(s.length - 1) / 2]! : (s[s.length / 2 - 1]! + s[s.length / 2]!) / 2) : null;
-  };
-  const kzNow = median(kz.map((p) => p.wait_dump_min!));
-  const kzDb = median(kz.map((p) => p.wait_min!));
+  const next = data.region.passes.find((p) => p.t_end >= index) ?? null;
+  const region = next
+    ? {
+        text: L.regionPass(
+          satLabel(data.satellites[next.sat]?.name),
+          next.t_start <= index ? L.regionNow : clock(next.t_start),
+          next.ground_t === null ? L.later : clock(next.ground_t),
+        ),
+        title: next.ground_t === null ? '' : via(next.path, next.station),
+        now: next.t_start <= index,
+      }
+    : null;
 
-  const lat = data.summary.latency;
+  // For the AI guide: what the five satellites are doing in this playback (refreshed every 10 s, not every frame).
+  const factRef = useRef('');
+  factRef.current =
+    `Home-page satellites (real orbits and ground stations, playback at ${fmt.time.format(at)} UTC): ` +
+    rows
+      .filter((r): r is NonNullable<typeof r> => r !== null)
+      .map((r) => `${r.name} — ${r.retired ? 'no near-real-time data since 2 Nov 2026' : `${r.text}, data taken now on the ground ${r.ground ?? 'later'}`}`)
+      .join('; ') +
+    (region ? `. Kazakhstan: ${region.text}.` : '.');
+  useEffect(() => {
+    publishFact('constellation', factRef.current);
+    const id = window.setInterval(() => publishFact('constellation', factRef.current), 10_000);
+    return () => {
+      window.clearInterval(id);
+      publishFact('constellation', null);
+    };
+  }, []);
+
   const toggles: { id: Scenario; label: string; icon: ReactNode }[] = [
     {
       id: 'storm',
@@ -174,109 +204,107 @@ export function ConstellationCaption({
     },
   ];
   const hints: Record<Scenario, string> = { storm: L.stormHint, outage: L.outageHint, db: L.dbHint };
+  const toggleCollapsed = () => {
+    setCollapsed((c) => {
+      writeCollapsed(!c);
+      return !c;
+    });
+  };
 
   return (
-    <div className="lp-live" role="group" aria-label={L.title}>
+    <div className="lp-live" role="group" aria-label={L.title} data-collapsed={collapsed ? 'true' : 'false'}>
       <div className="lp-live__head">
         <span className="lp-live__title">{L.title}</span>
+        {collapsed ? (
+          <span className="lp-live__mini" aria-hidden>
+            {rows.map((r) => (r ? <span key={r.key} className="lp-live__dot" data-kind={r.kind} /> : null))}
+          </span>
+        ) : null}
         <span className="lp-live__clock">
           {fmt.time.format(at)} UTC
           {reducedMotion ? null : (
-            <span data-slow={slow ? 'true' : 'false'}>
-              {' · '}
-              {slow ? L.slow(String(CONSTELLATION_SLOW)) : L.speed(String(CONSTELLATION_SPEED))}
+            <span
+              className="lp-live__speed"
+              data-slow={slow ? 'true' : 'false'}
+              title={slow ? L.slow(String(CONSTELLATION_SLOW)) : L.speed(String(CONSTELLATION_SPEED))}
+            >
+              ×{slow ? CONSTELLATION_SLOW : CONSTELLATION_SPEED}
             </span>
           )}
         </span>
+        <button
+          type="button"
+          className="lp-live__fold"
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? L.expand : L.collapse}
+          title={collapsed ? L.expand : L.collapse}
+          onClick={toggleCollapsed}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+            <path d={collapsed ? 'm6 15 6-6 6 6' : 'm6 9 6 6 6-6'} strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       </div>
-      <ul className="lp-live__sats">
-        {rows.map((r) =>
-          r ? (
-            <li key={r.key} data-kind={r.kind}>
-              <span className="lp-live__dot" aria-hidden />
-              <span className="lp-live__name">{r.name}</span>
-              <span className="lp-live__text">
-                {r.retired ? <span className="lp-live__why lp-live__retired">{r.retired}</span> : null}
-                {r.text}
-                {r.forecast ? <span className="lp-live__why">{r.forecast}</span> : null}
-                {r.delivery ? <span className="lp-live__why lp-live__ground">{r.delivery}</span> : null}
-              </span>
-            </li>
-          ) : null,
-        )}
-      </ul>
-      <div className="lp-live__region">
-        <p className="lp-live__regionTitle">
-          <span className="lp-live__flame" aria-hidden />
-          {L.regionTitle}
-        </p>
-        {passes.length ? (
-          <ul className="lp-live__passes">
-            {passes.map((p) => (
-              <li key={p.key} data-now={p.now ? 'true' : 'false'}>
-                {p.text}
-                {p.via ? <span className="lp-live__why">{p.via}</span> : null}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="lp-live__hint">{L.regionNone}</p>
-        )}
-        {data.db && kzNow !== null && kzDb !== null && kzDb < kzNow ? (
-          <p className="lp-live__sum">{L.latencyDb(fmt.min.format(kzNow), fmt.min.format(kzDb))}</p>
-        ) : null}
-      </div>
-      {lat.now.median_min !== null && lat.now.p90_min !== null ? (
-        <p className="lp-live__sum">{L.latency(fmt.min.format(lat.now.median_min), fmt.min.format(lat.now.p90_min))}</p>
-      ) : null}
-      {detections !== undefined ? (
-        <p className="lp-live__fires">
-          <span className="lp-live__flame" aria-hidden />
-          <span className="lp-live__firesText">{L.fires(fmt.int.format(detections))}</span>
-        </p>
-      ) : null}
-      <div className="lp-live__actions">
-        {onNextPass ? (
-          <button type="button" className="lp-live__btn" onClick={onNextPass}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
-              <circle cx="12" cy="12" r="8.5" />
-              <path d="M4 14c4-1 12-5 16-9" strokeLinecap="round" />
-              <circle cx="15.5" cy="8" r="1.6" fill="currentColor" />
-            </svg>
-            <span>{L.nextPass}</span>
-          </button>
-        ) : null}
-        {toggles.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className="lp-live__btn lp-live__storm"
-            data-tone={t.id}
-            aria-pressed={on[t.id]}
-            data-busy={loading === t.id ? 'true' : 'false'}
-            onClick={() => onToggle(t.id)}
-            title={hints[t.id]}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
-              {t.icon}
-            </svg>
-            <span>{t.label}</span>
-            <span className="lp-live__switch" aria-hidden />
-          </button>
-        ))}
-      </div>
-      {(Object.keys(hints) as Scenario[])
-        .filter((id) => on[id])
-        .map((id) => (
-          <p key={id} className="lp-live__hint">
-            {hints[id]}
+
+      {collapsed ? null : (
+        <>
+          <p className="lp-live__col" aria-hidden>
+            {L.groundCol}
           </p>
-        ))}
-      <ul className="lp-live__legend" aria-hidden>
-        <li data-kind="down">{L.legendDown}</li>
-        <li data-kind="relay">{L.legendTdrs}</li>
-        <li data-kind="db">{L.legendDb}</li>
-      </ul>
+          <ul className="lp-live__sats">
+            {rows.map((r) =>
+              r ? (
+                <li key={r.key} data-kind={r.kind} data-retired={r.retired ? 'true' : 'false'} title={r.title}>
+                  <span className="lp-live__dot" data-kind={r.kind} aria-hidden />
+                  <span className="lp-live__name">{r.name}</span>
+                  <span className="lp-live__text">{r.retired ? '—' : r.text}</span>
+                  <span className="lp-live__eta">{r.retired ? L.stopped : r.ground ?? '—'}</span>
+                </li>
+              ) : null,
+            )}
+          </ul>
+          <p className="lp-live__region" data-now={region?.now ? 'true' : 'false'} title={region?.title || undefined}>
+            <span className="lp-live__flame" aria-hidden />
+            <span className="lp-live__regionText">
+              <b>{L.regionTitle}</b> {region ? region.text : L.regionNone}
+            </span>
+          </p>
+          <div className="lp-live__actions">
+            {onNextPass ? (
+              <button type="button" className="lp-live__btn" onClick={onNextPass} aria-label={L.nextPass} title={L.nextPass}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+                  <circle cx="12" cy="12" r="8.5" />
+                  <path d="M4 14c4-1 12-5 16-9" strokeLinecap="round" />
+                  <circle cx="15.5" cy="8" r="1.6" fill="currentColor" />
+                </svg>
+              </button>
+            ) : null}
+            {toggles.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className="lp-live__btn lp-live__storm"
+                data-tone={t.id}
+                aria-pressed={on[t.id]}
+                aria-label={t.label}
+                data-busy={loading === t.id ? 'true' : 'false'}
+                onClick={() => onToggle(t.id)}
+                title={`${t.label}\n${hints[t.id]}`}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+                  {t.icon}
+                </svg>
+              </button>
+            ))}
+            {detections !== undefined ? (
+              <span className="lp-live__fires" title={L.fires(fmt.int.format(detections))}>
+                <span className="lp-live__flame" aria-hidden />
+                {fmt.int.format(detections)}
+              </span>
+            ) : null}
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -100,7 +100,17 @@ export function thinkingConfig(model: string): Record<string, unknown> {
 /** Room for low thinking (~1k tokens) plus a 170-word answer in any of the eight languages. */
 const MAX_OUTPUT_TOKENS = 4096;
 
-async function askModel(model: string, prompt: { system: string; user: string }, timeoutMs: number): Promise<string> {
+/** One turn of a conversation as Gemini takes it. */
+export interface GeminiTurn {
+  role: 'user' | 'model';
+  parts: { text: string }[];
+}
+
+async function askModel(
+  model: string,
+  prompt: { system: string; user?: string; contents?: GeminiTurn[]; temperature?: number },
+  timeoutMs: number,
+): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   let res: Response;
   try {
@@ -109,8 +119,12 @@ async function askModel(model: string, prompt: { system: string; user: string },
       headers: { 'content-type': 'application/json', 'x-goog-api-key': config.geminiKey! },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: prompt.system }] },
-        contents: [{ role: 'user', parts: [{ text: prompt.user }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: MAX_OUTPUT_TOKENS, thinkingConfig: thinkingConfig(model) },
+        contents: prompt.contents ?? [{ role: 'user', parts: [{ text: prompt.user ?? '' }] }],
+        generationConfig: {
+          temperature: prompt.temperature ?? 0.3,
+          maxOutputTokens: MAX_OUTPUT_TOKENS,
+          thinkingConfig: thinkingConfig(model),
+        },
       }),
       signal: AbortSignal.timeout(timeoutMs),
     });
@@ -139,19 +153,12 @@ async function askModel(model: string, prompt: { system: string; user: string },
  * Asks the configured model, then the fallbacks, within one overall deadline. A wrong key (401/403) or a
  * blocked prompt fails the same way everywhere, so those stop the chain at once.
  */
-export async function analyzeWithGemini(
-  summary: AreaSummary,
-  locale: keyof typeof LOCALE_LANGUAGE,
-  helios: Record<string, unknown> | null = null,
-  mode: BriefMode = summary.synthetic ? 'demo' : 'risk',
+async function withModels(
+  prompt: Parameters<typeof askModel>[1],
+  order: readonly string[] = [config.geminiModel, ...config.geminiFallbackModels],
 ): Promise<{ text: string; model: string }> {
   if (!config.geminiKey) throw new GeminiError('GEMINI_API_KEY is not configured', null);
-  const prompt = {
-    system: systemPrompt(LOCALE_LANGUAGE[locale] ?? 'English', mode),
-    // Real HELIOS context never joins a demo brief: synthetic and real numbers are not mixed.
-    user: JSON.stringify(helios && mode === 'risk' ? { ...summary, helios } : summary),
-  };
-  const models = [...new Set([config.geminiModel, ...config.geminiFallbackModels])];
+  const models = [...new Set(order)];
   const deadline = Date.now() + config.geminiTotalTimeoutMs;
   let last: GeminiError | null = null;
   for (const model of models) {
@@ -166,4 +173,22 @@ export async function analyzeWithGemini(
     }
   }
   throw last ?? new GeminiError('no Gemini model answered in time', null);
+}
+
+/** A multi-turn conversation under fixed server-side instructions (the in-app AI guide). */
+export function chatWithGemini(system: string, contents: GeminiTurn[]): Promise<{ text: string; model: string }> {
+  return withModels({ system, contents, temperature: 0.4 }, [...config.geminiChatModels, config.geminiModel, ...config.geminiFallbackModels]);
+}
+
+export async function analyzeWithGemini(
+  summary: AreaSummary,
+  locale: keyof typeof LOCALE_LANGUAGE,
+  helios: Record<string, unknown> | null = null,
+  mode: BriefMode = summary.synthetic ? 'demo' : 'risk',
+): Promise<{ text: string; model: string }> {
+  return withModels({
+    system: systemPrompt(LOCALE_LANGUAGE[locale] ?? 'English', mode),
+    // Real HELIOS context never joins a demo brief: synthetic and real numbers are not mixed.
+    user: JSON.stringify(helios && mode === 'risk' ? { ...summary, helios } : summary),
+  });
 }

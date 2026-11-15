@@ -5,7 +5,7 @@ import type { FireFeature, FireProperties, Sensor } from '@/data/types';
 import { buildArchive, hideMaskOf, type FireArchive } from '@/domain/archive';
 import { CONFIDENCES, SENSOR_MODIS, tableFromRows, TRUTHS } from '@/domain/detections';
 import { aggregateHex } from '@/domain/hexStats';
-import { coarsen, hexRing, type CellIndex } from '@/domain/hexgrid';
+import { coarsen, hexRing, indexCells, type CellIndex } from '@/domain/hexgrid';
 import { FLAG_LOW_CONFIDENCE, FLAG_STATIC, scoreFilter } from '@/domain/noise';
 import { dayOffsetToIso, MONTH_COUNT } from '@/lib/date';
 import type { HexProperties } from './layers';
@@ -140,15 +140,20 @@ export function gridAt(archive: FireArchive, res: number): CellIndex {
   }
   let g = byRes.get(res);
   if (!g) {
-    g = res === archive.base.res ? archive.base : coarsen(archive.base, res);
+    // Coarser grids walk up from the fine index; finer ones (zoomed far in) index the detections afresh.
+    g =
+      res === archive.base.res
+        ? archive.base
+        : res < archive.base.res
+          ? coarsen(archive.base, res)
+          : indexCells(archive.table.lng, archive.table.lat, archive.table.n, res);
     byRes.set(res, g);
   }
   return g;
 }
 
-/** Burning hexagons for the current window and filters, as polygons for the map. */
 /** Share of its size a drawn cell keeps: the rest becomes the dark seam between hexagons. */
-const HEX_INSET = 0.86;
+const HEX_INSET = 0.84;
 
 /** Pulls a closed ring towards its centroid (cells are small, so lng/lat space is fine). */
 function insetRing(ring: [number, number][], k: number): [number, number][] {
@@ -164,6 +169,7 @@ function insetRing(ring: [number, number][], k: number): [number, number][] {
   return ring.map(([x, y]) => [cx + (x - cx) * k, cy + (y - cy) * k]);
 }
 
+/** Burning hexagons for the current window and filters, as polygons for the map. */
 export function hexFeatures(
   archive: FireArchive,
   res: number,

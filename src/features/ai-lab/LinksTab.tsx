@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  fleetPosition,
   RELAYS,
   satelliteName,
   simulateLinks,
   STEP_SEC,
+  type SimOptions,
   type SimResult,
   type StepRecord,
 } from '@/domain/ai/link';
 import { STATIONS } from '@/domain/downlink';
-import { FLEET, subSatellitePoint } from '@/domain/orbit';
+import { ecefPropagator } from '@/domain/live/sgp4';
+import { FLEET, toGeo } from '@/domain/orbit';
+import { publishFact } from '@/features/assistant/assistantStore';
+import { useLiveTle, useNow } from '@/features/live/api';
 import { useCountries } from '@/features/geo/countries';
 import { useHeliosAvailable } from '@/features/helios/api';
 import { prefersReducedMotion } from '@/features/intro/introStore';
@@ -69,15 +74,31 @@ const ACTION_COLOR: Record<StepRecord['action'], string> = {
   store: 'rgb(238 233 224 / 0.07)',
 };
 
-function targetPoint(step: StepRecord): { lat: number; lng: number } | null {
+type Propagator = SimOptions['propagator'];
+
+function targetPoint(step: StepRecord, propagator: Propagator): { lat: number; lng: number } | null {
   if (!step.target) return null;
   const relay = RELAYS.find((r) => r.id === step.target);
   if (relay) return { lat: 0, lng: relay.lng };
   const st = STATIONS.find((s) => s.id === step.target);
   if (st) return st.location;
   const sat = FLEET.find((s) => s.id === step.target);
-  return sat ? subSatellitePoint(sat, step.tSec) : null;
+  return sat ? toGeo(fleetPosition(sat, step.tSec, propagator)) : null;
 }
+
+/** Plain-English action names for the AI guide's live facts. */
+const FACT_ACTION: Record<StepRecord['action'], string> = {
+  'laser-relay': 'laser to a GEO relay',
+  'laser-neighbour': 'laser to a neighbour satellite',
+  ka: 'Ka-band downlink to a station',
+  x: 'X-band downlink to a station',
+  acquire: 'locking the next terminal',
+  store: 'no link, storing data on board',
+};
+
+/** Live window: starts 30 min before the current 10-minute mark, so "now" sits near the left of the 3 hours. */
+const LEAD_MIN = 30;
+const hhmm = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' });
 
 function targetName(id: string | null): string {
   if (!id) return '';
@@ -88,7 +109,19 @@ function targetName(id: string | null): string {
 
 /* ------------------------------------------------------------------ map */
 
-function WorldTrack({ sim, k, storm, kp }: { sim: SimResult; k: number; storm: string | null; kp: number }) {
+function WorldTrack({
+  sim,
+  k,
+  storm,
+  kp,
+  propagator,
+}: {
+  sim: SimResult;
+  k: number;
+  storm: string | null;
+  kp: number;
+  propagator: Propagator;
+}) {
   const { m } = useI18n();
   const countries = useCountries();
   const land = useMemo(
@@ -98,11 +131,11 @@ function WorldTrack({ sim, k, storm, kp }: { sim: SimResult; k: number; storm: s
   const step = sim.steps[k]!;
   const past = useMemo(() => trackPaths(sim.steps, 0, k), [sim.steps, k]);
   const future = useMemo(() => trackPaths(sim.steps, k, sim.steps.length - 1), [sim.steps, k]);
-  const target = step.action === 'store' ? null : targetPoint(step);
+  const target = step.action === 'store' ? null : targetPoint(step, propagator);
   const linkColor = step.action === 'acquire' ? 'rgb(238 233 224 / 0.45)' : ACTION_COLOR[step.action];
   const neighbours = FLEET.filter((s) => s.id !== sim.satellite.id).map((s) => ({
     id: s.id,
-    p: subSatellitePoint(s, step.tSec),
+    p: toGeo(fleetPosition(s, step.tSec, propagator)),
   }));
   const alertDots = sim.alerts
     .filter((a) => a.atStep <= k)
@@ -217,13 +250,27 @@ function Lab() {
   const [playing, setPlaying] = useState(false);
   const kp = geomag ? 8 : 2;
 
+  // Real time: today's orbits (SGP4 from CelesTrak) on a window that starts just before now; the playhead
+  // follows the clock until the visitor scrubs or replays.
+  const tle = useLiveTle();
+  const [follow, setFollow] = useState(true);
+  const nowMs = useNow(1000);
+  const live = Boolean(tle.data);
+  const epochMs = Math.floor(nowMs / 600_000) * 600_000 - LEAD_MIN * 60_000;
+  const propagator = useMemo(() => (tle.data ? ecefPropagator(tle.data.tle, epochMs) : undefined), [tle.data, epochMs]);
+  const timeLabel = (tSec: number) => (live ? `${hhmm.format(new Date(epochMs + tSec * 1000))} UTC` : fmt.clock(tSec));
+  const nowK = Math.max(0, Math.min(N - 1, Math.round((nowMs - epochMs) / (STEP_SEC * 1000))));
+  useEffect(() => {
+    if (live && follow && !playing) setK(nowK);
+  }, [live, follow, playing, nowK]);
+
   const [ai, reactive] = useMemo(() => {
-    const opts = { satelliteId: satId, minutes: MINUTES, stormStation: storm, kp, alertsAtMin: userAlerts };
+    const opts = { satelliteId: satId, minutes: MINUTES, stormStation: storm, kp, alertsAtMin: userAlerts, propagator };
     return [
       simulateLinks({ ...opts, policy: 'ai' }),
       simulateLinks({ ...opts, policy: 'reactive' }),
     ] as const;
-  }, [satId, storm, kp, userAlerts]);
+  }, [satId, storm, kp, userAlerts, propagator]);
 
   // Playback: ~10 steps (5 orbit minutes) per second, paused at the end; never with reduced motion.
   const raf = useRef(0);
@@ -251,6 +298,21 @@ function Lab() {
 
   const step = ai.steps[k]!;
   const minute = (k * STEP_SEC) / 60;
+
+  // What the lab shows right now, for the AI guide (the visitor can ask "what is AI #2 predicting now?").
+  const fact = [
+    `AI #2 lab at ${timeLabel(step.tSec)} (${live ? "today's real SGP4 orbits" : 'circular demo orbits'}): ${ai.satellite.name}`,
+    `— ${FACT_ACTION[step.action]}${step.target && step.action !== 'store' ? ` (${targetName(step.target)})` : ''}`,
+    step.pLoss !== null ? `; predicted chance to lose this link within 5 min ${Math.round(step.pLoss * 100)} %` : '',
+    step.minutesToLos !== null ? `; its geometry ends in ${Math.round(step.minutesToLos)} min` : '',
+    `; ${(step.queueMB / 1000).toFixed(2)} GB waiting on board.`,
+    ` This 3-hour window: ${ai.stats.drops} unexpected link losses for AI #2 vs ${reactive.stats.drops} for the reactive rule;`,
+    ` ${ai.stats.handoffs} planned handoffs; median fire-alert delay ${ai.stats.alertMedianSec ?? '—'} s vs ${reactive.stats.alertMedianSec ?? '—'} s.`,
+    storm ? ` Downpour over ${storm}.` : '',
+    geomag ? ' Geomagnetic storm Kp 8.' : '',
+  ].join('');
+  useEffect(() => publishFact('ai2', fact), [fact]);
+  useEffect(() => () => publishFact('ai2', null), []);
   const secs = (v: number | null) => (v === null ? '—' : v < 120 ? t.seconds(fmt.int(v)) : fmt.duration(v));
   const mins = (v: number | null) => (v === null ? '—' : fmt.duration(v * 60));
 
@@ -278,7 +340,7 @@ function Lab() {
             </li>
           ))}
         </ol>
-        <p className="m-0 mt-6 text-[12px] leading-snug text-ink-dim">{t.assumptions}</p>
+        <p className="m-0 mt-6 text-[12px] leading-snug text-ink-dim">{live ? t.liveAssumptions : t.assumptions}</p>
       </div>
 
       <div className="grid min-w-0 gap-4">
@@ -311,7 +373,7 @@ function Lab() {
             </label>
           </div>
 
-          <WorldTrack sim={ai} k={k} storm={storm} kp={kp} />
+          <WorldTrack sim={ai} k={k} storm={storm} kp={kp} propagator={propagator} />
 
           <div className="grid gap-2">
             <Timeline sim={ai} label={t.rows.ai} k={k} />
@@ -328,13 +390,30 @@ function Lab() {
             </ul>
           </div>
 
-          <div className="grid items-center gap-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
+          <div className="grid items-center gap-3 sm:grid-cols-[auto_auto_minmax(0,1fr)_auto]">
+            {live ? (
+              <button
+                type="button"
+                className="lab-live lab-live--btn"
+                aria-pressed={follow && !playing}
+                onClick={() => {
+                  setPlaying(false);
+                  setFollow(true);
+                  setK(nowK);
+                }}
+                title={t.follow}
+              >
+                <span className="lab-live__dot" aria-hidden />
+                {m.ai.lab.bridge.live}
+              </button>
+            ) : null}
             <Button
               variant="secondary"
               size="sm"
               icon={playing ? 'pause' : 'play'}
               disabled={prefersReducedMotion()}
               onClick={() => {
+                setFollow(false);
                 if (!playing && k >= N - 1) setK(0);
                 setPlaying((p) => !p);
               }}
@@ -347,19 +426,20 @@ function Lab() {
               value={k}
               onChange={(v) => {
                 setPlaying(false);
+                setFollow(false);
                 setK(v);
               }}
               label={t.playhead}
-              formatValue={(v) => fmt.clock(v * STEP_SEC)}
+              formatValue={(v) => timeLabel(v * STEP_SEC)}
             />
-            <span className="num text-[13px] text-ink">{fmt.clock(step.tSec)}</span>
+            <span className="num text-[13px] text-ink">{timeLabel(step.tSec)}</span>
           </div>
         </Card>
 
         <div className="grid gap-4 xl:grid-cols-2">
           <Card className="grid content-start gap-3" aria-live="polite">
             <p className="m-0 text-[12px] text-ink-dim">
-              {t.rows.ai} · {fmt.clock(step.tSec)}
+              {t.rows.ai} · {timeLabel(step.tSec)}
             </p>
             <p className="m-0 flex items-center gap-2 text-[17px] text-ink">
               <span className="lab-swatch" style={{ background: ACTION_COLOR[step.action] }} aria-hidden />
@@ -418,7 +498,7 @@ function Lab() {
                 return (
                   <li key={a.atStep}>
                     <span className="num text-[12px] text-ink-dim">
-                      {t.alerts.raised(fmt.clock(a.atStep * STEP_SEC))}
+                      {t.alerts.raised(timeLabel(a.atStep * STEP_SEC))}
                     </span>
                     <span className="text-[13px] text-ink">
                       {t.rows.ai}:{' '}

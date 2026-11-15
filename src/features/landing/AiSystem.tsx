@@ -103,6 +103,21 @@ export function AiSystem() {
           })}
         </ol>
 
+        <Link to={{ pathname: '/ai', hash: '#bridge' }} className="lp-ai__bridge" data-rv>
+          <span className="lp-ai__live">
+            <span className="lp-ai__liveDot" aria-hidden />
+            LIVE
+          </span>
+          <span className="lp-ai__bridgeText">
+            <b>{l.bridgeTitle}</b>
+            <span>{l.bridgeBody}</span>
+          </span>
+          <span className="lp-ai__bridgeCta">
+            {l.bridgeCta}
+            <Icon name="arrowRight" size={16} />
+          </span>
+        </Link>
+
         <div className="lp-ai__fusion" data-rv>
           <h3 className="lp-ai__fusionTitle">
             <span className="lp-ai__sensors" aria-hidden>

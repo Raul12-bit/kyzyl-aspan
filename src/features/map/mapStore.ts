@@ -20,11 +20,14 @@ interface MapStore {
   noise: NoiseSettings;
   /** H3 resolution for the current zoom (hexagon view). */
   hexRes: number;
+  /** Real-time NASA FIRMS hot spots (last 24 h) drawn over the archive. */
+  live: boolean;
   setSensor: (sensor: Sensor, on: boolean) => void;
   setDrawing: (on: boolean) => void;
   setView: (view: MapView) => void;
   setNoise: (patch: Partial<NoiseSettings>) => void;
   setHexRes: (res: number) => void;
+  setLive: (on: boolean) => void;
 }
 
 export const useMapStore = create<MapStore>((set) => ({
@@ -38,11 +41,13 @@ export const useMapStore = create<MapStore>((set) => ({
   view: 'hex',
   noise: DEFAULT_NOISE,
   hexRes: 3,
+  live: true,
   setSensor: (sensor, on) => set((s) => ({ sensors: { ...s.sensors, [sensor]: on } })),
   setDrawing: (drawing) => set({ drawing }),
   setView: (view) => set({ view }),
   setNoise: (patch) => set((s) => ({ noise: { ...s.noise, ...patch } })),
   setHexRes: (hexRes) => set({ hexRes }),
+  setLive: (live) => set({ live }),
 }));
 
 export function hasWebGL(): boolean {

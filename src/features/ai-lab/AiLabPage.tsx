@@ -11,8 +11,9 @@ const DetectionTab = lazy(() => import('./DetectionTab'));
 const LinksTab = lazy(() => import('./LinksTab'));
 const GroundTab = lazy(() => import('./GroundTab'));
 const FusionTab = lazy(() => import('./FusionTab'));
+const BridgeTab = lazy(() => import('./BridgeTab'));
 
-const TABS = ['system', 'ai1', 'ai2', 'ai3', 'fusion'] as const;
+const TABS = ['system', 'bridge', 'ai1', 'ai2', 'ai3', 'fusion'] as const;
 type LabTab = (typeof TABS)[number];
 
 function tabFromHash(hash: string): LabTab {
@@ -123,6 +124,7 @@ export function AiLabPage() {
         >
           <Suspense fallback={<Skeleton className="h-[480px] w-full !rounded-panel" />}>
             {tab === 'system' ? <SystemTab onSelect={(id) => select(id)} /> : null}
+            {tab === 'bridge' ? <BridgeTab /> : null}
             {tab === 'ai1' ? <DetectionTab /> : null}
             {tab === 'ai2' ? <LinksTab /> : null}
             {tab === 'ai3' ? <GroundTab serverOnline={server.data?.online ?? false} /> : null}

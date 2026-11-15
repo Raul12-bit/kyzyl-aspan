@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { Outlet, ScrollRestoration, useLocation, useNavigate } from 'react-router-dom';
 import { useDataSource } from '@/data/DataSourceContext';
 import { queryKeys } from '@/data/queries';
+import { useAssistant } from '@/features/assistant/assistantStore';
 import { loadCountries } from '@/features/geo/countries';
 import { LocationPrompt } from '@/features/geo/LocationPrompt';
 import { DiveFlash } from '@/features/intro/DiveFlash';
@@ -13,6 +14,7 @@ import { useI18n } from '@/i18n';
 import { TopBar } from './TopBar';
 
 const MapStage = lazy(() => import('@/features/map/MapStage'));
+const AssistantPanel = lazy(() => import('@/features/assistant/AssistantPanel'));
 
 /** Warm the map's code while the planet dives, so it is parsed by the time the white lifts. */
 export function preloadMap() {
@@ -34,6 +36,7 @@ export function AppShell() {
   const [mapRequested, setMapRequested] = useState(onMap);
   const qc = useQueryClient();
   const ds = useDataSource();
+  const chatOpen = useAssistant((st) => st.open);
 
   useIntroTimeline();
 
@@ -100,6 +103,11 @@ export function AppShell() {
       <Outlet />
       <ScrollRestoration />
       <DiveFlash />
+      {chatOpen ? (
+        <Suspense fallback={null}>
+          <AssistantPanel />
+        </Suspense>
+      ) : null}
       {phase === 'intro' || phase === 'done' ? <LocationPrompt placement={onLanding ? 'intro' : 'page'} /> : null}
     </>
   );

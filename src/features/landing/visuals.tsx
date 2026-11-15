@@ -34,12 +34,14 @@ interface Cell {
   row: number;
 }
 
-/** The shared 500×400 offset grid (cell circumradius 21). */
-function grid(r = 21): Cell[] {
+/** The shared 500×400 offset grid (pointy-top cells of circumradius r, a margin row/column on every side). */
+function grid(r: number): Cell[] {
   const w = Math.sqrt(3) * r;
+  const rows = Math.ceil(400 / (r * 1.5)) + 1;
+  const cols = Math.ceil(500 / w) + 1;
   const out: Cell[] = [];
-  for (let row = -1; row < 15; row++) {
-    for (let col = -1; col < 16; col++) {
+  for (let row = -1; row < rows; row++) {
+    for (let col = -1; col < cols; col++) {
       out.push({ key: `${row}:${col}`, cx: col * w + (row % 2 ? w / 2 : 0), cy: row * r * 1.5, col, row });
     }
   }
@@ -57,8 +59,9 @@ function heatAt(
   return Math.min(1, heat);
 }
 
-const CELL_R = 21;
-const DRAW_R = CELL_R * 0.88; // the rest is the dark seam between cells, as on the map
+// Fine cells, like the map's: many small hexagons read as a heat field, a few big ones as a quilt.
+const CELL_R = 13;
+const DRAW_R = CELL_R * 0.86; // the rest is the dark seam between cells, as on the map
 
 /** A fire season on a hexagon grid: a heat field sampled into H3-like cells. */
 export function HexVisual() {
@@ -80,7 +83,7 @@ export function HexVisual() {
             points={hexPoints(c.cx, c.cy, DRAW_R)}
             fill="none"
             stroke="var(--el-line)"
-            strokeWidth="1"
+            strokeWidth="0.8"
           />
         ) : (
           <polygon
@@ -103,11 +106,16 @@ export function NoiseVisual() {
   const cells = useMemo(() => {
     const rnd = rng(42);
     const front = [[0.5, 0.55, 0.13, 0.95]] as const;
-    const flares = new Set(['2:2', '2:3', '3:2', '10:12', '11:12', '10:13']);
+    // Two gas flares (a few cells each) in opposite corners, wherever the grid puts its cells.
+    const flareAt = [
+      [78, 66],
+      [432, 318],
+    ] as const;
+    const isFlare = (c: Cell) => flareAt.some(([x, y]) => Math.hypot(c.cx - x, c.cy - y) <= CELL_R * 1.9);
     return grid(CELL_R).map((c) => {
       const heat = heatAt(c.cx, c.cy, front);
-      const flare = flares.has(c.key);
-      const glint = !flare && heat < 0.1 && rnd() < 0.045;
+      const flare = isFlare(c);
+      const glint = !flare && heat < 0.1 && rnd() < 0.03;
       return {
         ...c,
         heat,
@@ -122,7 +130,7 @@ export function NoiseVisual() {
       {cells.map((c) => {
         const pts = hexPoints(c.cx, c.cy, DRAW_R);
         if (c.kind === 'empty')
-          return <polygon key={c.key} points={pts} fill="none" stroke="var(--el-line)" strokeWidth="1" />;
+          return <polygon key={c.key} points={pts} fill="none" stroke="var(--el-line)" strokeWidth="0.8" />;
         if (c.kind === 'fire')
           return (
             <polygon key={c.key} points={pts} fill={rampVar(c.heat)} fillOpacity={0.55 + c.heat * 0.45} />
@@ -139,11 +147,11 @@ export function NoiseVisual() {
             <polygon
               className="lp-noise__ring"
               style={delay}
-              points={hexPoints(c.cx, c.cy, DRAW_R - 1)}
+              points={hexPoints(c.cx, c.cy, DRAW_R - 0.8)}
               fill="none"
               stroke="var(--el-ink-dim)"
-              strokeWidth="1.2"
-              strokeDasharray="3 3"
+              strokeWidth="1"
+              strokeDasharray="2 2"
             />
           </g>
         );

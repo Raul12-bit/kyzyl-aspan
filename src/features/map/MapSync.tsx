@@ -30,17 +30,17 @@ export function MapSync({ index, archive }: { index: FireIndex | null; archive: 
   // With the HELIOS API live, WorldSync draws hexagons and detections from the full archive.
   const world = useHeliosAvailable();
 
-  // Hexagon size follows the zoom (≈15–40 px per cell).
+  // Hexagon size follows the zoom (≈9–24 px per cell at the latitude in view).
   useEffect(() => {
     if (!map || !mapMode || world) return;
     const update = () => {
-      const res = resolutionForZoom(map.getZoom());
+      const res = resolutionForZoom(map.getZoom(), map.getCenter().lat);
       if (res !== useMapStore.getState().hexRes) useMapStore.getState().setHexRes(res);
     };
     update();
-    map.on('zoomend', update);
+    map.on('moveend', update);
     return () => {
-      map.off('zoomend', update);
+      map.off('moveend', update);
     };
   }, [map, mapMode, world]);
 

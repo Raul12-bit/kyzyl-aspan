@@ -30,14 +30,14 @@ import {
 export const SATS = ['TERRA', 'AQUA', 'SUOMI NPP', 'NOAA 20', 'NOAA 21'] as const;
 export const TDRS = ['TDRS 11', 'TDRS 12', 'TDRS 13'] as const;
 const SENSOR: Record<string, 'MODIS' | 'VIIRS'> = { TERRA: 'MODIS', AQUA: 'MODIS', 'SUOMI NPP': 'VIIRS', 'NOAA 20': 'VIIRS', 'NOAA 21': 'VIIRS' };
-const ACCESS: Record<string, readonly string[]> = {
+export const ACCESS: Record<string, readonly string[]> = {
   TERRA: [],
   AQUA: ['SVALSAT', 'POKER_FLAT'],
   'SUOMI NPP': ['SVALSAT', 'MCMURDO', 'TROLLSAT'],
   'NOAA 20': ['SVALSAT', 'MCMURDO', 'TROLLSAT'],
   'NOAA 21': ['SVALSAT', 'MCMURDO', 'TROLLSAT'],
 };
-const VIA_TDRS = new Set(['TERRA']);
+export const VIA_TDRS = new Set(['TERRA']);
 const DIRECT_BROADCAST = new Set(['AQUA', 'SUOMI NPP', 'NOAA 20', 'NOAA 21']);
 const PAUSES_BROADCAST_WHILE_DUMPING = new Set(['AQUA']);
 const RETIRED: Record<string, string> = { 'SUOMI NPP': '2026-11-02' };

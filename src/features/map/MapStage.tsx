@@ -5,7 +5,7 @@ import { introDispatch, useIntroStore, WORLD_BOUNDS } from '@/features/intro/int
 import { TIMELINE } from '@/features/intro/transition.config';
 import { useI18n } from '@/i18n';
 import { loadBasemapStyle } from './basemap';
-import { addFireLayers, addHexLayers, addSelectionLayers } from './layers';
+import { addFireLayers, addHexLayers, addLiveLayers, addSelectionLayers } from './layers';
 import { BASEMAP_ERROR_BUDGET, BASEMAP_STYLE_URL, uiPadding } from './map.config';
 import { hasWebGL, useMapStore } from './mapStore';
 
@@ -160,6 +160,7 @@ export default function MapStage() {
         addSelectionLayers(map);
         addHexLayers(map);
         addFireLayers(map);
+        addLiveLayers(map);
         const phase = useIntroStore.getState().phase;
         if (phase === 'done' || pending === 'instant') enterMapMode(false);
         else if (pending === 'wait' || phase === 'swap') enterMapMode(true);

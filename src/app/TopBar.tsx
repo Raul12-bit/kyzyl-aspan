@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useIntroStore } from '@/features/intro/introStore';
 import { diveBridge } from '@/features/landing/diveBridge';
 import { useReveal } from '@/features/intro/useReveal';
+import { AssistantButton } from '@/features/assistant/AssistantButton';
 import { useI18n } from '@/i18n';
 import { ButtonLink, cn, Icon } from '@/ui';
 import { LanguageSwitch } from './LanguageSwitch';
@@ -173,6 +174,7 @@ export function TopBar({ variant }: { variant: TopBarVariant }) {
           <NavItems />
         </nav>
         <div className="flex flex-1 items-center justify-end gap-1.5">
+          <AssistantButton />
           <div className="hidden items-center gap-1 md:flex">
             <LanguageSwitch />
           </div>

@@ -108,6 +108,125 @@ export function fuseArchive(archive: FireArchive, mask: Uint8Array | null = null
   };
 }
 
+/* ------------------------------------------------------------------ spatial matching (one fire, two sensors) */
+
+/** One hot pixel: centre, FRP and its footprint on the ground (scan = across track, track = along track). */
+export interface Footprint {
+  lng: number;
+  lat: number;
+  frp: number;
+  scanKm: number;
+  trackKm: number;
+}
+
+export interface RefinedPixel {
+  lng: number;
+  lat: number;
+  /** Share of the enclosing MODIS pixel's FRP, MW (or the VIIRS FRP when no MODIS pixel encloses it). */
+  frp: number;
+  scanKm: number;
+  trackKm: number;
+  /** Inside a MODIS footprint (true) or a VIIRS-only pixel (false: new front, or MODIS missed it). */
+  matched: boolean;
+}
+
+export interface FootprintFusion {
+  modis: { n: number; frp: number; areaKm2: number };
+  viirs: { n: number; frp: number; areaKm2: number };
+  refined: RefinedPixel[];
+  /** MODIS pixels with no VIIRS pixel inside (kept at 1 km). */
+  modisOnly: Footprint[];
+  /** Fused fire outline: convex hull of the VIIRS pixel corners ([lng, lat], closed). */
+  hull: [number, number][];
+  /** Mean MODIS pixel area ÷ mean VIIRS pixel area: how much finer the fused outline is drawn. */
+  sharpen: number;
+}
+
+const KM_DEG = 111.32;
+
+function corners(p: Footprint): [number, number][] {
+  const kx = KM_DEG * Math.cos((p.lat * Math.PI) / 180);
+  const hx = p.scanKm / 2 / kx;
+  const hy = p.trackKm / 2 / KM_DEG;
+  return [
+    [p.lng - hx, p.lat - hy],
+    [p.lng + hx, p.lat - hy],
+    [p.lng + hx, p.lat + hy],
+    [p.lng - hx, p.lat + hy],
+  ];
+}
+
+/** Convex hull (Andrew's monotone chain), closed ring. */
+export function convexHull(points: [number, number][]): [number, number][] {
+  const pts = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (pts.length < 3) return pts.length ? [...pts, pts[0]!] : [];
+  const cross = (o: [number, number], a: [number, number], b: [number, number]) =>
+    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lower: [number, number][] = [];
+  for (const p of pts) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2]!, lower[lower.length - 1]!, p) <= 0) lower.pop();
+    lower.push(p);
+  }
+  const upper: [number, number][] = [];
+  for (let i = pts.length - 1; i >= 0; i--) {
+    const p = pts[i]!;
+    while (upper.length >= 2 && cross(upper[upper.length - 2]!, upper[upper.length - 1]!, p) <= 0) upper.pop();
+    upper.push(p);
+  }
+  const hull = lower.slice(0, -1).concat(upper.slice(0, -1));
+  return [...hull, hull[0]!];
+}
+
+/**
+ * Spatial MODIS × VIIRS matching of one fire seen by both within a short time: the wide MODIS pixels (1 km at
+ * nadir) carry the radiative power (FRP); the fine VIIRS pixels (375 m) inside each MODIS footprint split that
+ * power between them in proportion to their own signal, and their outline becomes the fire front. `driftKm`
+ * widens the footprints for the distance the fire may have moved between the two looks.
+ */
+export function fuseFootprints(modis: readonly Footprint[], viirs: readonly Footprint[], driftKm = 0): FootprintFusion {
+  const owner = viirs.map((v) => {
+    let best = -1;
+    let bestD = Infinity;
+    modis.forEach((m, j) => {
+      const kx = KM_DEG * Math.cos((m.lat * Math.PI) / 180);
+      const dx = Math.abs(v.lng - m.lng) * kx;
+      const dy = Math.abs(v.lat - m.lat) * KM_DEG;
+      if (dx <= m.scanKm / 2 + driftKm && dy <= m.trackKm / 2 + driftKm) {
+        const d = Math.hypot(dx, dy);
+        if (d < bestD) {
+          bestD = d;
+          best = j;
+        }
+      }
+    });
+    return best;
+  });
+  const weight = viirs.map((v) => Math.max(0.1, v.frp));
+  const sumW = new Map<number, number>();
+  owner.forEach((j, i) => {
+    if (j >= 0) sumW.set(j, (sumW.get(j) ?? 0) + weight[i]!);
+  });
+  const refined: RefinedPixel[] = viirs.map((v, i) => {
+    const j = owner[i]!;
+    const share = j >= 0 ? (modis[j]!.frp * weight[i]!) / sumW.get(j)! : v.frp;
+    return { lng: v.lng, lat: v.lat, frp: Math.round(share * 10) / 10, scanKm: v.scanKm, trackKm: v.trackKm, matched: j >= 0 };
+  });
+  const modisOnly = modis.filter((_, j) => !sumW.has(j));
+  const area = (list: readonly Footprint[]) => list.reduce((s, p) => s + p.scanKm * p.trackKm, 0);
+  const frp = (list: readonly Footprint[]) => Math.round(list.reduce((s, p) => s + p.frp, 0) * 10) / 10;
+  const modisArea = area(modis);
+  const viirsArea = area(viirs);
+  const hullSource = viirs.length ? viirs : modis;
+  return {
+    modis: { n: modis.length, frp: frp(modis), areaKm2: modisArea },
+    viirs: { n: viirs.length, frp: frp(viirs), areaKm2: viirsArea },
+    refined,
+    modisOnly,
+    hull: convexHull(hullSource.flatMap(corners)),
+    sharpen: viirs.length && modis.length && viirsArea > 0 ? modisArea / modis.length / (viirsArea / viirs.length) : 1,
+  };
+}
+
 export type FusedStatus = 'both' | 'modisOnly' | 'viirsOnly' | 'none';
 
 export interface FusedObservation {

@@ -39,6 +39,14 @@ export const config = {
    * keys since late 2026 ("no longer available to new users"), so the default is a current Flash model.
    */
   geminiModel: process.env.GEMINI_MODEL?.trim() || 'gemini-3.6-flash',
+  /**
+   * The in-app guide answers while the visitor waits: the fast model first, the main one as the fallback
+   * (gemini-3.6-flash can take > 15 s on a long prompt).
+   */
+  geminiChatModels: (process.env.GEMINI_CHAT_MODELS ?? 'gemini-3.5-flash-lite,gemini-3.6-flash')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
   /** Tried in order when the main model is retired, overloaded, over quota or too slow. */
   geminiFallbackModels: (process.env.GEMINI_FALLBACK_MODELS ?? 'gemini-3.5-flash-lite')
     .split(',')
@@ -57,6 +65,8 @@ export const config = {
   rateLimitPerMinute: int(process.env.AI_RATE_LIMIT_PER_MIN, 10),
   /** Requests per minute per client IP on the AI #3 ground endpoints (cheap, no external model). */
   groundRateLimitPerMinute: int(process.env.AI_GROUND_RATE_LIMIT_PER_MIN, 60),
+  /** Questions per minute per client IP to the in-app AI guide (each one is a Gemini call). */
+  chatRateLimitPerMinute: int(process.env.AI_CHAT_RATE_LIMIT_PER_MIN, 20),
   /** Serve the production build (dist/) as well, for one-process deployments. */
   serveStatic: process.env.SERVE_STATIC !== '0',
   /** HELIOS data API (Python, FastAPI): /v1/* is proxied there and AI briefs get its forecast as context. */

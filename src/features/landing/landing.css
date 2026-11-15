@@ -88,26 +88,31 @@
   clip-path: var(--el-hex-clip);
 }
 
-/* Live caption of the three real-orbit satellites (AI #2 handing data over before a link drops). */
+/* Live caption of the five real-orbit satellites: one line per satellite, details in the tooltips. */
 .lp-live {
   --live-down: var(--el-link-rf);
-  --live-laser: var(--el-link-laser);
+  --live-relay: #c4a8ff;
   --live-radio: var(--el-link-radio);
-  --live-store: #8a8a92;
+  --live-laser: var(--el-link-laser);
+  --live-store: #6e6e76;
+  --live-blocked: var(--el-orange);
   position: absolute;
   left: max(16px, env(safe-area-inset-left));
-  bottom: calc(env(safe-area-inset-bottom) + 24px);
+  bottom: calc(env(safe-area-inset-bottom) + 20px);
   z-index: 4;
-  width: min(372px, calc(100vw - 32px));
-  padding: 12px 14px 11px;
-  border: 1px solid var(--el-line-strong);
-  border-radius: 14px;
+  width: min(296px, calc(100vw - 32px));
+  max-height: calc(100dvh - var(--el-header-h, 64px) - 40px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 9px 11px 9px 12px;
+  border: 1px solid var(--el-line);
+  border-radius: 12px;
   background: var(--el-panel);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   color: var(--el-ink);
-  font-size: 12.5px;
-  line-height: 1.38;
+  font-size: 12px;
+  line-height: 1.3;
   animation: lp-live-in 600ms var(--el-ease-standard) both;
 }
 @keyframes lp-live-in {
@@ -116,350 +121,232 @@
     transform: translateY(8px);
   }
 }
+@keyframes lp-live-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
 .lp-live__head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 2px 10px;
-  margin-bottom: 8px;
+  align-items: center;
+  gap: 8px;
 }
 .lp-live__title {
   font-weight: 600;
   letter-spacing: -0.005em;
+  white-space: nowrap;
+}
+.lp-live__mini {
+  display: inline-flex;
+  gap: 4px;
 }
 .lp-live__clock {
+  margin-left: auto;
   color: var(--el-ink-dim);
   font-family: var(--el-font-mono);
-  font-size: 11.5px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.lp-live__clock [data-slow='true'] {
+.lp-live__speed {
+  margin-left: 6px;
+  cursor: help;
+}
+.lp-live__speed[data-slow='true'] {
   color: var(--live-laser);
+}
+.lp-live__fold {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-right: -4px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--el-ink-dim);
+  cursor: pointer;
+}
+.lp-live__fold:hover {
+  color: var(--el-ink);
+  background: rgb(255 255 255 / 0.06);
+}
+.lp-live__fold:focus-visible,
+.lp-live__btn:focus-visible {
+  outline: none;
+  box-shadow: var(--el-focus-ring);
+}
+.lp-live__col {
+  margin: 6px 0 2px;
+  color: var(--el-ink-dim);
+  font-size: 10.5px;
+  text-align: right;
 }
 .lp-live__sats {
   display: grid;
-  gap: 6px;
+  gap: 3px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 .lp-live__sats li {
   display: grid;
-  grid-template-columns: 10px 74px 1fr;
-  align-items: baseline;
-  gap: 8px;
+  grid-template-columns: 7px 62px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  cursor: default;
 }
 .lp-live__dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--live-store);
-  transform: translateY(-1px);
 }
-.lp-live__sats [data-kind='down'] .lp-live__dot {
+.lp-live__dot[data-kind='down'] {
   background: var(--live-down);
-  box-shadow: 0 0 8px var(--live-down);
+  box-shadow: 0 0 6px var(--live-down);
 }
-.lp-live__sats [data-kind='laser'] .lp-live__dot {
-  background: var(--live-laser);
-  box-shadow: 0 0 10px var(--live-laser);
-  animation: lp-live-pulse 0.9s ease-in-out infinite;
+.lp-live__dot[data-kind='relay'] {
+  background: var(--live-relay);
+  box-shadow: 0 0 6px var(--live-relay);
 }
-.lp-live__sats [data-kind='radio'] .lp-live__dot {
+.lp-live__dot[data-kind='db'] {
   background: var(--live-radio);
-  box-shadow: 0 0 10px var(--live-radio);
+  box-shadow: 0 0 6px var(--live-radio);
   animation: lp-live-pulse 0.9s ease-in-out infinite;
 }
-@keyframes lp-live-pulse {
-  50% {
-    opacity: 0.35;
-  }
+.lp-live__dot[data-kind='blocked'] {
+  background: var(--live-blocked);
 }
 .lp-live__name {
   color: var(--el-ink-dim);
   white-space: nowrap;
 }
 .lp-live__text {
-  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.lp-live__sats [data-kind='laser'] .lp-live__text {
-  color: var(--live-laser);
-}
-.lp-live__sats [data-kind='radio'] .lp-live__text {
-  color: var(--live-radio);
-}
-.lp-live__why {
-  display: block;
-  color: var(--el-ink-dim);
-  font-size: 11.5px;
-}
-.lp-live__fires {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 9px 0 0;
-  padding-top: 8px;
-  border-top: 1px solid var(--el-line);
-  color: var(--el-ink-dim);
-}
-.lp-live__flame {
-  flex: none;
-  width: 8px;
-  height: 9.2px;
-  background: var(--el-gold);
-  clip-path: var(--el-hex-clip);
-}
-.lp-live__actions {
-  display: grid;
-  gap: 6px;
-  margin-top: 9px;
-}
-.lp-live__btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 10px;
-  border: 1px solid var(--el-line-strong);
-  border-radius: 10px;
-  background: transparent;
-  color: var(--el-ink);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color var(--el-dur-base) var(--el-ease-standard),
-    background var(--el-dur-base) var(--el-ease-standard);
-}
-.lp-live__btn:hover {
-  border-color: var(--live-laser);
-}
-.lp-live__btn:focus-visible {
-  outline: none;
-  box-shadow: var(--el-focus-ring);
-}
-.lp-live__btn > svg {
-  flex: none;
-}
-.lp-live__storm:hover {
-  border-color: var(--live-radio);
-}
-.lp-live__storm:focus-visible {
-  outline: none;
-  box-shadow: var(--el-focus-ring);
-}
-.lp-live__storm[aria-pressed='true'] {
-  border-color: var(--live-radio);
-  background: rgb(124 183 255 / 0.12);
-}
-.lp-live__storm[data-busy='true'] {
-  cursor: progress;
-}
-.lp-live__storm > span:first-of-type {
-  flex: 1;
-  min-width: 0;
-}
-.lp-live__switch {
-  position: relative;
-  flex: none;
-  width: 28px;
-  height: 16px;
-  border-radius: 999px;
-  background: var(--el-line-strong);
-  transition: background var(--el-dur-base) var(--el-ease-standard);
-}
-.lp-live__switch::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--el-ink);
-  transition: transform var(--el-dur-base) var(--el-ease-standard);
-}
-.lp-live__storm[aria-pressed='true'] .lp-live__switch {
-  background: var(--live-radio);
-}
-.lp-live__storm[aria-pressed='true'] .lp-live__switch::after {
-  transform: translateX(12px);
-}
-.lp-live__storm[data-busy='true'] .lp-live__switch::after {
-  animation: lp-live-pulse 0.7s ease-in-out infinite;
-}
-.lp-live__hint {
-  margin: 6px 0 0;
-  color: var(--el-ink-dim);
-  font-size: 11.5px;
-}
-.lp-live__legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  margin: 9px 0 0;
-  padding: 0;
-  list-style: none;
+.lp-live__sats [data-kind='store'] .lp-live__text {
   color: var(--el-ink-muted);
-  font-size: 11px;
-}
-.lp-live__legend li {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.lp-live__legend li::before {
-  content: '';
-  width: 14px;
-  height: 2px;
-  border-radius: 1px;
-  background: var(--live-down);
-}
-.lp-live__legend [data-kind='relay']::before {
-  background: var(--live-relay);
-}
-.lp-live__legend [data-kind='db']::before {
-  background: var(--live-radio);
-}
-
-/* Five satellites: link to TDRS, direct broadcast received, satellite over a station under maintenance. */
-.lp-live {
-  --live-relay: #c4a8ff;
-  --live-blocked: var(--el-orange);
-  max-height: calc(100dvh - var(--el-header-h, 64px) - 48px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-.lp-live__sats [data-kind='relay'] .lp-live__dot {
-  background: var(--live-relay);
-  box-shadow: 0 0 8px var(--live-relay);
-}
-.lp-live__sats [data-kind='db'] .lp-live__dot {
-  background: var(--live-radio);
-  box-shadow: 0 0 10px var(--live-radio);
-  animation: lp-live-pulse 0.9s ease-in-out infinite;
 }
 .lp-live__sats [data-kind='db'] .lp-live__text {
   color: var(--live-radio);
 }
-.lp-live__sats [data-kind='blocked'] .lp-live__dot {
-  background: var(--live-blocked);
-}
 .lp-live__sats [data-kind='blocked'] .lp-live__text {
   color: var(--live-blocked);
 }
-.lp-live__retired {
+.lp-live__eta {
+  color: var(--el-ink);
+  font-family: var(--el-font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.lp-live__sats [data-retired='true'] .lp-live__name,
+.lp-live__sats [data-retired='true'] .lp-live__text {
+  opacity: 0.55;
+}
+.lp-live__sats [data-retired='true'] .lp-live__eta {
   color: var(--live-blocked);
 }
-.lp-live__ground {
-  color: var(--el-ink-muted);
-}
 .lp-live__region {
-  margin: 9px 0 0;
-  padding-top: 8px;
-  border-top: 1px solid var(--el-line);
-}
-.lp-live__regionTitle {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 0 0 4px;
-  font-weight: 600;
-}
-.lp-live__passes {
-  display: grid;
-  gap: 3px;
-  margin: 0;
-  padding: 0 0 0 16px;
-  list-style: none;
+  gap: 7px;
+  margin: 7px 0 0;
+  padding-top: 7px;
+  border-top: 1px solid var(--el-line);
   color: var(--el-ink-muted);
 }
-.lp-live__passes [data-now='true'] {
+.lp-live__region[data-now='true'] {
   color: var(--el-gold);
 }
-.lp-live__sum {
-  margin: 8px 0 0;
-  color: var(--el-ink-muted);
-  font-size: 11.5px;
+.lp-live__region b {
+  color: var(--el-ink);
+  font-weight: 600;
 }
-.lp-live__storm[data-tone='outage']:hover,
+.lp-live__regionText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lp-live__flame {
+  flex: none;
+  width: 7px;
+  height: 8px;
+  background: var(--el-gold);
+  clip-path: var(--el-hex-clip);
+}
+.lp-live__actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 7px;
+}
+.lp-live__btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--el-line-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--el-ink-muted);
+  cursor: pointer;
+  transition:
+    border-color var(--el-dur-base) var(--el-ease-standard),
+    background var(--el-dur-base) var(--el-ease-standard),
+    color var(--el-dur-base) var(--el-ease-standard);
+}
+.lp-live__btn:hover {
+  border-color: var(--live-laser);
+  color: var(--el-ink);
+}
+.lp-live__storm[aria-pressed='true'] {
+  border-color: var(--live-radio);
+  background: rgb(124 183 255 / 0.14);
+  color: var(--el-ink);
+}
 .lp-live__storm[data-tone='outage'][aria-pressed='true'] {
   border-color: var(--live-blocked);
+  background: rgb(243 112 33 / 0.14);
 }
-.lp-live__storm[data-tone='outage'][aria-pressed='true'] {
-  background: rgb(243 112 33 / 0.12);
-}
-.lp-live__storm[data-tone='outage'][aria-pressed='true'] .lp-live__switch {
-  background: var(--live-blocked);
-}
-.lp-live__storm[data-tone='db']:hover,
 .lp-live__storm[data-tone='db'][aria-pressed='true'] {
   border-color: var(--live-down);
+  background: rgb(94 230 198 / 0.12);
 }
-.lp-live__storm[data-tone='db'][aria-pressed='true'] {
-  background: rgb(94 230 198 / 0.1);
+.lp-live__storm[data-busy='true'] {
+  cursor: progress;
+  animation: lp-live-pulse 0.7s ease-in-out infinite;
 }
-.lp-live__storm[data-tone='db'][aria-pressed='true'] .lp-live__switch {
-  background: var(--live-down);
-}
-/* The caption gives way to the planet on smaller screens: legend and hint first, then a denser layout. */
-@media (max-width: 1100px) {
-  .lp-live {
-    width: min(330px, calc(100vw - 32px));
-    font-size: 12px;
-  }
-}
-@media (max-height: 780px) {
-  .lp-live__legend,
-  .lp-live__hint {
-    display: none;
-  }
-}
-@media (max-height: 660px), (max-width: 640px) {
-  .lp-live {
-    padding: 9px 11px 8px;
-    font-size: 11.5px;
-  }
-  .lp-live__head {
-    margin-bottom: 6px;
-  }
-  .lp-live__sats {
-    gap: 4px;
-  }
-  .lp-live__sats li {
-    grid-template-columns: 10px 62px 1fr;
-    gap: 6px;
-  }
-  .lp-live__actions {
-    grid-template-columns: 1fr 1fr;
-    margin-top: 7px;
-  }
-  .lp-live__btn {
-    padding: 6px 8px;
-    line-height: 1.2;
-  }
-  .lp-live__fires {
-    margin-top: 7px;
-    padding-top: 6px;
-  }
-  .lp-live__firesText,
-  .lp-live__why {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+.lp-live__fires {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--el-ink-dim);
+  font-family: var(--el-font-mono);
+  font-size: 11px;
+  cursor: help;
 }
 /* Phones: the caption takes the place of the scroll hint under the planet. */
 @media (max-width: 640px) {
   .lp-live {
-    bottom: calc(env(safe-area-inset-bottom) + 14px);
+    bottom: calc(env(safe-area-inset-bottom) + 12px);
     width: calc(100vw - 32px);
   }
-  .lp-hero:has(.lp-live) .lp-scroll,
-  .lp-live__legend,
-  .lp-live__hint {
+  .lp-hero:has(.lp-live) .lp-scroll {
+    display: none;
+  }
+}
+@media (max-height: 620px) {
+  .lp-live__col {
     display: none;
   }
 }
@@ -1160,8 +1047,87 @@
     animation: none;
   }
   .lp-live,
-  .lp-live__sats .lp-live__dot,
-  .lp-live__storm .lp-live__switch::after {
+  .lp-live__dot,
+  .lp-live__storm {
+    animation: none;
+  }
+}
+
+/* Temporal bridge teaser: one line, live dot, straight into the lab. */
+.lp-ai__bridge {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px 18px;
+  margin-top: clamp(28px, 4vh, 40px);
+  padding: 16px 20px;
+  border: 1px solid var(--el-gold-line);
+  border-radius: 18px;
+  background: linear-gradient(90deg, rgb(243 112 33 / 0.1), rgb(243 112 33 / 0.02) 60%, transparent);
+  color: var(--el-ink);
+  text-decoration: none;
+  transition: border-color var(--el-dur-base) var(--el-ease-standard);
+}
+.lp-ai__bridge:hover {
+  border-color: var(--el-gold);
+}
+.lp-ai__bridge:focus-visible {
+  outline: none;
+  box-shadow: var(--el-focus-ring);
+}
+.lp-ai__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--el-gold-soft);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+.lp-ai__liveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--el-gold);
+  animation: lp-ai-ping 1.6s ease-out infinite;
+}
+@keyframes lp-ai-ping {
+  0% {
+    box-shadow: 0 0 0 0 rgb(243 112 33 / 0.6);
+  }
+  100% {
+    box-shadow: 0 0 0 7px rgb(243 112 33 / 0);
+  }
+}
+.lp-ai__bridgeText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.lp-ai__bridgeText b {
+  font-size: 15.5px;
+  font-weight: 500;
+}
+.lp-ai__bridgeText span {
+  color: var(--el-ink-muted);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+.lp-ai__bridgeCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--el-ink);
+  font-size: 14px;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .lp-ai__bridge {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lp-ai__liveDot {
     animation: none;
   }
 }

@@ -17,6 +17,7 @@ import { Banner, cn, Icon, IconButton, Panel, Segmented, Sheet, Spinner, type Sh
 import { AreaPanelBody, SelectionSummary } from './AreaPanel';
 import { flyToArea, zoomBy } from './camera';
 import { LayersPanelBody } from './LayersPanel';
+import { LiveChip, LiveSync } from './LiveSync';
 import { MapHover } from './MapHover';
 import { useMapStore } from './mapStore';
 import { MapSync } from './MapSync';
@@ -55,6 +56,7 @@ function StatusStack({ loading, error, onRetry }: { loading: boolean; error: boo
     <div className="pointer-events-none absolute inset-x-0 top-[calc(var(--el-header-h)+12px)] flex flex-col items-center gap-2 px-[var(--el-gutter)]">
       {/* Always on screen: where the numbers on the map come from (synthetic demo vs real NASA FIRMS). */}
       <DataBadge variant="overlay" />
+      <LiveChip />
       {loading ? (
         <div className="chip pointer-events-auto !bg-[var(--el-panel)] backdrop-blur-md">
           <Spinner size={14} label={m.map.status.loading} />
@@ -274,6 +276,7 @@ export function MapScreen() {
   return (
     <>
       <MapSync index={fires.index} archive={fires.archive} />
+      <LiveSync />
       <HeliosSync />
       <WorldSync />
       <MapHover onPickCountry={onPickCountry} onPickRegion={onPickRegion} />
