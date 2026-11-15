@@ -66,10 +66,16 @@ const TEXTURES = {
  * High quality loads NASA's real model; the light profile (phones, data saver) keeps the procedural one.
  */
 const SHOWN: { id: string; kind: SatelliteKind; model: NasaModel }[] = [{ id: 'terra', kind: 'eos', model: 'terra' }];
-/** Render at most ~72 fps: 120–165 Hz screens would otherwise redraw the planet 2–3× more than needed. */
-const MIN_FRAME_MS = 12.5;
-/** Satellite trails change slowly: rebuild them every few rendered frames, not every frame. */
-const TRAIL_EVERY = 4;
+/**
+ * Frame pacing: render every display refresh up to ~100 Hz, every 2nd on 120–165 Hz screens, every 4th at
+ * 240 Hz. Skipping whole refreshes keeps the pacing even; a time threshold (the old 12.5 ms cap) halved
+ * 90–100 Hz screens to an uneven 45–50 fps.
+ */
+const TARGET_FPS = 60;
+/** Refresh intervals sampled before the stride is chosen. */
+const PACE_SAMPLES = 30;
+/** Simulated seconds between trail points. The points sit on a fixed time grid, so only the head moves. */
+const TRAIL_STEP = 18;
 /** Orbit altitude is exaggerated so the satellites clear the atmosphere visibly. */
 const ALTITUDE_EXAGGERATION = 2.4;
 /** Simulation speed: one orbit takes ~50 s on screen. */
@@ -146,12 +152,14 @@ const earthFragment = /* glsl */ `
     float diffuse = max(ndl, 0.0);
     vec3 col = albedo * (1.0 - 0.35 * cloudShadow) * (uAmbient + 1.15 * diffuse);
 
-    // Sun glint on water (specular map = ocean mask): a small, quiet highlight.
+    // Sun glint on water (specular map = ocean mask): a soft sheen with a faint core, stronger towards
+    // grazing angles (Fresnel), never a hard white disc.
     vec3 h = normalize(uSunDir + v);
     float water = uHasSpec * texture2D(uSpec, vUv).r;
     float nh = max(dot(n, h), 0.0);
-    float glint = pow(nh, 700.0) * 0.28 * water * (1.0 - cloud);
-    col += vec3(1.0, 0.9, 0.74) * glint * day;
+    float fresnel = 0.55 + 0.45 * pow(1.0 - max(dot(n, v), 0.0), 2.0);
+    float glint = (pow(nh, 160.0) * 0.11 + pow(nh, 24.0) * 0.022) * fresnel * water * (1.0 - cloud);
+    col += vec3(1.0, 0.88, 0.7) * glint * day;
 
     // Clouds catch the light (and stay faintly visible at night).
     col = mix(col, vec3(1.0) * (uAmbient * 0.6 + 1.05 * diffuse), cloud * 0.9);
@@ -351,7 +359,15 @@ export class EarthScene {
   /** Current render resolution; lowered step by step if the machine cannot keep up. */
   private pixelRatio = 1;
   private perf = { sum: 0, n: 0 };
-  private frameCount = 0;
+  /** Render one display refresh in `stride` (see TARGET_FPS); chosen once from measured refresh intervals. */
+  private stride = 1;
+  private vsyncs = 0;
+  private lastVsync = 0;
+  private readonly refresh: number[] = [];
+  /** debugStep() renders even when the stride would skip this refresh. */
+  private forceFrame = false;
+  /** Trail grid epoch the trail points were last built for. */
+  private trailEpoch = Number.NaN;
   /** Where the planet sits: centre offset as a share of the viewport, radius as a share of the short side. */
   private frameSpec = { x: 0, y: 0, size: 0.8 };
   private baseDistance = 4.4;
@@ -1000,8 +1016,8 @@ export class EarthScene {
     cancelAnimationFrame(this.raf);
     const wasRunning = this.running;
     this.running = true;
-    // At least one frame-cap interval, so the frame is never skipped by MIN_FRAME_MS.
-    this.last = performance.now() - Math.max(ms, MIN_FRAME_MS);
+    this.last = performance.now() - ms;
+    this.forceFrame = true;
     this.frame(performance.now());
     if (!wasRunning) {
       this.running = false;
@@ -1030,16 +1046,29 @@ export class EarthScene {
     this.resize();
   }
 
+  /** Learns the display's refresh rate from the first rAF intervals and picks the render stride. */
+  private pace(now: number) {
+    const iv = now - this.lastVsync;
+    this.lastVsync = now;
+    if (this.refresh.length >= PACE_SAMPLES || !(iv > 2 && iv < 40)) return;
+    this.refresh.push(iv);
+    if (this.refresh.length < PACE_SAMPLES) return;
+    const median = [...this.refresh].sort((a, b) => a - b)[PACE_SAMPLES >> 1]!;
+    this.stride = Math.max(1, Math.floor(1000 / median / TARGET_FPS + 0.15));
+  }
+
   private frame = (now: number) => {
     if (!this.running) return;
-    if (now - this.last < MIN_FRAME_MS) {
+    this.pace(now);
+    this.vsyncs += 1;
+    if (!this.forceFrame && this.vsyncs % this.stride !== 0) {
       this.raf = requestAnimationFrame(this.frame);
       return;
     }
+    this.forceFrame = false;
     const interval = now - this.last;
-    const dt = Math.min(0.05, interval / 1000);
+    const dt = Math.min(0.05, Math.max(0, interval) / 1000);
     this.last = now;
-    this.frameCount += 1;
     this.watchFrameRate(interval);
     const reduced = this.opts.reducedMotion;
 
@@ -1116,6 +1145,8 @@ export class EarthScene {
       return;
     }
     this.tilt.updateMatrixWorld();
+    const epoch = Math.floor(this.simTime / TRAIL_STEP);
+    const rebuild = epoch !== this.trailEpoch;
     for (const s of this.sats) {
       const pos = this.satPosition(s.sat, this.simTime, this.tmp);
       s.model.position.copy(pos);
@@ -1124,17 +1155,24 @@ export class EarthScene {
       s.model.up.copy(ahead.transformDirection(this.tilt.matrixWorld));
       s.model.lookAt(this.tmp2.copy(pos).multiplyScalar(2).applyMatrix4(this.tilt.matrixWorld));
 
-      if (this.frameCount % TRAIL_EVERY !== 0 && !this.dive) continue;
-      const n = s.trailPositions.length / 3;
+      // The head is the satellite itself (every frame); the rest sits on a fixed time grid in the inertial
+      // frame, so it only changes when the grid advances — smooth, and nearly free.
       const out = s.trailPositions;
-      for (let i = 0; i < n; i++) {
-        const p = this.satPosition(s.sat, this.simTime - i * 18, this.tmp2);
-        out[i * 3] = p.x;
-        out[i * 3 + 1] = p.y;
-        out[i * 3 + 2] = p.z;
+      out[0] = pos.x;
+      out[1] = pos.y;
+      out[2] = pos.z;
+      if (rebuild) {
+        const n = out.length / 3;
+        for (let i = 1; i < n; i++) {
+          const p = this.satPosition(s.sat, (epoch - i + 1) * TRAIL_STEP, this.tmp2);
+          out[i * 3] = p.x;
+          out[i * 3 + 1] = p.y;
+          out[i * 3 + 2] = p.z;
+        }
       }
       (s.trail.geometry.getAttribute('position') as BufferAttribute).needsUpdate = true;
     }
+    this.trailEpoch = epoch;
   }
 
   private applyViewOffset() {
