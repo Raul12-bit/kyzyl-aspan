@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useI18n } from '@/i18n';
 import { CueSection } from './CueSection';
 import { DownlinkSection } from './DownlinkSection';
+import { HeliosMissionSections } from './HeliosSections';
 import { OnboardSection } from './OnboardSection';
 
 /** /mission — the space-segment concepts (ideas 4–6), each a live simulation with its assumptions stated. */
@@ -27,6 +28,7 @@ export function MissionPage() {
           <OnboardSection />
           <DownlinkSection />
           <CueSection />
+          <HeliosMissionSections />
         </div>
       </div>
     </main>

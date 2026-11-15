@@ -10,6 +10,13 @@ export interface ActivityOverview {
   /** [lng, lat, weight 0…1] */
   points: [number, number, number][];
   synthetic: boolean;
+  /** Real backend only: which NASA FIRMS feeds and window the points come from. */
+  source?: string;
+  from?: string;
+  to?: string;
+  /** Raw detections behind the points (before aggregation to cells). */
+  detections?: number;
+  cells?: number;
 }
 
 /**
