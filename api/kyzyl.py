@@ -347,9 +347,18 @@ def get_onboard_model():
 
 
 # ----------------------------------------------------------------------------- расширения HELIOS
+def data_ready() -> bool:
+    """Есть ли данные для карты: мировые агрегаты или экспорт по Казахстану. Без них сервер отвечает только
+    «живыми» эндпоинтами (орбиты, созвездие, физика связи), а карта сайта должна остаться на демо-данных."""
+    from api import world
+
+    return bool(world.available()) or (K / "arrays.npz").exists()
+
+
 @router.get("/helios/status")
 def helios_status():
     return _json({
+        "data_ready": data_ready(),
         "data": _report("frontend_export"), "refresh": _report("refresh_last"),
         "models": {"ai1_edge": _report("ai1_edge_detector_metrics"), "ai2_link": _report("ai2_link_metrics"),
                    "ai3_ground": (_report("ai3_ground_forecast_metrics") or {}).get("horizons")},

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Logo } from '@/app/Logo';
 import { useI18n } from '@/i18n';
 import { ButtonLink, Icon, type IconName } from '@/ui';
 
@@ -140,7 +141,9 @@ export function MethodPage() {
         </div>
 
         <div className="mt-16 flex flex-col items-start justify-between gap-6 rounded-panel border border-line bg-[var(--el-tint-1)] p-6 md:flex-row md:items-center md:p-8">
-          <img src="/brand/kyzyl-aspan-logo.webp" alt={m.app.name} width={220} height={147} className="h-auto w-[180px] rounded-[14px] bg-white p-2 md:w-[220px]" loading="lazy" />
+          <span role="img" aria-label={m.app.name}>
+            <Logo size={64} />
+          </span>
           <ButtonLink to="/map" variant="primary" size="lg" iconRight="arrowRight">
             {m.method.cta}
           </ButtonLink>

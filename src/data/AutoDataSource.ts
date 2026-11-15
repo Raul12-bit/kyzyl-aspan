@@ -35,6 +35,24 @@ export function setDataMode(mode: DataMode) {
 const setMode = setDataMode;
 
 /**
+ * The HELIOS server answers at all — even without the fire archive. Its live services (real orbits, the
+ * five-satellite link forecast, link physics) need no archive, so they can run while the map stays on the demo.
+ */
+let live = false;
+const liveListeners = new Set<() => void>();
+export function heliosLive(): boolean {
+  return live;
+}
+export function onHeliosLive(fn: () => void): () => void {
+  liveListeners.add(fn);
+  return () => liveListeners.delete(fn);
+}
+export function setHeliosLive(value: boolean) {
+  live = value;
+  for (const fn of liveListeners) fn();
+}
+
+/**
  * Real HELIOS data when the API answers, the static demo otherwise — decided ONCE at start-up, so
  * the session never mixes real and synthetic numbers. Used when VITE_DATA_SOURCE is "auto" (default).
  */
@@ -45,9 +63,12 @@ export class AutoDataSource implements DataSource {
   constructor(apiUrl: string, mockBaseUrl: string, probeTimeoutMs = 3500) {
     const http = new HttpDataSource(apiUrl);
     const mock = new MockDataSource({ baseUrl: mockBaseUrl });
-    this.ready = probe(apiUrl, probeTimeoutMs).then((ok) => {
+    this.ready = probe(apiUrl, probeTimeoutMs).then(({ reachable, dataReady }) => {
+      const ok = reachable && dataReady;
+      setHeliosLive(reachable);
       setMode(ok ? 'http' : 'mock');
-      if (!ok) console.warn('[kyzyl-aspan] HELIOS API not reachable — using the synthetic demo data.');
+      if (!reachable) console.warn('[kyzyl-aspan] HELIOS API not reachable — using the synthetic demo data.');
+      else if (!dataReady) console.warn('[kyzyl-aspan] HELIOS API has no fire archive yet — demo data on the map, live satellites stay on.');
       return ok ? http : mock;
     });
   }
@@ -72,7 +93,12 @@ export class AutoDataSource implements DataSource {
   }
 }
 
-async function probe(apiUrl: string, timeoutMs: number): Promise<boolean> {
+/**
+ * `reachable`: the server answers. `dataReady`: it also holds the fire archive the map reads — a server
+ * started without it used to switch the app to "real data" and leave the map with failed requests.
+ * Servers that predate the flag do not send it and count as ready.
+ */
+async function probe(apiUrl: string, timeoutMs: number): Promise<{ reachable: boolean; dataReady: boolean }> {
   try {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
     const url = new URL(`${apiUrl.replace(/\/$/, '')}/helios/status`, origin);
@@ -80,8 +106,12 @@ async function probe(apiUrl: string, timeoutMs: number): Promise<boolean> {
       signal: AbortSignal.timeout(timeoutMs),
       headers: { Accept: 'application/json' },
     });
-    return res.ok && (res.headers.get('content-type') ?? '').includes('application/json');
+    if (!res.ok || !(res.headers.get('content-type') ?? '').includes('application/json')) {
+      return { reachable: false, dataReady: false };
+    }
+    const body = (await res.json().catch(() => null)) as { data_ready?: unknown } | null;
+    return { reachable: true, dataReady: body?.data_ready !== false };
   } catch {
-    return false;
+    return { reachable: false, dataReady: false };
   }
 }

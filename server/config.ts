@@ -19,7 +19,8 @@ function loadDotEnv(file: string) {
   }
 }
 
-const root = resolve(import.meta.dirname, '..');
+// On Vercel the bundled function has no .env next to it; its settings come from the project's variables.
+const root = resolve(import.meta.dirname ?? process.cwd(), '..');
 loadDotEnv(resolve(root, '.env'));
 
 const int = (v: string | undefined, fallback: number) => {
@@ -33,9 +34,20 @@ export const config = {
   host: process.env.HOST || '127.0.0.1',
   /** Google AI Studio key. Never sent to the browser. */
   geminiKey: process.env.GEMINI_API_KEY?.trim() || null,
-  /** Model id; configurable because Google renames and retires models. */
-  geminiModel: process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash',
-  geminiTimeoutMs: int(process.env.GEMINI_TIMEOUT_MS, 20_000),
+  /**
+   * Model id; configurable because Google renames and retires models. gemini-2.5-flash answers 404 for new
+   * keys since late 2026 ("no longer available to new users"), so the default is a current Flash model.
+   */
+  geminiModel: process.env.GEMINI_MODEL?.trim() || 'gemini-3.6-flash',
+  /** Tried in order when the main model is retired, overloaded, over quota or too slow. */
+  geminiFallbackModels: (process.env.GEMINI_FALLBACK_MODELS ?? 'gemini-3.5-flash-lite')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
+  /** Per model attempt. */
+  geminiTimeoutMs: int(process.env.GEMINI_TIMEOUT_MS, 15_000),
+  /** All attempts together; the browser gives up after 30 s. */
+  geminiTotalTimeoutMs: int(process.env.GEMINI_TOTAL_TIMEOUT_MS, 26_000),
   /** Comma-separated origins allowed to call the API cross-origin (the Vite proxy is same-origin). */
   allowedOrigins: (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
     .split(',')

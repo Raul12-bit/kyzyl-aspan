@@ -1,77 +1,88 @@
-import { useId } from 'react';
+import { useId, type CSSProperties } from 'react';
+
+/** Brand orange, taken from the logo artwork (ASPAN, the hexagon, the planet's midtone). */
+export const BRAND_ORANGE = '#fc5b1c';
+
+/*
+ * Geometry measured on the brand artwork (1200 × 500 px) and scaled to a hexagon of circumradius R = 29:
+ * planet r = 0.436 R, ring 0.718 R × 0.236 R tilted 28° up to the right, satellite r = 0.08 R at the ring's
+ * right end. The ring's back half is drawn before the planet and its front half after, so the planet sits
+ * inside the ring.
+ */
+const CX = 28;
+const CY = 32;
+const R = 29;
+const HEX = Array.from({ length: 6 }, (_, k) => {
+  const a = ((-90 + 60 * k) * Math.PI) / 180;
+  return `${(CX + R * Math.cos(a)).toFixed(2)},${(CY + R * Math.sin(a)).toFixed(2)}`;
+}).join(' ');
+const RX = 20.8;
+const RY = 6.85;
+const TILT = -28;
 
 /**
- * Kyzyl Aspan mark, redrawn from the brand logo for dark backgrounds: a flame rising from the limb of
- * the planet, an orbit that burns from red into ink, and a satellite riding it. Built from a handful
- * of paths so it stays crisp at 24 px and costs nothing to ship.
+ * Kyzyl Aspan mark: an orange planet with a white ring and its satellite, inside the pointy-top hexagon that
+ * runs through the whole site (H3 cells, markers, legends). Pure SVG: crisp from a 16 px favicon to a poster.
+ * `size` is the height in px; the width follows the hexagon (√3 / 2 · height, plus the stroke).
  */
-export function LogoMark({ size = 32, className }: { size?: number; className?: string }) {
+export function LogoMark({ size = 34, className }: { size?: number; className?: string }) {
   const id = useId().replace(/:/g, '');
   return (
-    <svg width={size * 1.5} height={size} viewBox="0 0 48 32" aria-hidden className={className} style={{ flex: "none", color: "var(--el-ink)" }}>
+    <svg width={(size * 56) / 64} height={size} viewBox="0 0 56 64" aria-hidden className={className} style={{ flex: 'none' }}>
       <defs>
-        <linearGradient id={`${id}-orbit`} x1="0" y1="1" x2="1" y2="0">
-          <stop offset="0" stopColor="#ff5236" />
-          <stop offset=".45" stopColor="#ff8a3d" />
-          <stop offset="1" stopColor="currentColor" stopOpacity=".9" />
-        </linearGradient>
-        <linearGradient id={`${id}-flame`} x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0" stopColor="#ec3b29" />
-          <stop offset=".6" stopColor="#ff7333" />
-          <stop offset="1" stopColor="#ffb24a" />
-        </linearGradient>
-        <radialGradient id={`${id}-globe`} cx=".35" cy=".3" r=".8">
-          <stop offset="0" stopColor="#24304d" />
-          <stop offset="1" stopColor="#0d1424" />
+        <radialGradient id={`${id}-planet`} cx=".34" cy=".28" r=".85">
+          <stop offset="0" stopColor="#ff8f4a" />
+          <stop offset=".5" stopColor="#f4632a" />
+          <stop offset="1" stopColor="#d6441a" />
         </radialGradient>
-        <clipPath id={`${id}-clip`}>
-          <circle cx="27" cy="20" r="10.5" />
-        </clipPath>
+        <linearGradient id={`${id}-ring`} x1={CX - RX} y1="0" x2={CX + RX} y2="0" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset=".6" stopColor="#f4f2f0" />
+          <stop offset="1" stopColor="#c9c8cc" />
+        </linearGradient>
       </defs>
-      {/* planet */}
-      <circle cx="27" cy="20" r="10.5" fill={`url(#${id}-globe)`} stroke="currentColor" strokeOpacity=".7" strokeWidth="1" />
-      <g clipPath={`url(#${id}-clip)`} fill="#e8ecf4" fillOpacity=".6">
-        {/* abstract continents: Eurasia & Africa, as on the logo */}
-        <path d="M24.5 12.2c2.3-.9 5-.6 7.4.4 1.3.6 2.2 1.6 3.4 2.2l-1 1.7-2.2-.4-1.4 1.3-2.4-.6-.9 1.6-2.3.3.4 2.4-1.8.9-.8 3.3-1.6-.3-.6-2.6-1.5-1.1.5-2.3 1.7-.8-.6-1.6 1.1-1.5Z" />
-        <path d="M30.4 22.2l2.6.3 1.4 2-1.1 3.4-2.1 1.6-1-2.1.4-2.4Z" />
+      <polygon points={HEX} fill="none" stroke={BRAND_ORANGE} strokeWidth="1.8" strokeLinejoin="round" />
+      <g transform={`rotate(${TILT} ${CX} ${CY})`} fill="none" strokeLinecap="round">
+        {/* back half of the ring, behind the planet */}
+        <path d={`M${CX - RX} ${CY} A${RX} ${RY} 0 0 1 ${CX + RX} ${CY}`} stroke="#9c9ba1" strokeWidth="1.5" />
       </g>
-      {/* orbit */}
-      <path
-        d="M3.5 21.5c2.6 6.1 17.4 8 30.2 3.7 9-3 13.8-8.9 11.3-12.8-1.2-1.9-4-2.8-7.4-2.9"
-        fill="none"
-        stroke={`url(#${id}-orbit)`}
-        strokeWidth="1.9"
-        strokeLinecap="round"
-      />
-      {/* flame on the limb */}
-      <path
-        d="M14.3 23.6c-3.4-.6-5.5-3.2-5.1-6.3.3-2.6 2.4-3.9 3.2-6.4 1.4 1.3 2 2.9 1.7 4.6 1-.6 1.6-1.6 1.8-2.8 1.9 1.9 2.4 4.4 1.6 6.6-.5 1.4-1.6 2.4-3.2 4.3Z"
-        fill={`url(#${id}-flame)`}
-      />
-      {/* satellite */}
-      <g transform="rotate(-32 39.5 6)">
-        <rect x="37.6" y="4.4" width="3.8" height="3.2" rx=".6" fill="currentColor" />
-        <rect x="31.6" y="4.9" width="5.2" height="2.2" rx=".4" fill="currentColor" fillOpacity=".75" />
-        <rect x="42.2" y="4.9" width="5.2" height="2.2" rx=".4" fill="currentColor" fillOpacity=".75" />
+      <circle cx={CX} cy={CY} r="12.6" fill={`url(#${id}-planet)`} />
+      <g transform={`rotate(${TILT} ${CX} ${CY})`}>
+        {/* front half of the ring, over the planet */}
+        <path d={`M${CX + RX} ${CY} A${RX} ${RY} 0 0 1 ${CX - RX} ${CY}`} fill="none" stroke={`url(#${id}-ring)`} strokeWidth="1.7" strokeLinecap="round" />
+        <circle cx={CX + 19.5} cy={CY - 2.4} r="2.3" fill="#ffffff" />
       </g>
     </svg>
   );
 }
 
-/** Two-colour wordmark, as on the logo: KYZYL in ink, ASPAN in signal red. */
-export function Wordmark({ className = '' }: { className?: string }) {
+/** Two-colour wordmark, as on the logo: KYZYL in white, ASPAN in brand orange. */
+export function Wordmark({ className = '', style }: { className?: string; style?: CSSProperties }) {
   return (
-    <span className={`wordmark ${className}`}>
-      <span className="text-ink">Kyzyl</span> <span className="text-kyzyl">Aspan</span>
+    <span className={`wordmark ${className}`} style={style}>
+      <span className="text-ink">Kyzyl</span> <span className="wordmark__accent">Aspan</span>
     </span>
   );
 }
 
-export function Logo({ compact = false, size = 26 }: { compact?: boolean; size?: number }) {
+/**
+ * Mark + wordmark + "Red sky" (what the name means in Kazakh), laid out like the brand artwork. The text
+ * scales with `size` (the mark's height), so the same lockup serves the header and larger placements.
+ */
+export function Logo({ compact = false, size = 34, tagline = true }: { compact?: boolean; size?: number; tagline?: boolean }) {
   return (
-    <span className="flex items-center gap-2.5">
+    <span className="flex items-center" style={{ gap: size * 0.4 }}>
       <LogoMark size={size} />
-      {!compact ? <Wordmark /> : null}
+      {!compact ? (
+        <span className="grid" style={{ gap: size * 0.12 }}>
+          <Wordmark style={{ fontSize: size * 0.4 }} />
+          {tagline ? (
+            <span className="wordmark__tagline" style={{ fontSize: Math.max(8, size * 0.15) }}>
+              Red sky
+            </span>
+          ) : null}
+        </span>
+      ) : null}
     </span>
   );
 }

@@ -24,7 +24,9 @@
     "server:watch": "tsx watch server/index.ts",
     "start": "tsx server/index.ts",
     "data:geo": "tsx scripts/generate-geo-data.ts",
-    "models:build": "node scripts/build-satellite-models.mjs"
+    "models:build": "node scripts/build-satellite-models.mjs",
+    "build:vercel": "pnpm build && node scripts/build-vercel.mjs",
+    "deploy:vercel": "pnpm build:vercel && vercel deploy --prebuilt --prod"
   },
   "dependencies": {
     "@fontsource-variable/cormorant-garamond": "5.3.0",
@@ -36,6 +38,7 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-router-dom": "6.30.6",
+    "satellite.js": "7.1.0",
     "three": "0.187.0",
     "zustand": "^5.1.0"
   },

@@ -868,12 +868,17 @@ def helios_mission_world():
 
 
 @router.get("/helios/constellation")
-def helios_constellation(minutes: int = Query(120, ge=30, le=240), storm: str | None = None):
-    """Terra, Aqua и Suomi NPP на реальных орбитах: когда связь с Землёй вот-вот пропадёт (по орбите или по
-    прогнозу ИИ №2), спутник заранее отдаёт данные соседу по лазеру, тот сбрасывает их на станцию."""
-    from helios.comms.constellation import simulate
-    from helios.comms.stations import STATIONS
+def helios_constellation(minutes: int = Query(120, ge=30, le=240), storm: str | None = None, outage: str | None = None,
+                         db: bool = False):
+    """Terra, Aqua, Suomi NPP, NOAA-20 и NOAA-21 на реальных орбитах и со своими станциями, без модернизации спутников:
+    когда оборвётся связь (орбита + прогноз погоды над антеннами), когда снятое окажется на Земле и какой пролёт
+    принесёт сведения о пожаре в Казахстане первым. outage — станция на обслуживании (например, MCMURDO);
+    db — своя станция приёма прямого вещания в Астане (наземное оборудование)."""
+    from helios.comms.constellation import STATION_ORDER, TDRS_GROUND, simulate
 
-    if storm and storm != "auto" and storm not in {s["id"] for s in STATIONS}:
-        raise HTTPException(400, "storm — id станции или auto")
-    return _json(simulate(minutes, 30, storm or None))
+    ground = [s for s in STATION_ORDER if s != TDRS_GROUND]
+    if storm and storm != "auto" and storm not in ground:
+        raise HTTPException(400, f"storm — auto или одна из станций: {', '.join(ground)}")
+    if outage and outage not in ground:
+        raise HTTPException(400, f"outage — одна из станций: {', '.join(ground)}")
+    return _json(simulate(minutes, 30, storm or None, outage or None, db))

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useOverview } from '@/data/queries';
 import { useCountries } from '@/features/geo/countries';
-import { useConstellation, useHeliosAvailable, type ConstellationResponse } from '@/features/helios/api';
+import { useConstellation, useHeliosLive, type ConstellationResponse, type ConstellationScenario } from '@/features/helios/api';
 import { prefersReducedMotion, useIntroStore } from '@/features/intro/introStore';
 import { TIMELINE } from '@/features/intro/transition.config';
 import { useI18n } from '@/i18n';
-import { ConstellationCaption } from './ConstellationCaption';
+import { ConstellationCaption, type Scenario } from './ConstellationCaption';
 import { shortStation } from './constellationText';
 import { EarthScene, type Quality } from './EarthScene';
 
@@ -18,34 +18,30 @@ function pickQuality(): Quality {
   return coarse && Math.min(window.innerWidth, window.innerHeight) < 600 ? 'low' : 'high';
 }
 
-/** Start of the next laser handoff after step `from` (wrapping around): [step, satellite], or null. */
-function nextHandoff(d: ConstellationResponse, from: number): [number, number] | null {
-  const steps = d.states[0]?.length ?? 0;
-  for (let k = 1; k <= steps; k++) {
-    const t = (from + k) % steps;
-    for (let i = 0; i < d.states.length; i++) {
-      const list = d.states[i]!;
-      if (list[t]?.[0] === 2 && (t === 0 || list[t - 1]?.[0] !== 2)) return [t, i];
-    }
-  }
-  return null;
+/** Start of the next pass over the project region after step `from` (wrapping around): [step, satellite], or null. */
+function nextRegionPass(d: ConstellationResponse, from: number): [number, number] | null {
+  const passes = d.region.passes;
+  const p = passes.find((x) => x.t_start > from) ?? passes[0];
+  return p ? [p.t_start, p.sat] : null;
 }
 
-/** First step where the storm changed some satellite's decision (or its first pass over the station). */
-function firstStormStep(base: ConstellationResponse, stormy: ConstellationResponse, stationIdx: number): number {
-  const steps = stormy.states[0]?.length ?? 0;
-  let pass = -1;
+/** First step where a scenario changed some satellite's link or reception (-1: nowhere in the window). */
+function firstChange(base: ConstellationResponse, other: ConstellationResponse): number {
+  const steps = other.states[0]?.length ?? 0;
   for (let t = 0; t < steps; t++) {
-    for (let i = 0; i < stormy.states.length; i++) {
+    for (let i = 0; i < other.states.length; i++) {
       const a = base.states[i]?.[t];
-      const b = stormy.states[i]?.[t];
-      if (!a || !b) continue;
-      if (a[0] !== b[0] && (a[2] === stationIdx || b[2] === stationIdx)) return t;
-      if (pass < 0 && b[2] === stationIdx && b[0] !== 0) pass = t;
+      const b = other.states[i]?.[t];
+      if (a && b && (a[0] !== b[0] || a[1] !== b[1] || a[2] !== b[2])) return t;
     }
   }
-  return Math.max(0, pass);
+  return -1;
 }
+
+/** McMurdo: NOAA's November 2026 notice (maintenance, delays for NOAA-20 and NOAA-21). */
+const OUTAGE_STATION = 'MCMURDO';
+const ASTANA = { lat: 51.169, lon: 71.449 };
+const KZ_CENTRE = { lat: 48.0, lon: 67.0 };
 
 export interface GlobeCanvasProps {
   onPick: (lat: number, lng: number, screen: { x: number; y: number }) => void;
@@ -61,8 +57,9 @@ export interface GlobeCanvasProps {
 /**
  * React shell around the imperative three.js scene: creates it once, feeds it data,
  * runs the dive when the intro machine enters `zoom`, stops rendering when scrolled out of view, and
- * tears everything down (GPU memory included) on unmount. With the real backend it also plays the three
- * satellites on their real orbits (AI #2 handing data over before a link drops) and captions it.
+ * tears everything down (GPU memory included) on unmount. With the HELIOS server it also plays the five
+ * satellites on their real orbits with their real ground stations — when each link ends, when data reach the
+ * ground, which pass brings news of a fire in Kazakhstan first — and captions it.
  */
 export default function GlobeCanvas({ onPick, onHover, facingRef, onReady, onError, size }: GlobeCanvasProps) {
   const { m } = useI18n();
@@ -76,15 +73,30 @@ export default function GlobeCanvas({ onPick, onHover, facingRef, onReady, onErr
   const phase = useIntroStore((s) => s.phase);
   const reduced = useMemo(() => prefersReducedMotion(), []);
 
-  const helios = useHeliosAvailable();
-  const [storm, setStorm] = useState<string | null>(null);
-  const base = useConstellation(helios, null);
-  const stormy = useConstellation(helios && storm !== null, storm);
+  // The live satellites need only a reachable HELIOS server, not its fire archive.
+  const helios = useHeliosLive();
+  const [on, setOn] = useState<Record<Scenario, boolean>>({ storm: false, outage: false, db: false });
+  const [lastOn, setLastOn] = useState<Scenario | null>(null);
+  const anyOn = on.storm || on.outage || on.db;
   // `storm=auto`: the server tries every station in use and storms the one where it changes the most.
-  const stormData = storm !== null && stormy.data?.storm ? stormy.data : null;
-  const live = stormData ?? base.data ?? null;
+  const scenario: ConstellationScenario = { storm: on.storm ? 'auto' : null, outage: on.outage ? OUTAGE_STATION : null, db: on.db };
+  const base = useConstellation(helios, { storm: null, outage: null, db: false });
+  const alt = useConstellation(helios && anyOn, scenario);
+  // While a new scenario loads, the query still holds the previous one: show it only once it matches.
+  const altData =
+    anyOn && alt.data && (on.storm ? alt.data.storm !== null : alt.data.storm === null) &&
+    (alt.data.outage ?? null) === scenario.outage && alt.data.db === on.db
+      ? alt.data
+      : null;
+  const live = altData ?? base.data ?? null;
+  const loading: Scenario | null = anyOn && !altData ? (lastOn ?? (on.storm ? 'storm' : on.outage ? 'outage' : 'db')) : null;
   const [tick, setTick] = useState({ index: 0, slow: false });
-  const stormStation = stormData ? shortStation(stormData.stations.find((s) => s.id === stormData.storm)?.name) : null;
+  const stormStation = altData?.storm ? shortStation(altData.stations.find((s) => s.id === altData.storm)?.name) : null;
+  const toggle = (s: Scenario) => {
+    const turningOn = !on[s];
+    setOn({ ...on, [s]: turningOn });
+    setLastOn(turningOn ? s : null);
+  };
   const tickRef = useRef(tick);
   tickRef.current = tick;
 
@@ -154,37 +166,37 @@ export default function GlobeCanvas({ onPick, onHover, facingRef, onReady, onErr
     if (live) sceneRef.current?.setConstellation(live);
   }, [live]);
 
-  // Storm switched on: jump to the first moment it changes a decision and turn the planet to the station
-  // (once per switch-on, not on every 10-minute refetch).
+  // A scenario switched on: jump to the first moment it changes a link and turn the planet to where it
+  // happens (once per switch-on, not on every 10-minute refetch).
   const seekedFor = useRef<string | null>(null);
   useEffect(() => {
     const scene = sceneRef.current;
-    if (!stormData) {
-      seekedFor.current = null;
+    if (!altData || !lastOn) {
+      if (!altData) seekedFor.current = null;
       return;
     }
-    if (!scene || !base.data || seekedFor.current === stormData.storm) return;
-    const idx = stormData.stations.findIndex((s) => s.id === stormData.storm);
-    const st = stormData.stations[idx];
-    if (!st) return;
-    seekedFor.current = stormData.storm;
-    scene.seekConstellation(Math.max(0, firstStormStep(base.data, stormData, idx) - 2));
-    scene.focusOn(st.lat, st.lon);
-  }, [stormData, base.data]);
+    const key = `${lastOn}|${altData.storm}|${altData.outage}|${altData.db}`;
+    if (!scene || !base.data || seekedFor.current === key) return;
+    seekedFor.current = key;
+    const t = firstChange(base.data, altData);
+    if (t >= 0) scene.seekConstellation(Math.max(0, t - 2));
+    const focusId = lastOn === 'storm' ? altData.storm : lastOn === 'outage' ? OUTAGE_STATION : null;
+    const st = focusId ? altData.stations.find((s) => s.id === focusId) : undefined;
+    if (st) scene.focusOn(st.lat, st.lon);
+    else if (lastOn === 'db') scene.focusOn(ASTANA.lat, ASTANA.lon);
+  }, [altData, base.data, lastOn]);
 
   const detections = overview.data && !overview.data.synthetic ? overview.data.detections : undefined;
-  const hasHandoff = useMemo(() => !!live && nextHandoff(live, 0) !== null, [live]);
+  const hasPass = useMemo(() => !!live && nextRegionPass(live, 0) !== null, [live]);
 
-  // Judges' button: jump a few steps before the next laser handoff and turn the planet to it.
-  const showNextHandoff = () => {
+  // Judges' button: jump a few steps before the next pass over Kazakhstan and turn the planet to it.
+  const showNextPass = () => {
     const scene = sceneRef.current;
     if (!scene || !live) return;
-    const hit = nextHandoff(live, tickRef.current.index + 3);
+    const hit = nextRegionPass(live, tickRef.current.index + 2);
     if (!hit) return;
-    const [t, i] = hit;
-    scene.seekConstellation(Math.max(0, t - 3));
-    const p = live.satellites[i]?.track[t];
-    if (p) scene.focusOn(p[1], p[0]);
+    scene.seekConstellation(Math.max(0, hit[0] - 3));
+    scene.focusOn(KZ_CENTRE.lat, KZ_CENTRE.lon);
   };
 
   return (
@@ -208,10 +220,10 @@ export default function GlobeCanvas({ onPick, onHover, facingRef, onReady, onErr
           reducedMotion={reduced}
           detections={detections}
           stormStation={stormStation}
-          stormOn={storm !== null}
-          stormLoading={storm !== null && !stormData}
-          onStorm={() => setStorm((s) => (s ? null : 'auto'))}
-          onNextHandoff={hasHandoff ? showNextHandoff : undefined}
+          on={on}
+          loading={loading}
+          onToggle={toggle}
+          onNextPass={hasPass ? showNextPass : undefined}
         />
       ) : null}
     </>

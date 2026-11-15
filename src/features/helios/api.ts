@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type { FeatureCollection, Polygon } from 'geojson';
 import { useSyncExternalStore } from 'react';
-import { dataMode, DEFAULT_API_URL, onDataMode, type BBox } from '@/data';
+import { dataMode, DEFAULT_API_URL, heliosLive, onDataMode, onHeliosLive, type BBox } from '@/data';
 import { bboxToParam } from '@/lib/geo';
 
 /**
@@ -231,6 +231,11 @@ export function useHeliosAvailable(): boolean {
   return useSyncExternalStore(onDataMode, dataMode) === 'http';
 }
 
+/** The HELIOS server answers (possibly without the fire archive): enough for the live satellites. */
+export function useHeliosLive(): boolean {
+  return useSyncExternalStore(onHeliosLive, heliosLive);
+}
+
 const minute = 60_000;
 
 export function useHeliosStatus(enabled = true) {
@@ -336,28 +341,86 @@ export function useHeliosLink(params: LinkParams, enabled = true) {
   });
 }
 
-/* ------------------------------------------------------------------ constellation (AI #2 demo) */
+/* ------------------------------------------------------------------ constellation (five real satellites) */
 
-/** [action, partner index, station index, AI #2 p(outage), minutes to loss of signal, queue MB, channel] */
+/** Constellation actions: data on board, dump to the satellite's own station (or TDRS), direct broadcast received. */
+export const ACTION = { STORE: 0, DOWNLINK: 1, BROADCAST: 5 } as const;
+
+/**
+ * [action, station receiving the direct broadcast (-1 none), station of the current link, p(link drop in 5 min),
+ * minutes to loss of signal, MB waiting on board, channel ("X" | "Ka" | "TDRS" | "DB" | "")]
+ */
 export type ConstellationState = [number, number, number, number, number, number, string];
+
+export type DropReason = '' | 'los' | 'weather' | 'margin' | 'outage';
+/** [minutes until the link drops (null: not in this window), minutes until the next link, its station, why, p(drop in 5 min)] */
+export type ForecastRow = [number | null, number | null, number, DropReason, number];
+
+export type DeliveryPath = '' | 'db' | 'dump' | 'tdrs';
+/** [minutes until data taken now are on the ground, path, station, the same without direct-broadcast reception] */
+export type DeliveryRow = [number | null, DeliveryPath, number, number | null];
+
+export interface RegionPass {
+  sat: number;
+  t_start: number;
+  t_end: number;
+  /** Step when all of this pass's data over the region are on the ground (null: not in this window). */
+  ground_t: number | null;
+  wait_min: number | null;
+  wait_dump_min: number | null;
+  path: DeliveryPath;
+  station: number;
+}
+
+export interface LatencyStats {
+  median_min: number | null;
+  p90_min: number | null;
+  max_min: number | null;
+}
 
 export interface ConstellationResponse {
   start: string;
   step_s: number;
   minutes: number;
   storm: string | null;
-  satellites: { name: string; track: [number, number, number][] }[];
+  outage: string | null;
+  db: boolean;
+  satellites: {
+    name: string;
+    track: [number, number, number][];
+    sensor: 'MODIS' | 'VIIRS';
+    /** Date the operator stopped its data (Suomi NPP: 2026-11-02), else null. */
+    retired: string | null;
+    broadcast: boolean;
+    access: 'TDRS' | string[];
+  }[];
   stations: { id: string; name: string; lat: number; lon: number; kind: 'radio' | 'optical' }[];
-  actions: Record<'STORE' | 'DOWNLINK' | 'HANDOFF' | 'RELAY' | 'ALERTS', number>;
   states: ConstellationState[][];
-  summary: { relayed_mb: number; delivered_mb: number; handoffs: Record<'los' | 'ai2' | 'no_station', number> };
+  forecast: ForecastRow[][];
+  delivery: DeliveryRow[][];
+  region: { name: string; bbox: [number, number, number, number]; passes: RegionPass[]; first: { sat: number; t_end: number; ground_t: number } | null };
+  summary: { delivered_mb: number; latency: { now: LatencyStats; with_db: LatencyStats | null; beyond_window: number } };
 }
 
-/** Terra, Aqua and Suomi NPP on their real orbits, handing data to each other before a link drops. */
-export function useConstellation(enabled: boolean, storm: string | null) {
+export interface ConstellationScenario {
+  /** Station id with a storm over it, "auto" (the server picks the one where it matters most) or null. */
+  storm: string | null;
+  /** Station id under maintenance (e.g. MCMURDO), or null. */
+  outage: string | null;
+  /** Own direct-broadcast receiving station in Astana (ground equipment; the satellites stay as they are). */
+  db: boolean;
+}
+
+/** Terra, Aqua, Suomi NPP, NOAA-20 and NOAA-21 on their real orbits with their real ground stations. */
+export function useConstellation(enabled: boolean, s: ConstellationScenario) {
   return useQuery({
-    queryKey: ['helios', 'constellation', storm ?? ''],
-    queryFn: ({ signal }) => getJson<ConstellationResponse>('constellation', { minutes: 120, storm: storm ?? undefined }, signal),
+    queryKey: ['helios', 'constellation', s.storm ?? '', s.outage ?? '', s.db],
+    queryFn: ({ signal }) =>
+      getJson<ConstellationResponse>(
+        'constellation',
+        { minutes: 120, storm: s.storm ?? undefined, outage: s.outage ?? undefined, db: s.db ? 'true' : undefined },
+        signal,
+      ),
     enabled,
     staleTime: 10 * minute,
     refetchInterval: 10 * minute,

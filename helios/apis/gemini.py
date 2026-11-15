@@ -76,25 +76,43 @@ def analyze_region(stats: dict[str, Any], question: str | None = None) -> dict[s
     except ImportError:
         return {"text": offline_analysis(stats), "model": "offline-template", "source": "offline"}
 
-    client = genai.Client(api_key=key)
+    cfg = settings()["apis"]
+    # Без тайм-аута запрос к перегруженной модели висит минутами (gemini-3.8-flash в ноябре 2026 г.).
+    client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=int(cfg.get("gemini_timeout_s", 20) * 1000)))
     user = "Сводка по региону (JSON):\n" + json.dumps(stats, ensure_ascii=False, default=str)
     if question:
         user += f"\n\nВопрос пользователя: {question}"
-    cfg = settings()["apis"]
-    models = [env("GEMINI_MODEL", cfg["gemini_model"]), *cfg.get("gemini_fallback_models", [])]
-    last_err = None
+    models = list(dict.fromkeys([env("GEMINI_MODEL", cfg["gemini_model"]), *cfg.get("gemini_fallback_models", [])]))
+    last_err: object = None
     for model in models:
         try:
             resp = client.models.generate_content(
                 model=model,
                 contents=user,
-                config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, temperature=0.3,
-                                                   max_output_tokens=900),
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT, temperature=0.3,
+                    # «размышления» модели входят в лимит: при 900 токенах ответ обрывался или был пустым
+                    max_output_tokens=4096, thinking_config=_thinking(model, types)),
             )
+            cand = resp.candidates[0] if resp.candidates else None
+            if cand is not None and cand.finish_reason == types.FinishReason.MAX_TOKENS:
+                last_err = "ответ обрезан лимитом токенов"
+                log.warning("Gemini %s: %s", model, last_err)
+                continue
             text = (resp.text or "").strip()
             if text:
                 return {"text": text, "model": model, "source": "gemini"}
-        except Exception as exc:  # неверная модель/квота — пробуем следующую
+            last_err = "пустой ответ"
+        except Exception as exc:  # неверная модель/квота/тайм-аут — пробуем следующую
             last_err = exc
             log.warning("Gemini %s: %s", model, exc)
     return {"text": offline_analysis(stats), "model": "offline-template", "source": f"offline ({last_err})"}
+
+
+def _thinking(model: str, types):
+    """Немного «размышлений»: модель лишь пересказывает готовые числа (как в server/gemini.ts)."""
+    if model.startswith("gemini-2.5-flash"):
+        return types.ThinkingConfig(thinking_budget=0)
+    if model.startswith("gemini-2.5-pro"):
+        return types.ThinkingConfig(thinking_budget=128)
+    return types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW)

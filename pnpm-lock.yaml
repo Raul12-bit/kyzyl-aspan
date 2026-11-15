@@ -136,6 +136,9 @@ importers:
       react-router-dom:
         specifier: 6.30.6
         version: 6.30.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      satellite.js:
+        specifier: 7.1.0
+        version: 7.1.0
       three:
         specifier: 0.187.0
         version: 0.187.0
@@ -1574,6 +1577,9 @@ packages:
     resolution: {integrity: sha512-wd2gavj7CEQv52rdcVqfUupO/KPIKcoJKxyFWl4cOqYZGMQEOSijJRkliz0dRa7gpkj/h4TRqyWa+dJJi6T0OA==}
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
     hasBin: true
+
+  satellite.js@7.1.0:
+    resolution: {integrity: sha512-U6nRml9Nb7dV9LJPiMNPyna7U7ry+1nXYkOeCEG7K/YbojQQLHHmcjPisp03VNY+HLcbQHqbt7t4t1vQMaKCLQ==}
 
   scheduler@0.23.2:
     resolution: {integrity: sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==}
@@ -3077,6 +3083,8 @@ snapshots:
       '@rollup/rollup-win32-x64-gnu': 4.68.3
       '@rollup/rollup-win32-x64-msvc': 4.68.3
       fsevents: 2.3.3
+
+  satellite.js@7.1.0: {}
 
   scheduler@0.23.2:
     dependencies:

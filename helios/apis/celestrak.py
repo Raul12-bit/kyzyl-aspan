@@ -23,6 +23,9 @@ SATELLITES: dict[str, tuple[int, str, str | None]] = {
     "NOAA 20": (43013, "observer", "VIIRS"),
     "NOAA 21": (54234, "observer", "VIIRS"),
     "STPSAT-6 (LCRD)": (49817, "relay_optical", None),
+    # TDRS третьего поколения (174° з.д., 41° з.д., 11° з.д.): втроём видят Terra 100% времени
+    "TDRS 11": (39070, "relay_radio", None),
+    "TDRS 12": (39504, "relay_radio", None),
     "TDRS 13": (42915, "relay_radio", None),
 }
 

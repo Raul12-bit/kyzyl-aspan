@@ -88,5 +88,7 @@ apis:
   eonet: https://eonet.gsfc.nasa.gov/api/v3
   gibs_wmts: https://gibs.earthdata.nasa.gov/wmts/epsg3857/best
   geoboundaries: https://www.geoboundaries.org/api/current/gbOpen
-  gemini_model: gemini-2.5-flash
-  gemini_fallback_models: [gemini-flash-latest, gemini-2.0-flash]
+  # gemini-2.5-flash отвечает 404 новым ключам, gemini-2.0-flash отключён 1 июня 2026 г.
+  gemini_model: gemini-3.6-flash
+  gemini_fallback_models: [gemini-3.5-flash-lite]
+  gemini_timeout_s: 20

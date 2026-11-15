@@ -275,12 +275,26 @@
   /* Wordmark: wide capitals with generous tracking, KYZYL in ink and ASPAN in signal red. */
   .wordmark {
     font-family: var(--el-font-sans);
-    font-size: 12.5px;
-    font-weight: 600;
-    letter-spacing: 0.24em;
+    font-size: 13.5px;
+    font-weight: 700;
+    letter-spacing: 0.3em;
     text-transform: uppercase;
     white-space: nowrap;
     line-height: 1;
+  }
+  /* ASPAN in the logo's own orange (#fc5b1c, 5.9 : 1 on the page colour). */
+  .wordmark__accent {
+    color: #fc5b1c;
+  }
+  /* "Red sky" under the wordmark, as on the brand artwork. */
+  .wordmark__tagline {
+    font-family: var(--el-font-sans);
+    font-weight: 500;
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    line-height: 1;
+    color: #8a898f;
   }
 
   /* Display headlines: the wordmark's voice at size. */

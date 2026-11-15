@@ -262,29 +262,42 @@ const fireFragment = /* glsl */ `
   }
 `;
 
-/** Three satellites on their real orbits and their links (from /v1/helios/constellation). */
+/** The five satellites on their real orbits and their links (from /v1/helios/constellation). */
 export interface ConstellationInput {
   /** ISO time of step 0. */
   start: string;
   step_s: number;
   satellites: { name: string; track: readonly (readonly [number, number, number])[] }[];
   stations: { lat: number; lon: number; kind: string }[];
+  /** [action (0 on board, 1 link to own station or TDRS, 5 direct broadcast received), broadcast station, link station, …, channel] */
   states: readonly (readonly (readonly [number, number, number, number, number, number, string])[])[];
+  /** Passes over the project region (Kazakhstan): the playback slows down during them. */
+  region?: { passes: readonly { t_start: number; t_end: number }[] };
 }
 
-const SAT_MODEL: Record<string, NasaModel> = { TERRA: 'terra', AQUA: 'aqua', 'SUOMI NPP': 'snpp' };
-/** Fleet entry and procedural look of each model, for satellites created when the constellation plays. */
-const SAT_SPEC: Record<NasaModel, { id: string; kind: SatelliteKind }> = {
-  terra: { id: 'terra', kind: 'eos' },
-  aqua: { id: 'aqua', kind: 'eos' },
-  snpp: { id: 'snpp', kind: 'jpss' },
+/**
+ * Fleet entry, procedural look and NASA model of each real satellite. NOAA-20 and NOAA-21 have no model of
+ * their own in NASA 3D Resources; they borrow Suomi NPP's (same JPSS family, the same at globe scale).
+ */
+const SAT_SPEC: Record<string, { id: string; kind: SatelliteKind; model: NasaModel }> = {
+  TERRA: { id: 'terra', kind: 'eos', model: 'terra' },
+  AQUA: { id: 'aqua', kind: 'eos', model: 'aqua' },
+  'SUOMI NPP': { id: 'snpp', kind: 'jpss', model: 'snpp' },
+  'NOAA 20': { id: 'noaa20', kind: 'jpss', model: 'snpp' },
+  'NOAA 21': { id: 'noaa21', kind: 'jpss', model: 'snpp' },
 };
+/** Not in the lab's concept fleet: only drawn when the real constellation plays (its track drives it). */
+const EXTRA_SATS: readonly Satellite[] = [
+  { id: 'noaa21', name: 'NOAA-21', sensor: 'VIIRS', altitudeKm: 824, inclinationDeg: 98.7, raanDeg: 47, phaseDeg: 170, swathKm: 3060 },
+];
 /** Two hours of real orbits play in about three minutes… */
 export const CONSTELLATION_SPEED = 40;
-/** …and slow down while AI #2 switches a link (laser handoff, backup radio), so it can be seen. */
+/** …and slow down while a satellite is over Kazakhstan, so the pass and its data path can be followed. */
 export const CONSTELLATION_SLOW = 10;
-const MAX_LINKS = 8;
-const LINK_COLOR = { down: new Color('#5ee6c6'), laser: new Color('#ffb24a'), radio: new Color('#7cb7ff') };
+const MAX_LINKS = 12;
+const LINK_COLOR = { down: new Color('#5ee6c6'), relay: new Color('#c4a8ff'), radio: new Color('#7cb7ff') };
+/** The TDRS relay sits 36 000 km up, far outside the view: its link is drawn as a short beam straight up. */
+const RELAY_BEAM = 1.22;
 const STATION_COLOR = { radio: new Color('#8be9d9'), optical: new Color('#c4a8ff') };
 
 interface SatVisual {
@@ -713,11 +726,8 @@ export class EarthScene {
     const steps = c.data.satellites[0]?.track.length ?? 0;
     if (steps < 2) return;
     const at = Math.floor(c.f);
-    // Laser handoff (2) or backup-radio alerts (4): the moments AI #2 changes the link.
-    const slow = c.data.states.some((st) => {
-      const a = st[Math.min(at, st.length - 1)]?.[0];
-      return a === 2 || a === 4;
-    });
+    // A satellite over Kazakhstan: the moment a fire there would be seen.
+    const slow = c.data.region?.passes.some((p) => p.t_start <= at && at <= p.t_end) ?? false;
     const speed = this.opts.reducedMotion ? 0 : slow ? CONSTELLATION_SLOW : CONSTELLATION_SPEED;
     c.f = (c.f + (dt * speed) / c.data.step_s) % (steps - 1);
     const f = c.f;
@@ -754,11 +764,12 @@ export class EarthScene {
     c.data.states.forEach((states, i) => {
       const s = states[Math.min(i0, states.length - 1)];
       if (!s) return;
-      const [action, partner, station] = s;
+      const [action, broadcastAt, station, , , , channel] = s;
       const st = station >= 0 ? c.stationPos[station] : undefined;
-      if (st && (action === 1 || action === 3)) put(pos[i]!, st, LINK_COLOR.down);
-      if (st && action === 4) put(pos[i]!, st, LINK_COLOR.radio, pulse);
-      if (action === 2 && partner >= 0 && pos[partner]) put(pos[i]!, pos[partner]!, LINK_COLOR.laser, pulse);
+      if (action === 1 && channel === 'TDRS') put(pos[i]!, this.tmp4.copy(pos[i]!).multiplyScalar(RELAY_BEAM), LINK_COLOR.relay);
+      else if (action === 1 && st) put(pos[i]!, st, LINK_COLOR.down);
+      const rx = broadcastAt >= 0 ? c.stationPos[broadcastAt] : undefined;
+      if (rx) put(pos[i]!, rx, LINK_COLOR.radio, pulse);
     });
     for (; seg < MAX_LINKS; seg++) {
       P.fill(0, seg * 6, seg * 6 + 6);
@@ -822,18 +833,18 @@ export class EarthScene {
   }
 
   /**
-   * The visual for a satellite of the real constellation. The idle globe shows Terra only; Aqua and
-   * Suomi NPP are created here the first time the constellation plays, so laser links never end in empty space.
+   * The visual for a satellite of the real constellation. The idle globe shows Terra only; the other four are
+   * created here the first time the constellation plays. Keyed by satellite, not by model: NOAA-20 and
+   * NOAA-21 share Suomi NPP's model but each flies its own track.
    */
   private visualFor(name: string): SatVisual | null {
-    const modelName = SAT_MODEL[name.toUpperCase()];
-    if (!modelName) return null;
-    const found = this.sats.find((v) => v.modelName === modelName);
+    const spec = SAT_SPEC[name.toUpperCase()];
+    if (!spec) return null;
+    const found = this.sats.find((v) => v.sat.id === spec.id);
     if (found) return found;
-    const spec = SAT_SPEC[modelName];
-    const sat = FLEET.find((f) => f.id === spec.id);
+    const sat = FLEET.find((f) => f.id === spec.id) ?? EXTRA_SATS.find((f) => f.id === spec.id);
     if (!sat) return null;
-    const v = this.makeSatVisual(sat, spec.kind, modelName);
+    const v = this.makeSatVisual(sat, spec.kind, spec.model);
     const shown = this.earth.visible && !this.dive;
     v.model.visible = shown;
     v.trail.visible = shown;
@@ -1028,6 +1039,7 @@ export class EarthScene {
   private readonly tmp = new Vector3();
   private readonly tmp2 = new Vector3();
   private readonly tmp3 = new Vector3();
+  private readonly tmp4 = new Vector3();
 
   /**
    * Watches the real frame interval and lowers the render resolution (1.75 → 1.4 → 1.05 → 1) when the

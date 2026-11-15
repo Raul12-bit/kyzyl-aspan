@@ -18,6 +18,9 @@ STATIONS: list[dict] = [
      "kind": "rf", "bands": ["S", "X"], "dish_m": 10.0, "real": True},
     {"id": "FAIRBANKS", "name": "Fairbanks CDA, Alaska (NOAA)", "lat": 64.972, "lon": -147.511, "alt_m": 300,
      "kind": "rf", "bands": ["S", "X"], "dish_m": 13.0, "real": True},
+    # Aqua сбрасывает накопленные данные на Шпицбергене и в Покер-Флэт (NASA, «Aqua Direct Broadcast»)
+    {"id": "POKER_FLAT", "name": "Poker Flat, Alaska (NASA NEN)", "lat": 65.117, "lon": -147.433, "alt_m": 500,
+     "kind": "rf", "bands": ["S", "X"], "dish_m": 11.0, "real": True},
     {"id": "WALLOPS", "name": "Wallops, Virginia (NASA)", "lat": 37.940, "lon": -75.466, "alt_m": 10,
      "kind": "rf", "bands": ["S", "X"], "dish_m": 11.0, "real": True},
     {"id": "WHITE_SANDS", "name": "White Sands Complex, NM (TDRS ground)", "lat": 32.500, "lon": -106.608, "alt_m": 1450,

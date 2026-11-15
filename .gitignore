@@ -24,3 +24,6 @@ helios_artifacts.zip
 *.exe
 *.obj
 *.ilk
+
+# Vercel (prebuilt output, project link)
+.vercel

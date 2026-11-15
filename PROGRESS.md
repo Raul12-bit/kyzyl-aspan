@@ -279,6 +279,33 @@ Backend tasks (original list — done in HELIOS for every country):
 
 ## 7. Change log
 
+- **2026-11-15 · New logo, live on Vercel** — logo redrawn as SVG from the brand artwork (`public/brand/kyzyl-aspan-logo.png`,
+  geometry and colours measured on it): orange planet with a white ring and its satellite inside the pointy-top
+  hexagon, KYZYL white / ASPAN `#fc5b1c`, "RED SKY" under the wordmark (`src/app/Logo.tsx`, `public/favicon.svg`,
+  Method page, `og:image`). Hosted at **https://kyzyl-aspan.vercel.app** (Vercel project `kyzyl-aspan`) as a prebuilt
+  deployment: `pnpm deploy:vercel` = `pnpm build` + `scripts/build-vercel.mjs` (Build Output API: `dist/` as static
+  files, `server/handlers.ts` bundled into the five `/api/*` functions, SPA fallback, 404 for `/v1`) +
+  `vercel deploy --prebuilt --prod`. `GEMINI_API_KEY` is a Secret project variable (Production). The HELIOS Python
+  API is not on Vercel (too large for functions), so the hosted site runs on the demo data and without the live
+  constellation until that API gets its own host and `/v1` is routed to it. `server/index.ts` now only serves
+  static files and proxies `/v1`; the `/api/*` router moved to `server/handlers.ts` (shared with the functions).
+
+- **2026-11-15 · Five real satellites, no satellite changes** — the landing globe now plays Terra, Aqua, Suomi NPP,
+  NOAA-20 and NOAA-21 with their REAL ground segments (Terra via TDRS 11/12/13 → White Sands, direct broadcast off
+  since 2024-05-11; Aqua → Svalbard + Poker Flat, broadcast paused while dumping; NOAA-20/21 → Svalbard + McMurdo,
+  Troll backup; Suomi NPP flagged as stopped on 2026-11-02). The inter-satellite laser is gone: the existing
+  satellites cannot be upgraded. Everything is computed on the ground (`helios/comms/constellation.py`): when each
+  link ends (SGP4 horizon + Open-Meteo rain/cloud over the antenna + AI #2 with a monotonic physics correction —
+  the network alone lowered the risk in heavy rain), when data taken now reach the ground (store-and-forward to
+  the satellite's own station, or real-time direct broadcast), and which pass over Kazakhstan brings the news first.
+  Scenarios: storm over a station, McMurdo under maintenance (NOAA notice, Nov 2026), an own direct-broadcast
+  antenna in Astana (ground equipment only). 24 h study for Kyzylorda: time from ignition to data on the ground —
+  median 4.2 h with NOAA-20 alone, 1.3 h with all four active satellites (another satellite's next pass delivers),
+  1.1 h with the Astana antenna. Gemini: `gemini-2.5-flash` answers 404 to new keys → default `gemini-3.6-flash`
+  with `gemini-3.5-flash-lite` fallback, low thinking, 4096-token limit, cut answers rejected (verified with a live
+  key). Fixes: desktop map panel ignored the mouse (pointer-events); `/v1/helios/status` now sends `data_ready`, so
+  a HELIOS server without the archive keeps the map on the demo while the live satellites stay on.
+
 - **2026-11-15 · AI lab** — the three AIs as one architecture: `src/domain/ai/` (AI #1 contextual detector +
   triage + 16-byte alert packet; AI #2 link manager with loss-of-signal prediction and laser ↔ backup-radio
   switching; AI #3 weather overlay, McArthur spread forecast, noise report, signal delays; MODIS × VIIRS event

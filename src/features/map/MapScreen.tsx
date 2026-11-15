@@ -191,7 +191,9 @@ function DesktopLayout({ index, archive }: { index: ReturnType<typeof useFireInd
           </div>
         </Reveal>
         {panel ? (
-          <div key={panel} className="map-panel min-h-0 flex-shrink overflow-y-auto rounded-panel">
+          // pointer-events-auto: the column around it ignores the pointer so the map stays draggable, and
+          // without this the panel inherited that — search, region buttons and the AI button did not click.
+          <div key={panel} className="map-panel pointer-events-auto min-h-0 flex-shrink overflow-y-auto rounded-panel">
             <Panel
               as="section"
               id={`map-panel-${panel}`}

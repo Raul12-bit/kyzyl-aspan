@@ -1,10 +1,10 @@
-import { AutoDataSource, setDataMode } from './AutoDataSource';
+import { AutoDataSource, setDataMode, setHeliosLive } from './AutoDataSource';
 import type { DataSource } from './DataSource';
 import { HttpDataSource } from './HttpDataSource';
 import { MockDataSource, type MockMode } from './MockDataSource';
 
 export type { DataSource, ActivityOverview, RequestOptions } from './DataSource';
-export { dataMode, onDataMode, type DataMode } from './AutoDataSource';
+export { dataMode, heliosLive, onDataMode, onHeliosLive, type DataMode } from './AutoDataSource';
 export * from './types';
 
 const MOCK_MODES: readonly MockMode[] = ['normal', 'slow', 'error', 'empty'];
@@ -31,6 +31,7 @@ export function createDataSource(env: ImportMetaEnv = import.meta.env): DataSour
   const apiUrl = env.VITE_API_URL || DEFAULT_API_URL;
   if (mode === 'http') {
     setDataMode('http');
+    setHeliosLive(true);
     return new HttpDataSource(apiUrl);
   }
   if (mode === 'auto' && typeof fetch === 'function') return new AutoDataSource(apiUrl, mockBase);
